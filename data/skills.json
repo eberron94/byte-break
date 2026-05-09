@@ -1,0 +1,38 @@
+[
+    {
+        "id": "strike",
+        "name": "Strike",
+        "description": "Physical attack skill.",
+        "stat": "strength"
+    },
+    {
+        "id": "reflex",
+        "name": "Reflex",
+        "description": "Ability to react quickly.",
+        "stat": "agility"
+    },
+    {
+        "id": "athletics",
+        "name": "Athletics",
+        "description": "Physical exertion and prowess.",
+        "stat": "strength"
+    },
+    {
+        "id": "acrobatics",
+        "name": "Acrobatics",
+        "description": "Agility and balance.",
+        "stat": "agility"
+    },
+    {
+        "id": "crafting",
+        "name": "Crafting",
+        "description": "Ability to create things.",
+        "stat": "dexterity"
+    },
+    {
+        "id": "search",
+        "name": "Search",
+        "description": "Finding hidden things.",
+        "stat": "focus"
+    }
+]

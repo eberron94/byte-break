@@ -1,0 +1,154 @@
+/**
+ * Represents an action that a pet can perform, potentially consuming items or altering stats.
+ */
+class Activity {
+    constructor(data) {
+        this.id = data.id;
+        this.name = data.name;
+        this.description = data.description;
+        this.prereq = data.prereq || {};
+        this.effects = data.effects || {};
+        this.itemSelect = data.itemSelect || null;
+    }
+
+    /**
+     * Checks if the pet and player meet all prerequisites to perform this activity.
+     */
+    canPerform(pet, player = null, itemManager = null) {
+        const req = this.prereq;
+        if (!req || Object.keys(req).length === 0) return true;
+
+        // 1. Check if the pet is in the correct room
+        if (req.room && pet) {
+            const roomAllowed = Array.isArray(req.room)
+                ? req.room.includes(pet.room)
+                : pet.room === req.room;
+            if (!roomAllowed) return false;
+        }
+
+        // 2. Check all stat/skill/need/pool thresholds
+        const categories = ['needs', 'stats', 'skills', 'pools'];
+        for (const category of categories) {
+            if (req[category] && pet && pet[category]) {
+                for (const [key, range] of Object.entries(req[category])) {
+                    const itemValue = pet[category][key]?.value;
+                    if (itemValue === undefined) continue;
+                    // Must have at least the minimum requirement
+                    if (range.min !== undefined && itemValue < range.min)
+                        return false;
+                    // Must not exceed the maximum requirement
+                    if (range.max !== undefined && itemValue > range.max)
+                        return false;
+                }
+            }
+        }
+
+        // 3. Check energy thresholds separately since it's an isolated stat
+        if (req.energy && pet && pet.energy) {
+            if (
+                req.energy.min !== undefined &&
+                pet.energy.value < req.energy.min
+            )
+                return false;
+            if (
+                req.energy.max !== undefined &&
+                pet.energy.value > req.energy.max
+            )
+                return false;
+        }
+
+        // 4. Check historical occurrences
+        if (req.history && pet && pet.history) {
+            for (const [key, range] of Object.entries(req.history)) {
+                const historyValue = pet.history[key] || 0;
+                if (range.min !== undefined && historyValue < range.min)
+                    return false;
+                if (range.max !== undefined && historyValue > range.max)
+                    return false;
+            }
+        }
+
+        // 5. Check if player has the required inventory items
+        if (req.inventory && player && player.inventory) {
+            for (const [itemId, range] of Object.entries(req.inventory)) {
+                const itemAmount = player.inventory[itemId] || 0;
+                if (range.min !== undefined && itemAmount < range.min)
+                    return false;
+                if (range.max !== undefined && itemAmount > range.max)
+                    return false;
+            }
+        }
+
+        // 6. If the activity requires an item selection, verify they have at least one valid item
+        if (this.itemSelect && player && itemManager) {
+            let hasValidItem = false;
+            for (const [itemId, amount] of Object.entries(player.inventory)) {
+                if (amount > 0) {
+                    const item = itemManager.getItem(itemId);
+                    if (item) {
+                        if (
+                            this.itemSelect.type &&
+                            item.type === this.itemSelect.type
+                        )
+                            hasValidItem = true;
+                        if (
+                            this.itemSelect.ids &&
+                            this.itemSelect.ids.includes(item.id)
+                        )
+                            hasValidItem = true;
+                    }
+                }
+            }
+            if (!hasValidItem) return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Executes the activity, applies its effects, logs history, and consumes items.
+     */
+    perform(
+        pet,
+        player = null,
+        itemManager = null,
+        selectedItemId = null,
+        override = false,
+    ) {
+        // Enforce prerequisites unless override is true
+        if (!this.canPerform(pet, player, itemManager) && !override)
+            return false;
+        const success = pet.applyEffects(this.effects);
+        if (success) {
+            pet.recordHistory(this.id);
+
+            // Grant or remove items as a result of the activity
+            if (this.effects.inventory && player) {
+                for (const [itemId, amount] of Object.entries(
+                    this.effects.inventory,
+                )) {
+                    if (amount > 0) {
+                        player.addItem(itemId, amount, itemManager);
+                    } else if (amount < 0) {
+                        player.removeItem(itemId, Math.abs(amount));
+                    }
+                }
+            }
+
+            // Handle consumption of a user-selected item
+            if (this.itemSelect && selectedItemId && itemManager && player) {
+                const item = itemManager.getItem(selectedItemId);
+                if (item && player.hasItem(selectedItemId, 1)) {
+                    item.use(pet);
+                    // Only remove the item if it's consumable
+                    if (item.type === 'consumable') {
+                        player.removeItem(selectedItemId, 1);
+                    }
+                }
+            }
+        }
+        return success;
+    }
+}
+
+module.exports = Activity;

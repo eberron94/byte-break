@@ -1,0 +1,14 @@
+[
+    {
+        "id": "living_room",
+        "name": "Living Room",
+        "description": "A cozy space for hanging out and relaxing.",
+        "allowedActivities": ["play_fetch", "nap"]
+    },
+    {
+        "id": "kitchen",
+        "name": "Kitchen",
+        "description": "Where the food happens.",
+        "allowedActivities": ["eat_meal", "drink_water"]
+    }
+]

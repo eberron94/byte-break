@@ -1,0 +1,17 @@
+[
+    {
+        "id": "tennis_ball",
+        "name": "Tennis Ball",
+        "shortname": "Ball",
+        "description": "A bouncy green ball.",
+        "type": "general",
+        "maxCount": 5
+    },
+    {
+        "id": "gold_coin",
+        "name": "Gold Coin",
+        "shortname": "G",
+        "description": "Shiny currency used for buying things.",
+        "type": "currency"
+    }
+]

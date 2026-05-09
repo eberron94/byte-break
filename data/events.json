@@ -1,0 +1,31 @@
+[
+    {
+        "id": "found_treat",
+        "name": "Found a Treat",
+        "description": "Your pet found a yummy treat hiding under the sofa!",
+        "probability": 0.05,
+        "requirements": {
+            "room": "living_room",
+            "needs": {
+                "hunger": { "max": 80 }
+            }
+        },
+        "effects": {
+            "hunger": 15,
+            "enrichment": 10
+        }
+    },
+    {
+        "id": "zoomies",
+        "name": "The Zoomies!",
+        "description": "Random burst of energy! Your pet runs around wildly.",
+        "probability": 0.1,
+        "requirements": {
+            "timePhase": ["day", "evening"]
+        },
+        "effects": {
+            "exertion": -30,
+            "stimulation": 20
+        }
+    }
+]

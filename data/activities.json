@@ -1,0 +1,59 @@
+[
+    {
+        "id": "play_fetch",
+        "name": "Play Fetch",
+        "description": "Throw a ball across the room.",
+        "prereq": {
+            "energy": {
+                "min": 20
+            }
+        },
+        "effects": {
+            "enrichment": 20,
+            "exertion": -15,
+            "energy": -10
+        }
+    },
+    {
+        "id": "nap",
+        "name": "Take a Nap",
+        "description": "A quick snooze on the couch.",
+        "prereq": {
+            "energy": {
+                "max": 90
+            }
+        },
+        "effects": {
+            "energy": 30,
+            "exertion": 20
+        }
+    },
+    {
+        "id": "eat_meal",
+        "name": "Eat a Meal",
+        "description": "A hearty bowl of food.",
+        "effects": {
+            "hunger": 30,
+            "energy": 5
+        }
+    },
+    {
+        "id": "drink_water",
+        "name": "Drink Water",
+        "description": "A refreshing bowl of water.",
+        "effects": {
+            "thirst": 25
+        }
+    },
+    {
+        "id": "puzzle_toy",
+        "name": "Puzzle Toy",
+        "description": "A mentally stimulating toy.",
+        "effects": {
+            "stimulation": 20,
+            "enrichment": 5,
+            "energy": -10,
+            "xp": 2
+        }
+    }
+]
