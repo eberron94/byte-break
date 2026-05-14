@@ -12,7 +12,19 @@ class ActivityManager {
 
     // Loads activities from the JSON source file into memory
     load() {
-        activitiesData.forEach((data) => {
+        if (!Array.isArray(activitiesData)) {
+            console.error(
+                '[ActivityManager] Invalid JSON structure: Expected an array.',
+            );
+            return;
+        }
+        activitiesData.forEach((data, index) => {
+            if (!data.id || !data.name) {
+                console.warn(
+                    `[ActivityManager] Skipping invalid activity at index ${index}: Missing required 'id' or 'name'`,
+                );
+                return;
+            }
             this.activities.set(data.id, new Activity(data));
         });
     }
@@ -27,9 +39,9 @@ class ActivityManager {
         return Array.from(this.activities.values());
     }
 
-    // Returns a filtered list of activities that the given pet and player can currently perform
+    // Returns a filtered list of activities that the given byte and player can currently perform
     getPerformableActivities(
-        pet,
+        byte,
         player,
         itemManager,
         allowedActivityIds = null,
@@ -45,8 +57,25 @@ class ActivityManager {
 
         // Final check to see if the game state meets prerequisites
         return activities.filter((activity) =>
-            activity.canPerform(pet, player, itemManager),
+            activity.canPerform(byte, player, itemManager),
         );
     }
+
+    // Formats the inline keyboard button for an activity, appending web parameters if needed
+    getActivityButton(activity, webAppUrl) {
+        if (activity.isWebView && webAppUrl) {
+            const separator = webAppUrl.includes('?') ? '&' : '?';
+            return {
+                text: `📱 ${activity.name}`,
+                web_app: {
+                    url: `${webAppUrl}${separator}activity=${activity.id}`,
+                },
+            };
+        }
+        return {
+            text: activity.name,
+            callback_data: `act_${activity.id}`,
+        };
+    }
 }
-module.exports = ActivityManager;
+module.exports = new ActivityManager();

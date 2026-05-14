@@ -1,0 +1,58 @@
+{
+    "Charge": [
+        "The amount of electrical power currently stored.",
+        "Keep this topped up to stay active!"
+    ],
+    "Thermal": [
+        "The current operating temperature.",
+        "Keep it low to prevent overheating!"
+    ],
+    "Defrag": [
+        "File system optimization.",
+        "Regular defragging keeps processing speeds high."
+    ],
+    "Telemetry": [
+        "Network connectivity and synchronization with external systems."
+    ],
+    "Focus": [
+        "The ability to lock onto a task and execute it without interruption."
+    ],
+    "Aptitude": [
+        "The inherent potential and adaptability of the Byte's baseline programming."
+    ],
+    "Logic": ["The raw analytical and computational brute force of the Byte."],
+    "Curiosity": [
+        "The drive to ping, explore, and interact with unknown networks."
+    ],
+    "Syntax": ["The precision and exactness for manipulating code and data."],
+    "Integrity": [
+        "The Byte's structural health (HP).",
+        "If this hits 0, they lose the combat simulation."
+    ],
+    "Teraflops": [
+        "Computational currency (Mana) used to cast heavy ultimate abilities."
+    ],
+    "Bandwidth": [
+        "A reservoir (Potential) for future mechanics like evolving or executing massive network tasks."
+    ],
+    "Bit Buffer": [
+        "The raw knowledge data extracted from activities and combat.",
+        "Fill this up to level up!"
+    ],
+    "Assault": ["Directly attacks an enemy system using Logic."],
+    "Firewall": ["Defends against incoming malicious packets using Focus."],
+    "Compile": ["Heals the system's integrity by recompiling damaged files."],
+    "Shred": ["Aggressively tears apart enemy armor."],
+    "Scan": ["Analyzes the enemy to find weaknesses using Curiosity."],
+    "Parse": [
+        "Breaks down enemy attacks to reduce incoming damage using Syntax."
+    ],
+    "Datamine": ["Extracts additional bits from defeated enemies."],
+    "Override": ["A massive attack using accumulated Teraflops."],
+    "Sync": ["Synchronizes with the network to regenerate Teraflops."],
+    "Spoof": ["Evades incoming attacks by falsifying location data."],
+    "Compression": ["Reduces the Teraflop cost of abilities."],
+    "Core Stats": [
+        "The fundamental hardware processing capabilities of the Byte."
+    ]
+}

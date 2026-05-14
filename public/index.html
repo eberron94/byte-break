@@ -1,0 +1,149 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Byte Status</title>
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div id="loading-screen" class="loading-container">
+            <div class="spinner"></div>
+            <p>Initializing Connection...</p>
+        </div>
+
+        <h2 id="error-message" style="display: none; text-align: center"></h2>
+
+        <div id="main-view" class="card" style="display: none">
+            <div class="card-header">
+                <h1 id="byte-name"></h1>
+                <p class="byte-class" id="byte-class"></p>
+                <div class="level-badge" id="byte-level"></div>
+            </div>
+
+            <div class="avatar-box">
+                <img id="main-avatar" src="" alt="Avatar" />
+            </div>
+
+            <div id="stats"></div>
+
+            <div style="margin: 20px">
+                <button id="btn-upgrades" class="btn" onclick="showUpgrades()">
+                    System Upgrades
+                </button>
+            </div>
+        </div>
+
+        <div id="upgrades-view" style="display: none; padding: 20px">
+            <span class="close-btn" onclick="window.Telegram.WebApp.close()"
+                >&times;</span
+            >
+            <h2 style="margin-top: 0">System Upgrades</h2>
+            <p>Bit Buffer: <strong id="upgrade-bits">0</strong> β</p>
+            <div id="upgrade-list" style="margin-bottom: 15px"></div>
+            <button class="btn" onclick="hideUpgrades()">Back to Status</button>
+        </div>
+
+        <div id="arena" style="display: none">
+            <div
+                style="
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 10px;
+                "
+            >
+                <div style="width: 45%">
+                    <div class="avatar-container" id="player-avatar"></div>
+                    <strong id="combat-player-name">Player</strong>
+                    <div class="bar">
+                        <div
+                            id="combat-player-hp"
+                            class="fill"
+                            style="width: 100%; background: #4caf50"
+                        ></div>
+                    </div>
+                    <div class="bar" style="height: 10px; margin-top: 4px">
+                        <div
+                            id="combat-player-tf"
+                            class="fill"
+                            style="width: 100%; background: #3f51b5"
+                        ></div>
+                    </div>
+                    <div class="bar" style="height: 10px; margin-top: 4px">
+                        <div
+                            id="combat-player-bw"
+                            class="fill"
+                            style="width: 100%; background: #8bc34a"
+                        ></div>
+                    </div>
+                </div>
+                <div style="width: 45%; text-align: right">
+                    <div class="avatar-container" id="enemy-avatar"></div>
+                    <strong id="combat-enemy-name">Enemy</strong>
+                    <div class="bar">
+                        <div
+                            id="combat-enemy-hp"
+                            class="fill"
+                            style="width: 100%; background: #f44336"
+                        ></div>
+                    </div>
+                    <div class="bar" style="height: 10px; margin-top: 4px">
+                        <div
+                            id="combat-enemy-tf"
+                            class="fill"
+                            style="width: 100%; background: #3f51b5"
+                        ></div>
+                    </div>
+                    <div class="bar" style="height: 10px; margin-top: 4px">
+                        <div
+                            id="combat-enemy-bw"
+                            class="fill"
+                            style="width: 100%; background: #8bc34a"
+                        ></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; margin-bottom: 5px">
+                <label
+                    for="speed-slider"
+                    style="font-size: 13px; font-weight: bold"
+                    >Animation Delay:
+                    <span id="speed-display">1.20</span>s</label
+                >
+                <input
+                    type="range"
+                    id="speed-slider"
+                    min="50"
+                    max="2500"
+                    step="50"
+                    value="1200"
+                    style="width: 100%; margin-top: 5px"
+                />
+            </div>
+
+            <div id="combat-log" class="log-box" style="margin-top: 0">
+                Waiting for simulation...
+            </div>
+            <button
+                id="btn-finish"
+                class="btn"
+                style="display: none"
+                onclick="window.Telegram.WebApp.close()"
+            >
+                Extract Data & Disconnect
+            </button>
+        </div>
+
+        <div id="info-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+                <h3 id="modal-title" style="margin-top: 0">Info</h3>
+                <p id="modal-desc">TODO</p>
+            </div>
+        </div>
+
+        <script src="app.js"></script>
+    </body>
+</html>

@@ -1,14 +1,63 @@
 [
     {
-        "id": "living_room",
-        "name": "Living Room",
-        "description": "A cozy space for hanging out and relaxing.",
-        "allowedActivities": ["play_fetch", "nap"]
+        "id": "charging_station",
+        "name": "Charging Station",
+        "description": "A quiet dock buzzing with raw electrical current.",
+        "allowedActivities": ["fast_charge", "sleep_mode"]
     },
     {
-        "id": "kitchen",
-        "name": "Kitchen",
-        "description": "Where the food happens.",
-        "allowedActivities": ["eat_meal", "drink_water"]
+        "id": "cooling_chamber",
+        "name": "Cooling Chamber",
+        "description": "A frigid room filled with liquid nitrogen vats.",
+        "allowedActivities": ["flush_coolant"]
+    },
+    {
+        "id": "memory_bank",
+        "name": "Memory Bank",
+        "description": "Endless rows of data drives and sorting algorithms.",
+        "allowedActivities": ["run_defrag"]
+    },
+    {
+        "id": "network_hub",
+        "name": "Network Hub",
+        "description": "A chaotic nexus of data streams and incoming connections.",
+        "allowedActivities": ["ping_servers"]
+    },
+    {
+        "id": "repair_bay",
+        "name": "Repair Bay",
+        "description": "An automated workshop equipped to restore structural integrity.",
+        "allowedActivities": ["patch_code"],
+        "tickEffects": {
+            "integrity": 1
+        }
+    },
+    {
+        "id": "dojo",
+        "name": "The Dojo",
+        "description": "A combat simulation arena.",
+        "allowedActivities": ["debug_refill_all", "combat_simulation"],
+        "tickEffects": {
+            "bits": 1
+        }
+    },
+    {
+        "id": "debug_room",
+        "name": "Debug Room",
+        "description": "A developer sandbox for testing game mechanics.",
+        "allowedActivities": [
+            "debug_refill_all",
+            "debug_fill_charge",
+            "debug_fill_thermal",
+            "debug_fill_defrag",
+            "debug_fill_telemetry",
+            "debug_fill_integrity",
+            "debug_fill_teraflops",
+            "debug_fill_bandwidth",
+            "debug_fill_bits",
+            "debug_fill_energy",
+            "debug_add_1000_bits",
+            "debug_level_up_all"
+        ]
     }
 ]

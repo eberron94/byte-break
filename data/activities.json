@@ -1,59 +1,193 @@
 [
     {
-        "id": "play_fetch",
-        "name": "Play Fetch",
-        "description": "Throw a ball across the room.",
-        "prereq": {
-            "energy": {
-                "min": 20
-            }
-        },
+        "id": "fast_charge",
+        "name": "Fast Charge",
+        "description": "Connect to a high-voltage port to rapidly restore power.",
         "effects": {
-            "enrichment": 20,
-            "exertion": -15,
+            "charge": 30,
+            "energy": -5
+        }
+    },
+    {
+        "id": "flush_coolant",
+        "name": "Flush Coolant",
+        "description": "Cycle the liquid cooling system to drop operating temperatures.",
+        "effects": {
+            "thermal": 25,
+            "energy": -5
+        }
+    },
+    {
+        "id": "run_defrag",
+        "name": "Run Defrag",
+        "description": "Reorganize memory sectors to maintain peak processing speeds.",
+        "effects": {
+            "defrag": "20 + (byte.stats.syntax.value || 0) * 2",
             "energy": -10
         }
     },
     {
-        "id": "nap",
-        "name": "Take a Nap",
-        "description": "A quick snooze on the couch.",
+        "id": "ping_servers",
+        "name": "Ping Servers",
+        "description": "Connect to external networks to gather telemetry data and stray bits.",
+        "effects": {
+            "telemetry": 20,
+            "defrag": -5,
+            "energy": -10,
+            "bits": "2 + Math.floor((byte.stats.curiosity.value || 0) / 2)"
+        }
+    },
+    {
+        "id": "patch_code",
+        "name": "Patch Code",
+        "description": "Apply integrity patches to repair damaged system files.",
+        "effects": {
+            "integrity": 30,
+            "energy": -15
+        }
+    },
+    {
+        "id": "sleep_mode",
+        "name": "Sleep Mode",
+        "description": "Put the Byte in low-power mode while you recharge your own energy.",
         "prereq": {
             "energy": {
                 "max": 90
             }
         },
         "effects": {
-            "energy": 30,
-            "exertion": 20
+            "energy": 30
         }
     },
     {
-        "id": "eat_meal",
-        "name": "Eat a Meal",
-        "description": "A hearty bowl of food.",
+        "id": "combat_simulation",
+        "name": "Combat Simulation",
+        "description": "Enter the arena to battle simulated training data.",
+        "prereq": {
+            "energy": { "min": 20 },
+            "pools": {
+                "integrity": {
+                    "min": 1
+                }
+            }
+        },
+        "isWebView": true
+    },
+    {
+        "id": "debug_refill_all",
+        "name": "Refill All",
+        "description": "Instantly refills all needs and pools to maximum.",
         "effects": {
-            "hunger": 30,
-            "energy": 5
+            "charge": 9999,
+            "thermal": 9999,
+            "defrag": 9999,
+            "telemetry": 9999,
+            "integrity": 9999,
+            "teraflops": 9999,
+            "bandwidth": 9999,
+            "energy": 9999,
+            "bits": 9999
         }
     },
     {
-        "id": "drink_water",
-        "name": "Drink Water",
-        "description": "A refreshing bowl of water.",
+        "id": "debug_fill_charge",
+        "name": "Fill Charge",
+        "description": "Instantly fills the Charge need.",
         "effects": {
-            "thirst": 25
+            "charge": 9999
         }
     },
     {
-        "id": "puzzle_toy",
-        "name": "Puzzle Toy",
-        "description": "A mentally stimulating toy.",
+        "id": "debug_fill_thermal",
+        "name": "Fill Thermal",
+        "description": "Instantly fills the Thermal need.",
         "effects": {
-            "stimulation": 20,
-            "enrichment": 5,
-            "energy": -10,
-            "xp": 2
+            "thermal": 9999
+        }
+    },
+    {
+        "id": "debug_fill_defrag",
+        "name": "Fill Defrag",
+        "description": "Instantly fills the Defrag need.",
+        "effects": {
+            "defrag": 9999
+        }
+    },
+    {
+        "id": "debug_fill_telemetry",
+        "name": "Fill Telemetry",
+        "description": "Instantly fills the Telemetry need.",
+        "effects": {
+            "telemetry": 9999
+        }
+    },
+    {
+        "id": "debug_fill_integrity",
+        "name": "Fill Integrity",
+        "description": "Instantly fills the Integrity pool.",
+        "effects": {
+            "integrity": 9999
+        }
+    },
+    {
+        "id": "debug_fill_teraflops",
+        "name": "Fill Teraflops",
+        "description": "Instantly fills the Teraflops pool.",
+        "effects": {
+            "teraflops": 9999
+        }
+    },
+    {
+        "id": "debug_fill_bandwidth",
+        "name": "Fill Bandwidth",
+        "description": "Instantly fills the Bandwidth pool.",
+        "effects": {
+            "bandwidth": 9999
+        }
+    },
+    {
+        "id": "debug_fill_bits",
+        "name": "Gain 100 Bits",
+        "description": "Grants 100 Bits.",
+        "effects": {
+            "bits": 100
+        }
+    },
+    {
+        "id": "debug_fill_energy",
+        "name": "Fill Energy",
+        "description": "Instantly fills player Energy.",
+        "effects": {
+            "energy": 9999
+        }
+    },
+    {
+        "id": "debug_add_1000_bits",
+        "name": "Gain 1000 Bits",
+        "description": "Grants 1000 Bits.",
+        "effects": {
+            "bits": 1000
+        }
+    },
+    {
+        "id": "debug_level_up_all",
+        "name": "Level Up All",
+        "description": "Instantly adds 1 level to all skills and pools.",
+        "effects": {
+            "upgrade_integrity": 1,
+            "upgrade_teraflops": 1,
+            "upgrade_bandwidth": 1,
+            "upgrade_assault": 1,
+            "upgrade_firewall": 1,
+            "upgrade_compile": 1,
+            "upgrade_shred": 1,
+            "upgrade_scan": 1,
+            "upgrade_parse": 1,
+            "upgrade_datamine": 1,
+            "upgrade_override": 1,
+            "upgrade_sync": 1,
+            "upgrade_spoof": 1,
+            "upgrade_compression": 1
         }
     }
 ]

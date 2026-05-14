@@ -1,8 +1,10 @@
+const ByteClassManager = require('../../managers/ByteClassManager'); // Now imports the singleton instance
+
 /**
  * Dynamic skill object. Its total value is derived from a linked Core Stat + invested points.
  */
 class Skill {
-    constructor(config, dbData = {}, petStats = {}) {
+    constructor(config, dbData = {}, byte = null) {
         // Assign base configurations, falling back to ID if omitted
         this.id = config.id || config.name.toLowerCase().replace(/\s+/g, '_');
         this.name = config.name;
@@ -21,18 +23,40 @@ class Skill {
         this.investedValue = invested;
         this.innateValue = innate;
 
-        this._petStats = petStats; // Internal reference to evaluate value dynamically
+        this._byte = byte; // Internal reference to the parent byte
     }
 
     /**
      * Calculates the total skill competency on demand.
      */
     get value() {
+        if (!this._byte) {
+            // Fallback for old logic if byte is not passed, though it always should be now
+            return this.investedValue + this.innateValue;
+        }
+
         // Extract the value from the linked core stat (e.g. Strength -> Athletics)
-        const statValue = this._petStats[this.stat]
-            ? this._petStats[this.stat].value
+        const statValue = this._byte.stats[this.stat]
+            ? this._byte.stats[this.stat].value
             : 0;
-        return statValue + this.investedValue + this.innateValue;
+
+        const byteClass = ByteClassManager.getClass(this._byte.byteClass);
+        const innatePoints =
+            byteClass && byteClass.innatePointsPerLevel[this.id]
+                ? byteClass.innatePointsPerLevel[this.id]
+                : 0;
+
+        return statValue + this.investedValue + innatePoints * this._byte.level;
+    }
+
+    get bitsInvested() {
+        if (!this._byte) return 0;
+        const byteClass = ByteClassManager.getClass(this._byte.byteClass);
+        const rate =
+            byteClass && byteClass.investmentRates[this.id]
+                ? byteClass.investmentRates[this.id]
+                : 0;
+        return this.investedValue * rate;
     }
 }
 

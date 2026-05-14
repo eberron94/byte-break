@@ -1,5 +1,6 @@
 const Event = require('../models/Event');
 const eventsData = require('../../data/events.json');
+const LuckManager = require('./LuckManager');
 
 /**
  * Loads and manages random events from the JSON configuration file.
@@ -12,7 +13,19 @@ class EventManager {
 
     // Ingests events from the data store into memory
     load() {
-        eventsData.forEach((data) => {
+        if (!Array.isArray(eventsData)) {
+            console.error(
+                '[EventManager] Invalid JSON structure: Expected an array.',
+            );
+            return;
+        }
+        eventsData.forEach((data, index) => {
+            if (!data.id || !data.name) {
+                console.warn(
+                    `[EventManager] Skipping invalid event at index ${index}: Missing required 'id' or 'name'`,
+                );
+                return;
+            }
             this.events.set(data.id, new Event(data));
         });
     }
@@ -39,11 +52,11 @@ class EventManager {
     getRandomEvent(context = {}) {
         const events = this.getAvailableEvents(context);
         for (const event of events) {
-            if (Math.random() < event.probability) {
+            if (LuckManager.checkEvent(event.probability, context)) {
                 return event;
             }
         }
         return null;
     }
 }
-module.exports = EventManager;
+module.exports = new EventManager();

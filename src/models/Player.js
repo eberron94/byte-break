@@ -1,14 +1,18 @@
+const Energy = require('./Energy');
+
 /**
  * Represents a Telegram user, tracking their id and personal inventory.
  */
 class Player {
     constructor(data) {
         this.id = data.id.toString();
-        // Ensure inventory is safely parsed from JSON strings out of the database
-        this.inventory =
-            typeof data.inventory === 'string'
-                ? JSON.parse(data.inventory)
-                : data.inventory || {};
+        this.inventory = data.inventory || {};
+        this.energy = new Energy(data.energy !== undefined ? data.energy : 100);
+    }
+
+    // Restores energy over time
+    tick() {
+        this.energy.increase(1);
     }
 
     // Checks if the player holds at least the requested amount of an item
@@ -48,7 +52,8 @@ class Player {
     serialize() {
         return {
             id: this.id,
-            inventory: JSON.stringify(this.inventory),
+            inventory: this.inventory,
+            energy: this.energy.value,
         };
     }
 }

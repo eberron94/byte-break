@@ -1,38 +1,68 @@
 [
     {
-        "id": "strike",
-        "name": "Strike",
-        "description": "Physical attack skill.",
-        "stat": "strength"
+        "id": "assault",
+        "name": "Assault",
+        "description": "Execute aggressive physical or localized digital attacks.",
+        "stat": "logic"
     },
     {
-        "id": "reflex",
-        "name": "Reflex",
-        "description": "Ability to react quickly.",
-        "stat": "agility"
+        "id": "firewall",
+        "name": "Firewall",
+        "description": "Deploy defensive barriers to mitigate incoming damage.",
+        "stat": "logic"
     },
     {
-        "id": "athletics",
-        "name": "Athletics",
-        "description": "Physical exertion and prowess.",
-        "stat": "strength"
+        "id": "compile",
+        "name": "Compile",
+        "description": "Construct, modify, and manipulate data structures.",
+        "stat": "syntax"
     },
     {
-        "id": "acrobatics",
-        "name": "Acrobatics",
-        "description": "Agility and balance.",
-        "stat": "agility"
+        "id": "shred",
+        "name": "Shred",
+        "description": "Tear complex data and files apart into raw, unusable scraps.",
+        "stat": "aptitude"
     },
     {
-        "id": "crafting",
-        "name": "Crafting",
-        "description": "Ability to create things.",
-        "stat": "dexterity"
-    },
-    {
-        "id": "search",
-        "name": "Search",
-        "description": "Finding hidden things.",
+        "id": "scan",
+        "name": "Scan",
+        "description": "Probe the environment to find hidden data or enemy vulnerabilities.",
         "stat": "focus"
+    },
+    {
+        "id": "parse",
+        "name": "Parse",
+        "description": "Analyze and break down massive strings of data into recognizable, logical parts.",
+        "stat": "syntax"
+    },
+    {
+        "id": "datamine",
+        "name": "Datamine",
+        "description": "Deeply research and extract specific, buried information from vast databases.",
+        "stat": "focus"
+    },
+    {
+        "id": "override",
+        "name": "Override",
+        "description": "Use sheer computational resolve to push past restrictions or resist system subjugation.",
+        "stat": "focus"
+    },
+    {
+        "id": "sync",
+        "name": "Sync",
+        "description": "Negotiate communication protocols to peacefully interact with or persuade other systems.",
+        "stat": "curiosity"
+    },
+    {
+        "id": "spoof",
+        "name": "Spoof",
+        "description": "Deceive or trick other systems by falsifying data or identity.",
+        "stat": "syntax"
+    },
+    {
+        "id": "compression",
+        "name": "Compression",
+        "description": "Forcefully condense data or crush digital structures to reduce size or inflict pressure.",
+        "stat": "logic"
     }
 ]

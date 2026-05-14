@@ -8,7 +8,19 @@ class RoomManager {
     }
 
     load() {
-        roomsData.forEach((data) => {
+        if (!Array.isArray(roomsData)) {
+            console.error(
+                '[RoomManager] Invalid JSON structure: Expected an array.',
+            );
+            return;
+        }
+        roomsData.forEach((data, index) => {
+            if (!data.id || !data.name) {
+                console.warn(
+                    `[RoomManager] Skipping invalid room at index ${index}: Missing required 'id' or 'name'`,
+                );
+                return;
+            }
             this.rooms.set(data.id, new Room(data));
         });
     }
@@ -21,4 +33,4 @@ class RoomManager {
         return Array.from(this.rooms.values());
     }
 }
-module.exports = RoomManager;
+module.exports = new RoomManager();

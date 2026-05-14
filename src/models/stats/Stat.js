@@ -2,10 +2,10 @@
  * Base representation of a Core Stat (e.g. Strength, Dexterity).
  */
 class Stat {
-    constructor(name, value = 5.0) {
+    constructor(name, data) {
         this.id = name.toLowerCase().replace(/\s+/g, '_');
         this.name = name;
-        this.value = value;
+        this.value = typeof data === 'object' && data !== null ? data.value : (data !== undefined ? data : 5.0);
     }
 }
 

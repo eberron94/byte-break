@@ -1,8 +1,8 @@
 const Stat = require('./Stat');
 
 class Aptitude extends Stat {
-    constructor(value) {
-        super('Aptitude', value !== undefined ? value : 5.0);
+    constructor(data) {
+        super('Aptitude', data);
     }
 }
 

@@ -1,5 +1,7 @@
+const { calculateEffects } = require('../util/effects');
+
 /**
- * Represents an action that a pet can perform, potentially consuming items or altering stats.
+ * Represents an action that a byte can perform, potentially consuming items or altering stats.
  */
 class Activity {
     constructor(data) {
@@ -9,58 +11,90 @@ class Activity {
         this.prereq = data.prereq || {};
         this.effects = data.effects || {};
         this.itemSelect = data.itemSelect || null;
+        this.isWebView = data.isWebView || false;
     }
 
     /**
-     * Checks if the pet and player meet all prerequisites to perform this activity.
+     * Checks if the byte and player meet all prerequisites to perform this activity.
      */
-    canPerform(pet, player = null, itemManager = null) {
+    canPerform(byte, player = null, itemManager = null) {
         const req = this.prereq;
         if (!req || Object.keys(req).length === 0) return true;
 
-        // 1. Check if the pet is in the correct room
-        if (req.room && pet) {
+        // 1. Check if the byte is in the correct room
+        if (req.room && byte) {
             const roomAllowed = Array.isArray(req.room)
-                ? req.room.includes(pet.room)
-                : pet.room === req.room;
+                ? req.room.includes(byte.room)
+                : byte.room === req.room;
             if (!roomAllowed) return false;
         }
 
         // 2. Check all stat/skill/need/pool thresholds
         const categories = ['needs', 'stats', 'skills', 'pools'];
         for (const category of categories) {
-            if (req[category] && pet && pet[category]) {
+            if (req[category] && byte && byte[category]) {
                 for (const [key, range] of Object.entries(req[category])) {
-                    const itemValue = pet[category][key]?.value;
-                    if (itemValue === undefined) continue;
-                    // Must have at least the minimum requirement
-                    if (range.min !== undefined && itemValue < range.min)
-                        return false;
-                    // Must not exceed the maximum requirement
-                    if (range.max !== undefined && itemValue > range.max)
-                        return false;
+                    const item = byte[category][key];
+                    if (!item) continue;
+
+                    // Value checks
+                    if (item.value !== undefined) {
+                        // Legacy flat range checks (applies to current value)
+                        if (range.min !== undefined && item.value < range.min)
+                            return false;
+                        if (range.max !== undefined && item.value > range.max)
+                            return false;
+
+                        // Explicit current value checks
+                        if (range.value) {
+                            if (
+                                range.value.min !== undefined &&
+                                item.value < range.value.min
+                            )
+                                return false;
+                            if (
+                                range.value.max !== undefined &&
+                                item.value > range.value.max
+                            )
+                                return false;
+                        }
+                    }
+
+                    // Explicit max value checks
+                    if (item.maxValue !== undefined && range.maxValue) {
+                        if (
+                            range.maxValue.min !== undefined &&
+                            item.maxValue < range.maxValue.min
+                        )
+                            return false;
+                        if (
+                            range.maxValue.max !== undefined &&
+                            item.maxValue > range.maxValue.max
+                        )
+                            return false;
+                    }
                 }
             }
         }
 
         // 3. Check energy thresholds separately since it's an isolated stat
-        if (req.energy && pet && pet.energy) {
+        if (req.energy && player && player.energy) {
             if (
                 req.energy.min !== undefined &&
-                pet.energy.value < req.energy.min
+                player.energy.value < req.energy.min
             )
                 return false;
             if (
                 req.energy.max !== undefined &&
-                pet.energy.value > req.energy.max
+                player.energy.value > req.energy.max
             )
                 return false;
         }
 
         // 4. Check historical occurrences
-        if (req.history && pet && pet.history) {
+        if (req.history && byte && byte.history) {
             for (const [key, range] of Object.entries(req.history)) {
-                const historyValue = pet.history[key] || 0;
+                const historyValue = byte.history[key] || 0;
                 if (range.min !== undefined && historyValue < range.min)
                     return false;
                 if (range.max !== undefined && historyValue > range.max)
@@ -109,23 +143,34 @@ class Activity {
      * Executes the activity, applies its effects, logs history, and consumes items.
      */
     perform(
-        pet,
+        byte,
         player = null,
         itemManager = null,
         selectedItemId = null,
         override = false,
     ) {
         // Enforce prerequisites unless override is true
-        if (!this.canPerform(pet, player, itemManager) && !override)
+        if (!this.canPerform(byte, player, itemManager) && !override)
             return false;
-        const success = pet.applyEffects(this.effects);
+
+        const calculatedEffects = calculateEffects(this.effects, byte, player);
+        const success = byte.applyEffects(calculatedEffects);
         if (success) {
-            pet.recordHistory(this.id);
+            byte.recordHistory(this.id);
+
+            // Handle player energy
+            if (calculatedEffects.energy && player) {
+                if (calculatedEffects.energy > 0) {
+                    player.energy.increase(calculatedEffects.energy);
+                } else if (calculatedEffects.energy < 0) {
+                    player.energy.decrease(Math.abs(calculatedEffects.energy));
+                }
+            }
 
             // Grant or remove items as a result of the activity
-            if (this.effects.inventory && player) {
+            if (calculatedEffects.inventory && player) {
                 for (const [itemId, amount] of Object.entries(
-                    this.effects.inventory,
+                    calculatedEffects.inventory,
                 )) {
                     if (amount > 0) {
                         player.addItem(itemId, amount, itemManager);
@@ -139,7 +184,7 @@ class Activity {
             if (this.itemSelect && selectedItemId && itemManager && player) {
                 const item = itemManager.getItem(selectedItemId);
                 if (item && player.hasItem(selectedItemId, 1)) {
-                    item.use(pet);
+                    item.use(byte, player);
                     // Only remove the item if it's consumable
                     if (item.type === 'consumable') {
                         player.removeItem(selectedItemId, 1);

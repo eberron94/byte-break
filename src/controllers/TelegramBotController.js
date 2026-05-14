@@ -1,4 +1,8 @@
 const Pagination = require('./Pagination');
+const sharp = require('sharp');
+const generateTradingCard = require('../util/card');
+const dbManager = require('../database/db');
+const { calculateEffects } = require('../util/effects');
 
 /**
  * Acts as the UI layer mapping Telegram interactions into GameManager logic.
@@ -21,11 +25,11 @@ class TelegramBotController {
             { command: '/start', description: 'Welcome to Telegram-gotchi!' },
             {
                 command: '/adopt',
-                description: 'Adopt a new pet (usage: /adopt name)',
+                description: 'Adopt a new byte (usage: /adopt name)',
             },
             {
                 command: '/status',
-                description: "View your pet's status and activities",
+                description: "View your byte's status and activities",
             },
             { command: '/rooms', description: 'View all available rooms' },
             {
@@ -33,6 +37,14 @@ class TelegramBotController {
                 description: 'Move to a different room (usage: /move room_id)',
             },
             { command: '/inventory', description: 'View your items' },
+            {
+                command: '/tick',
+                description: 'Force game ticks (usage: /tick [amount])',
+            },
+            {
+                command: '/avatar',
+                description: 'Preview avatar at level(s) (usage: /avatar [level] [maxLevel])',
+            },
         ]);
 
         // Map message commands
@@ -42,7 +54,9 @@ class TelegramBotController {
         this.bot.onText(/\/rooms/, this.handleRooms.bind(this));
         this.bot.onText(/\/move(?:\s+(.+))?/, this.handleMove.bind(this));
         this.bot.onText(/\/inventory/, this.handleInventory.bind(this));
-        
+        this.bot.onText(/\/tick(?:\s+(\d+))?/, this.handleTick.bind(this));
+        this.bot.onText(/\/avatar(?:\s+(\d+))?(?:\s+(\d+))?/, this.handleAvatar.bind(this));
+
         // Intercept inline button clicks
         this.bot.on('callback_query', this.handleCallbackQuery.bind(this));
 
@@ -56,31 +70,39 @@ class TelegramBotController {
         console.log(`[Command] /start from chat ${chatId}`);
         await this.bot.sendMessage(
             chatId,
-            'Welcome to Telegram-gotchi! Use `/adopt [name]` to get your first pet.',
+            'Welcome to Tele-grow! Use `/adopt [name]` to get your first byte.',
         );
     }
 
-    // Spawns a new pet and commits it to the database
+    // Spawns a new byte and commits it to the database
     async handleAdopt(msg, match) {
         const chatId = msg.chat.id;
-        const petName = match[1];
+        const byteName = match[1];
 
-        // Check if they already have a pet before proceeding
-        const existingPet = await this.game.getPet(chatId);
-        if (existingPet) {
-            await this.bot.sendMessage(chatId, 'You already have a pet!');
+        // Check if they already have a byte before proceeding
+        const existingByte = await this.game.getByte(chatId);
+        if (existingByte && existingByte.isAlive) {
+            await this.bot.sendMessage(
+                chatId,
+                'You already have a living byte!',
+            );
             return;
         }
 
-        if (!petName) {
-            console.log(`[Command] /adopt (prompting for name) from chat ${chatId}`);
-            this.userStates.set(chatId, { state: 'AWAITING_PET_NAME' });
-            await this.bot.sendMessage(chatId, 'What would you like to name your new pet?');
+        if (!byteName) {
+            console.log(
+                `[Command] /adopt (prompting for name) from chat ${chatId}`,
+            );
+            this.userStates.set(chatId, { state: 'AWAITING_BYTE_NAME' });
+            await this.bot.sendMessage(
+                chatId,
+                'What would you like to name your new byte?',
+            );
             return;
         }
 
-        console.log(`[Command] /adopt ${petName} from chat ${chatId}`);
-        await this.processAdoption(chatId, petName.trim());
+        console.log(`[Command] /adopt ${byteName} from chat ${chatId}`);
+        await this.processAdoption(chatId, byteName.trim());
     }
 
     // Handles user state machine for multi-step interactions
@@ -96,29 +118,138 @@ class TelegramBotController {
 
         const userState = this.userStates.get(chatId);
         if (userState) {
-            if (userState.state === 'AWAITING_PET_NAME') {
+            if (userState.state === 'AWAITING_BYTE_NAME') {
                 this.userStates.delete(chatId);
-                console.log(`[State] Received pet name '${msg.text}' from chat ${chatId}`);
+                console.log(
+                    `[State] Received byte name '${msg.text}' from chat ${chatId}`,
+                );
                 await this.processAdoption(chatId, msg.text.trim());
             }
         }
     }
 
-    async processAdoption(chatId, petName) {
+    async processAdoption(chatId, byteName) {
         try {
-            await this.game.createPet(chatId, petName);
+            await this.game.createByte(chatId, byteName);
             await this.bot.sendMessage(
                 chatId,
-                `Congratulations! You adopted ${petName}. Use /status to check on them.`,
+                `Congratulations! You adopted ${byteName}. Use /status to check on them.`,
             );
         } catch (error) {
-            await this.bot.sendMessage(chatId, 'You already have a pet!');
+            await this.bot.sendMessage(
+                chatId,
+                'You already have a living byte!',
+            );
         }
     }
 
-    // Formats and constructs the main Telegram message displaying pet status
-    getPetStatusDisplay(pet, player, lastActionMessage = null) {
-        const status = pet.getStatus();
+    async updateMessageDisplay(query, text, options) {
+        options.chat_id = query.message.chat.id;
+        options.message_id = query.message.message_id;
+
+        // Update our tracker so if they send a command next, we know THIS is the active UI
+        await dbManager.saveUIMessage(
+            options.chat_id,
+            options.message_id,
+            query.message.photo ? 'photo' : 'text',
+        );
+
+        try {
+            if (query.message.photo) {
+                options.caption = text;
+                await this.bot.editMessageCaption(text, options);
+            } else {
+                await this.bot.editMessageText(text, options);
+            }
+        } catch (err) {
+            if (!err.message.includes('message is not modified')) {
+                console.error(err);
+            }
+        }
+    }
+
+    // Helper to send a new UI message or update the existing one if it's the most recent
+    async sendOrUpdateUI(
+        chatId,
+        text,
+        options,
+        userMsgId = null,
+        pngBuffer = null,
+    ) {
+        const type = pngBuffer ? 'photo' : 'text';
+
+        // 1. Send the new message first so the UI updates instantly for the user
+        let sentMsg;
+        if (type === 'photo') {
+            options.caption = text;
+            sentMsg = await this.bot.sendPhoto(chatId, pngBuffer, options, {
+                filename: 'avatar.png',
+                contentType: 'image/png',
+            });
+        } else {
+            sentMsg = await this.bot.sendMessage(chatId, text, options);
+        }
+
+        // 2. Retrieve the last UI message ID from the database
+        const lastUI = await dbManager.getUIMessage(chatId);
+
+        // 3. Save the new message ID to the database
+        await dbManager.saveUIMessage(chatId, sentMsg.message_id, type);
+
+        // 4. Clean up the old UI message
+        if (lastUI) {
+            try {
+                await this.bot.deleteMessage(chatId, lastUI.messageId);
+            } catch (err) {
+                // Ignore delete errors (e.g. if the message was already deleted manually)
+            }
+        }
+
+        // 5. Clean up the user's chat command (e.g. "/status")
+        if (userMsgId) {
+            try {
+                await this.bot.deleteMessage(chatId, userMsgId);
+            } catch (err) {
+                // Ignore delete errors
+            }
+        }
+    }
+
+    // Generates the trading card image and updates the UI
+    async sendStatusUI(
+        chatId,
+        byte,
+        player,
+        statusMessage = null,
+        userMsgId = null,
+    ) {
+        const { text, options } = this.getByteStatusDisplay(
+            byte,
+            player,
+            statusMessage,
+        );
+
+        try {
+            const svgString = generateTradingCard(byte);
+            const pngBuffer = await sharp(Buffer.from(svgString))
+                .png()
+                .toBuffer();
+            await this.sendOrUpdateUI(
+                chatId,
+                text,
+                options,
+                userMsgId,
+                pngBuffer,
+            );
+        } catch (error) {
+            console.error('Failed to generate or send trading card:', error);
+            await this.sendOrUpdateUI(chatId, text, options, userMsgId, null);
+        }
+    }
+
+    // Formats and constructs the main Telegram message displaying byte status
+    getByteStatusDisplay(byte, player, lastActionMessage = null) {
+        const status = byte.getStatus();
         if (!status.isAlive) {
             return {
                 text: `💀 ${status.name} has passed away due to neglect.`,
@@ -128,7 +259,6 @@ class TelegramBotController {
 
         const room = this.roomManager.getRoom(status.room);
         const roomName = room ? room.name : status.room.replace(/_/g, '\\_');
-        const roomDesc = room ? room.description : 'Unknown location';
 
         const invEntries = Object.entries(player.inventory).map(([id, amt]) => {
             const item = this.itemManager.getItem(id);
@@ -138,23 +268,29 @@ class TelegramBotController {
         const invString =
             invEntries.length > 0 ? invEntries.join(', ') : 'Empty';
 
-        let text = `
-🐾 **${status.name}'s Status** 🐾
-🍗 Hunger: ${status.hunger}/100
-💧 Thirst: ${status.thirst}/100
-🧩 Enrichment: ${status.enrichment}/100
-🎮 Stimulation: ${status.stimulation}/100
-⚡ Exertion: ${status.exertion}/100
-💤 Energy: ${status.energy}/100
-━━━━━━━━━━━━━━━━━━━━━
-🏠 Room: ${roomName}
-_${roomDesc}_
-━━━━━━━━━━━━━━━━━━━━━
-💪 **Core Stats:** Str: ${status.stats.strength} | Con: ${status.stats.constitution} | Dex: ${status.stats.dexterity} | Agi: ${status.stats.agility} | Foc: ${status.stats.focus} | Wil: ${status.stats.willpower} | Ins: ${status.stats.instinct} | Apt: ${status.stats.aptitude}
-❤️ **Pools:** LP: ${status.pools.lifepoints} | MP: ${status.pools.mana} | Ki: ${status.pools.ki} | Pot: ${status.pools.potential}
-📚 **Knowledge:** XP: ${status.pools.xp}
-🎒 **Inventory:** ${invString}
-    `;
+        let text = ` **Room:** ${roomName}\n`;
+
+        const isDormant = status.charge === 0 || status.thermal === 0 || status.defrag === 0 || status.telemetry === 0;
+        if (isDormant) {
+            text += `\n⚠️ **SYSTEM DORMANT** ⚠️\n_Core needs depleted. Passive operations suspended._\n\n`;
+        }
+
+        if (room && room.tickEffects) {
+            const evaluatedEffects = calculateEffects(
+                room.tickEffects,
+                byte,
+                player,
+            );
+            const effectsStr = Object.entries(evaluatedEffects)
+                .map(
+                    ([key, val]) =>
+                        `${val > 0 ? '+' : ''}${val} ${key.charAt(0).toUpperCase() + key.slice(1)}/min`,
+                )
+                .join(', ');
+            text += `⏱️ **Passive Effects:** ${effectsStr}\n`;
+        }
+
+        text += `━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue}\n🎒 **Inventory:** ${invString}`;
 
         if (lastActionMessage) {
             text += `\n📢 **Last Action:** ${lastActionMessage}`;
@@ -165,13 +301,16 @@ _${roomDesc}_
         // Build inline action buttons depending on what activities are available in the current room
         if (room && room.allowedActivities) {
             const buttons = [];
+            const webAppUrl = process.env.WEB_APP_URL;
             for (const actId of room.allowedActivities) {
                 const activity = this.activityManager.getActivity(actId);
                 if (activity) {
-                    buttons.push({
-                        text: activity.name,
-                        callback_data: `act_${activity.id}`,
-                    });
+                    buttons.push(
+                        this.activityManager.getActivityButton(
+                            activity,
+                            webAppUrl,
+                        ),
+                    );
                 }
             }
             for (let i = 0; i < buttons.length; i += 2) {
@@ -181,8 +320,17 @@ _${roomDesc}_
 
         inline_keyboard.push([
             { text: '🚶 Move Rooms', callback_data: 'nav_rooms' },
-            { text: '🎒 Inventory', callback_data: 'nav_inventory' }
+            { text: '🎒 Inventory', callback_data: 'nav_inventory' },
         ]);
+
+        const webAppUrl = process.env.WEB_APP_URL;
+        if (webAppUrl) {
+            const separator = webAppUrl.includes('?') ? '&' : '?';
+            inline_keyboard.push([
+                { text: '📱 Byte Specification', web_app: { url: webAppUrl } },
+                { text: '⬆️ Upgrades', web_app: { url: `${webAppUrl}${separator}view=upgrades` } },
+            ]);
+        }
 
         const options = {
             parse_mode: 'Markdown',
@@ -231,12 +379,12 @@ _${roomDesc}_
     }
 
     // Formats and constructs the room navigation view
-    getRoomsDisplay(pet, page = 0) {
+    getRoomsDisplay(byte, page = 0) {
         const rooms = this.roomManager.getAllRooms();
         const buttons = [];
 
         rooms.forEach((room) => {
-            if (room.id !== pet.room) {
+            if (room.id !== byte.room) {
                 buttons.push({
                     text: room.name,
                     callback_data: `nav_move_${room.id}`,
@@ -246,17 +394,20 @@ _${roomDesc}_
 
         const inline_keyboard = Pagination.getKeyboard(buttons, {
             page: parseInt(page, 10),
-            pageSize: 5,
-            columns: 1,
+            pageSize: 9,
+            columns: 3,
             actionPrefix: 'rooms_page',
         });
 
-        inline_keyboard.push([{ text: '🔙 Back to Status', callback_data: 'nav_status' }]);
+        inline_keyboard.push([
+            { text: '🔙 Back to Status', callback_data: 'nav_status' },
+        ]);
 
         let text = `🏠 **Available Rooms** 🏠\n\nSelect a room to move to:`;
 
         const options = { parse_mode: 'Markdown' };
-        if (inline_keyboard.length > 0) options.reply_markup = { inline_keyboard };
+        if (inline_keyboard.length > 0)
+            options.reply_markup = { inline_keyboard };
         return { text, options };
     }
 
@@ -310,49 +461,52 @@ _${roomDesc}_
         return { text, options };
     }
 
-    // Main entry point for user requesting to see their pet
+    // Main entry point for user requesting to see their byte
     async handleStatus(msg) {
         const chatId = msg.chat.id;
         console.log(`[Command] /status from chat ${chatId}`);
-        const pet = await this.game.getPet(chatId);
+        const byte = await this.game.getByte(chatId);
 
-        if (!pet) {
+        if (!byte) {
             return this.bot.sendMessage(
                 chatId,
-                "You don't have a pet yet. Use `/adopt [name]` first.",
+                "You don't have a byte yet. Use `/adopt [name]` first.",
             );
         }
         const player = await this.game.getPlayer(chatId);
 
-        const { text, options } = this.getPetStatusDisplay(pet, player);
-        await this.bot.sendMessage(chatId, text, options);
+        await this.sendStatusUI(chatId, byte, player, null, msg.message_id);
     }
 
-    // Lists the possible rooms a pet can currently travel to
+    // Lists the possible rooms a byte can currently travel to
     async handleRooms(msg) {
         const chatId = msg.chat.id;
         console.log(`[Command] /rooms from chat ${chatId}`);
 
-        const pet = await this.game.getPet(chatId);
-        if (!pet) return this.bot.sendMessage(chatId, "You don't have a pet!");
+        const byte = await this.game.getByte(chatId);
+        if (!byte)
+            return this.bot.sendMessage(chatId, "You don't have a byte!");
 
-        const { text, options } = this.getRoomsDisplay(pet, 0);
-        await this.bot.sendMessage(chatId, text, options);
+        const { text, options } = this.getRoomsDisplay(byte, 0);
+        await this.sendOrUpdateUI(chatId, text, options, msg.message_id);
     }
 
-    // Transitions a pet to a different map node/room
+    // Transitions a byte to a different map node/room
     async handleMove(msg, match) {
         const chatId = msg.chat.id;
         const newRoomId = match[1] ? match[1].trim() : null;
-        console.log(`[Command] /move ${newRoomId || '(prompt)'} from chat ${chatId}`);
+        console.log(
+            `[Command] /move ${newRoomId || '(prompt)'} from chat ${chatId}`,
+        );
 
-        const pet = await this.game.getPet(chatId);
-        if (!pet) return this.bot.sendMessage(chatId, "You don't have a pet!");
+        const byte = await this.game.getByte(chatId);
+        if (!byte)
+            return this.bot.sendMessage(chatId, "You don't have a byte!");
 
         // If the user didn't specify a room, prompt them with the inline keyboard
         if (!newRoomId) {
-            const { text, options } = this.getRoomsDisplay(pet, 0);
-            await this.bot.sendMessage(chatId, text, options);
+            const { text, options } = this.getRoomsDisplay(byte, 0);
+            await this.sendOrUpdateUI(chatId, text, options, msg.message_id);
             return;
         }
 
@@ -364,19 +518,19 @@ _${roomDesc}_
             );
         }
 
-        if (pet.room === newRoomId) {
+        if (byte.room === newRoomId) {
             return this.bot.sendMessage(
                 chatId,
-                `${pet.name} is already in the ${room.name}.`,
+                `${byte.name} is already in the ${room.name}.`,
             );
         }
 
-        pet.room = newRoomId;
-        await this.game.savePet(pet);
+        byte.room = newRoomId;
+        await this.game.saveByte(byte);
 
         await this.bot.sendMessage(
             chatId,
-            `${pet.name} moved to the **${room.name}**! 🚶`,
+            `${byte.name} moved to the **${room.name}**! 🚶`,
             { parse_mode: 'Markdown' },
         );
     }
@@ -387,7 +541,112 @@ _${roomDesc}_
         console.log(`[Command] /inventory from chat ${chatId}`);
         const player = await this.game.getPlayer(chatId);
         const { text, options } = this.getInventoryDisplay(player, 0);
-        await this.bot.sendMessage(chatId, text, options);
+        await this.sendOrUpdateUI(chatId, text, options, msg.message_id);
+    }
+
+    // Forces one or more global ticks for testing/mechanics
+    async handleTick(msg, match) {
+        const chatId = msg.chat.id;
+        const ticks = match[1] ? parseInt(match[1], 10) : 1;
+        console.log(`[Command] /tick ${ticks} from chat ${chatId}`);
+
+        // Fetch the singleton EventManager dynamically here since it wasn't natively injected
+        const eventManager = require('../managers/EventManager');
+
+        for (let i = 0; i < ticks; i++) {
+            await this.game.processTick(
+                eventManager,
+                this.itemManager,
+                (b, e) => {
+                    this.bot
+                        .sendMessage(
+                            b.ownerId,
+                            `🔔 **Random Event:** ${e.name}\n_${e.description}_`,
+                            { parse_mode: 'Markdown' },
+                        )
+                        .catch(() => {
+                            // Ignore send failures from forced ticks
+                        });
+                },
+            );
+        }
+
+        const byte = await this.game.getByte(chatId);
+        if (byte) {
+            const player = await this.game.getPlayer(chatId);
+            await this.sendStatusUI(
+                chatId,
+                byte,
+                player,
+                `Fast-forwarded ${ticks} tick(s)!`,
+                msg.message_id,
+            );
+        } else {
+            await this.bot.sendMessage(
+                chatId,
+                `Fast-forwarded ${ticks} tick(s)!`,
+            );
+        }
+    }
+
+    // Previews the avatar image at a specific level
+    async handleAvatar(msg, match) {
+        const chatId = msg.chat.id;
+        const byte = await this.game.getByte(chatId);
+        
+        if (!byte) {
+            return this.bot.sendMessage(
+                chatId,
+                "You don't have a byte yet. Use `/adopt [name]` first."
+            );
+        }
+
+        const level1 = match[1] ? parseInt(match[1], 10) : byte.level;
+        const level2 = match[2] ? parseInt(match[2], 10) : null;
+
+        try {
+            const { generateClassBasedAvatar } = require('../util/avatar');
+            
+            if (level2 !== null) {
+                let startLevel = Math.min(level1, level2);
+                let endLevel = Math.max(level1, level2);
+
+                // Cap the range to 10 to avoid hitting Telegram API limits or lagging the server
+                if (endLevel - startLevel > 9) {
+                    endLevel = startLevel + 9;
+                    await this.bot.sendMessage(chatId, "⚠️ Range too large. Limiting to 10 avatars.");
+                }
+
+                console.log(`[Command] /avatar ${startLevel}-${endLevel} from chat ${chatId}`);
+                const mediaGroup = [];
+
+                for (let lvl = startLevel; lvl <= endLevel; lvl++) {
+                    const svgString = generateClassBasedAvatar(byte.name, byte.byteClass, lvl);
+                    const pngBuffer = await sharp(Buffer.from(svgString)).png().toBuffer();
+                    
+                    mediaGroup.push({
+                        type: 'photo',
+                        media: pngBuffer,
+                        caption: `📸 **${byte.name}** at Level ${lvl}`,
+                        parse_mode: 'Markdown'
+                    });
+                }
+                
+                await this.bot.sendMediaGroup(chatId, mediaGroup);
+            } else {
+                console.log(`[Command] /avatar ${level1} from chat ${chatId}`);
+                const svgString = generateClassBasedAvatar(byte.name, byte.byteClass, level1);
+                const pngBuffer = await sharp(Buffer.from(svgString)).png().toBuffer();
+
+                await this.bot.sendPhoto(chatId, pngBuffer, {
+                    caption: `📸 **${byte.name}** at Level ${level1}`,
+                    parse_mode: 'Markdown',
+                });
+            }
+        } catch (error) {
+            console.error('Failed to generate avatar:', error);
+            await this.bot.sendMessage(chatId, 'Failed to generate the avatar image(s).');
+        }
     }
 
     // The primary router handling dynamic UI button presses
@@ -398,13 +657,13 @@ _${roomDesc}_
 
         console.log(`[Callback] Action '${action}' from chat ${chatId}`);
 
-        const pet = await this.game.getPet(chatId);
+        const byte = await this.game.getByte(chatId);
         const player = await this.game.getPlayer(chatId);
         let alertMessage = '';
 
         try {
-            if (!pet) {
-                alertMessage = "You don't have a pet!";
+            if (!byte) {
+                alertMessage = "You don't have a byte!";
                 return;
             }
 
@@ -415,73 +674,31 @@ _${roomDesc}_
 
             // Gracefully ignore requests to back out of an action selector
             if (action === 'act_cancel') {
-                const { text, options } = this.getPetStatusDisplay(pet, player);
-                options.chat_id = chatId;
-                options.message_id = messageId;
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified'))
-                        console.error(err);
-                }
-            // Navigation Actions
+                await this.sendStatusUI(chatId, byte, player);
             } else if (action === 'nav_status') {
-                const { text, options } = this.getPetStatusDisplay(pet, player);
-                options.chat_id = chatId;
-                options.message_id = messageId;
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified')) console.error(err);
-                }
+                await this.sendStatusUI(chatId, byte, player);
             } else if (action === 'nav_inventory') {
                 const { text, options } = this.getInventoryDisplay(player, 0);
-                options.chat_id = chatId;
-                options.message_id = messageId;
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified')) console.error(err);
-                }
+                await this.updateMessageDisplay(query, text, options);
             } else if (action === 'nav_rooms') {
-                const { text, options } = this.getRoomsDisplay(pet, 0);
-                options.chat_id = chatId;
-                options.message_id = messageId;
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified')) console.error(err);
-                }
+                const { text, options } = this.getRoomsDisplay(byte, 0);
+                await this.updateMessageDisplay(query, text, options);
             } else if (action.startsWith('rooms_page_')) {
                 const page = parseInt(action.replace('rooms_page_', ''), 10);
-                const { text, options } = this.getRoomsDisplay(pet, page);
-                options.chat_id = chatId;
-                options.message_id = messageId;
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified')) console.error(err);
-                }
+                const { text, options } = this.getRoomsDisplay(byte, page);
+                await this.updateMessageDisplay(query, text, options);
             } else if (action.startsWith('nav_move_')) {
                 const newRoomId = action.replace('nav_move_', '');
                 const room = this.roomManager.getRoom(newRoomId);
                 let statusMessage = '';
                 if (room) {
-                    pet.room = newRoomId;
-                    await this.game.savePet(pet);
+                    byte.room = newRoomId;
+                    await this.game.saveByte(byte);
                     statusMessage = `Moved to the ${room.name}! 🚶`;
                 } else {
                     alertMessage = 'Room not found!';
                 }
-                const { text, options } = this.getPetStatusDisplay(pet, player, statusMessage);
-                options.chat_id = chatId;
-                options.message_id = messageId;
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified')) console.error(err);
-                }
-            // Handles paging through available items to pick for an activity
+                await this.sendStatusUI(chatId, byte, player, statusMessage);
             } else if (action.startsWith('act_pg|')) {
                 const payload = action.replace('act_pg|', '');
                 const lastUnderscore = payload.lastIndexOf('_');
@@ -495,14 +712,9 @@ _${roomDesc}_
                         activity,
                         page,
                     );
-                    options.chat_id = chatId;
-                    options.message_id = messageId;
-                    try {
-                        await this.bot.editMessageText(text, options);
-                    } catch (err) {}
+                    await this.updateMessageDisplay(query, text, options);
                     return;
                 }
-            // Executes the activity using the selected item
             } else if (action.startsWith('act_ex|')) {
                 const [actId, itemId] = action
                     .replace('act_ex|', '')
@@ -513,34 +725,30 @@ _${roomDesc}_
                 if (!activity) {
                     alertMessage = 'Activity not found!';
                 } else if (
-                    !activity.canPerform(pet, player, this.itemManager)
+                    !activity.canPerform(byte, player, this.itemManager)
                 ) {
-                    alertMessage = `${pet.name} isn't able to do that right now.`;
+                    alertMessage = `${byte.name} isn't able to do that right now.`;
                 } else {
                     const item = this.itemManager.getItem(itemId);
                     if (!item || !player.hasItem(itemId, 1)) {
                         alertMessage = "You don't have that item.";
                     } else {
-                        activity.perform(pet, player, this.itemManager, itemId);
-                        await this.game.savePet(pet);
+                        activity.perform(
+                            byte,
+                            player,
+                            this.itemManager,
+                            itemId,
+                        );
+                        await this.game.saveByte(byte);
                         await this.game.savePlayer(player);
                         statusMessage = `Performed ${activity.name} with ${item.shortname}!`;
                     }
                 }
 
-                const { text, options } = this.getPetStatusDisplay(pet, player, statusMessage);
-                options.chat_id = chatId;
-                options.message_id = messageId;
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified'))
-                        console.error(err);
-                }
-            // Direct action handler for typical room activities (e.g. sleep, play_fetch)
+                await this.sendStatusUI(chatId, byte, player, statusMessage);
             } else if (action.startsWith('act_')) {
                 const actId = action.replace('act_', '');
-                const room = this.roomManager.getRoom(pet.room);
+                const room = this.roomManager.getRoom(byte.room);
                 let statusMessage = '';
 
                 if (!room || !room.allowedActivities.includes(actId)) {
@@ -551,10 +759,9 @@ _${roomDesc}_
                     if (!activity) {
                         alertMessage = 'Activity not found!';
                     } else if (
-                        !activity.canPerform(pet, player, this.itemManager)
+                        !activity.canPerform(byte, player, this.itemManager)
                     ) {
-                        alertMessage = `${pet.name} isn't able to do that right now.`;
-                    // If the activity requires an item, halt execution and reroute UI to selection menu
+                        alertMessage = `${byte.name} isn't able to do that right now.`;
                     } else if (activity.itemSelect) {
                         const { text, options } =
                             this.getActivityItemSelectDisplay(
@@ -562,55 +769,25 @@ _${roomDesc}_
                                 activity,
                                 0,
                             );
-                        options.chat_id = chatId;
-                        options.message_id = messageId;
-                        try {
-                            await this.bot.editMessageText(text, options);
-                        } catch (err) {
-                            if (
-                                !err.message.includes('message is not modified')
-                            )
-                                console.error(err);
-                        }
+                        await this.updateMessageDisplay(query, text, options);
                         return; // Stop here, wait for item selection
                     } else {
-                        activity.perform(pet, player, this.itemManager);
-                        await this.game.savePet(pet);
+                        activity.perform(byte, player, this.itemManager);
+                        await this.game.saveByte(byte);
                         await this.game.savePlayer(player);
                         statusMessage = `Performed ${activity.name}!`;
                     }
                 }
 
                 // Re-render status block when action occurs
-                const { text, options } = this.getPetStatusDisplay(pet, player, statusMessage);
-                options.chat_id = chatId;
-                options.message_id = messageId;
-
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified')) {
-                        console.error('Failed to edit message:', err);
-                    }
-                }
-            // Handles inventory pagination clicks
+                await this.sendStatusUI(chatId, byte, player, statusMessage);
             } else if (action.startsWith('inv_page_')) {
                 const page = parseInt(action.replace('inv_page_', ''), 10);
                 const { text, options } = this.getInventoryDisplay(
                     player,
                     page,
                 );
-                options.chat_id = chatId;
-                options.message_id = messageId;
-
-                try {
-                    await this.bot.editMessageText(text, options);
-                } catch (err) {
-                    if (!err.message.includes('message is not modified')) {
-                        console.error('Failed to edit message:', err);
-                    }
-                }
-            // Fires toast popup displaying item detail descriptions
+                await this.updateMessageDisplay(query, text, options);
             } else if (action.startsWith('item_info_')) {
                 const itemId = action.replace('item_info_', '');
                 const item = this.itemManager.getItem(itemId);

@@ -12,7 +12,19 @@ class ItemManager {
 
     // Ingests items from the JSON configuration file
     load() {
-        itemsData.forEach((data) => {
+        if (!Array.isArray(itemsData)) {
+            console.error(
+                '[ItemManager] Invalid JSON structure: Expected an array.',
+            );
+            return;
+        }
+        itemsData.forEach((data, index) => {
+            if (!data.name) {
+                console.warn(
+                    `[ItemManager] Skipping invalid item at index ${index}: Missing required 'name'`,
+                );
+                return;
+            }
             const item = new Item(data);
             this.items.set(item.id, item);
         });
@@ -28,4 +40,4 @@ class ItemManager {
         return Array.from(this.items.values());
     }
 }
-module.exports = ItemManager;
+module.exports = new ItemManager();

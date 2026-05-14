@@ -7,12 +7,12 @@
         "requirements": {
             "room": "living_room",
             "needs": {
-                "hunger": { "max": 80 }
+                "charge": { "max": 80 }
             }
         },
         "effects": {
-            "hunger": 15,
-            "enrichment": 10
+            "charge": 15,
+            "defrag": 10
         }
     },
     {
@@ -24,8 +24,8 @@
             "timePhase": ["day", "evening"]
         },
         "effects": {
-            "exertion": -30,
-            "stimulation": 20
+            "clock": -30,
+            "telemetry": 20
         }
     }
 ]

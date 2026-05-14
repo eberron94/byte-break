@@ -11,7 +11,19 @@ class SkillManager {
 
     // Caches JSON configurations into a mapped dictionary
     load() {
-        skillsData.forEach((data) => {
+        if (!Array.isArray(skillsData)) {
+            console.error(
+                '[SkillManager] Invalid JSON structure: Expected an array.',
+            );
+            return;
+        }
+        skillsData.forEach((data, index) => {
+            if (!data.id || !data.name) {
+                console.warn(
+                    `[SkillManager] Skipping invalid skill at index ${index}: Missing required 'id' or 'name'`,
+                );
+                return;
+            }
             this.skills.set(data.id, data);
         });
     }
@@ -26,4 +38,4 @@ class SkillManager {
         return Array.from(this.skills.values());
     }
 }
-module.exports = SkillManager;
+module.exports = new SkillManager();

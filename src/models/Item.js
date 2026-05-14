@@ -1,3 +1,5 @@
+const { calculateEffects } = require('../util/effects');
+
 /**
  * Represents a distinct object that can be stored in a Player's inventory.
  */
@@ -17,9 +19,18 @@ class Item {
         this.effects = data.effects || {};
     }
 
-    // Applies the item's configured effects to the pet
-    use(pet) {
-        return pet.applyEffects(this.effects);
+    // Applies the item's configured effects to the byte and player
+    use(byte, player = null) {
+        const calculatedEffects = calculateEffects(this.effects, byte, player);
+        const success = byte.applyEffects(calculatedEffects);
+        if (success && player && calculatedEffects.energy) {
+            if (calculatedEffects.energy > 0) {
+                player.energy.increase(calculatedEffects.energy);
+            } else if (calculatedEffects.energy < 0) {
+                player.energy.decrease(Math.abs(calculatedEffects.energy));
+            }
+        }
+        return success;
     }
 }
 

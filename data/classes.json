@@ -1,0 +1,39 @@
+[
+    {
+        "id": "demo",
+        "name": "Demo Class",
+        "description": "A well-rounded starting configuration.",
+        "investmentRates": {
+            "assault": 10,
+            "firewall": 10,
+            "compile": 10,
+            "shred": 10,
+            "scan": 10,
+            "parse": 10,
+            "datamine": 10,
+            "override": 10,
+            "sync": 10,
+            "spoof": 10,
+            "compression": 10,
+            "integrity": 5,
+            "teraflops": 5,
+            "bandwidth": 5
+        },
+        "innatePointsPerLevel": {
+            "assault": 1,
+            "firewall": 1,
+            "compile": 1,
+            "shred": 1,
+            "scan": 1,
+            "parse": 1,
+            "datamine": 1,
+            "override": 1,
+            "sync": 1,
+            "spoof": 1,
+            "compression": 1,
+            "integrity": 5,
+            "teraflops": 5,
+            "bandwidth": 5
+        }
+    }
+]
