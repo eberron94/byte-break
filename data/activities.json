@@ -3,187 +3,239 @@
         "id": "fast_charge",
         "name": "Fast Charge",
         "description": "Connect to a high-voltage port to rapidly restore power.",
-        "effects": {
-            "charge": 30,
-            "energy": -1
-        }
+        "effects": [
+            { "type": "charge", "amount": 30 },
+            { "type": "energy", "amount": -1 }
+        ]
     },
     {
         "id": "flush_coolant",
         "name": "Flush Coolant",
         "description": "Cycle the liquid cooling system to drop operating temperatures.",
-        "effects": {
-            "thermal": 25,
-            "energy": -1
-        }
+        "effects": [
+            { "type": "thermal", "amount": 25 },
+            { "type": "energy", "amount": -1 }
+        ]
     },
     {
         "id": "run_defrag",
         "name": "Run Defrag",
         "description": "Reorganize memory sectors to maintain peak processing speeds.",
-        "effects": {
-            "defrag": "20 + (byte.stats.syntax.value || 0) * 2",
-            "energy": -1
-        }
+        "effects": [
+            {
+                "type": "defrag",
+                "amount": "20 + (byte.stats.syntax.value || 0) * 2"
+            },
+            { "type": "energy", "amount": -1 }
+        ]
     },
     {
         "id": "ping_servers",
         "name": "Ping Servers",
         "description": "Connect to external networks to gather telemetry data and stray bits.",
-        "effects": {
-            "telemetry": 20,
-            "defrag": -5,
-            "energy": -1,
-            "bits": "2 + Math.floor((byte.stats.curiosity.value || 0) / 2)"
-        }
+        "effects": [
+            { "type": "telemetry", "amount": 20 },
+            { "type": "defrag", "amount": -5 },
+            { "type": "energy", "amount": -1 },
+            {
+                "type": "bits",
+                "amount": "2 + Math.floor((byte.stats.curiosity.value || 0) / 2)"
+            }
+        ]
     },
     {
         "id": "patch_code",
         "name": "Patch Code",
         "description": "Apply integrity patches to repair damaged system files.",
-        "effects": {
-            "integrity": 30,
-            "energy": -1
-        }
+        "effects": [
+            { "type": "integrity", "amount": 30 },
+            { "type": "energy", "amount": -1 }
+        ]
     },
     {
         "id": "sleep_mode",
         "name": "Sleep Mode",
         "description": "Put the Byte into stasis mode, reducing resource consumption heavily. Use /status to swap to another Byte.",
-        "effects": {
-            "isAsleep": true,
-            "energy": -5
+        "effects": [
+            { "type": "isAsleep", "amount": true },
+            { "type": "energy", "amount": -5 }
+        ]
+    },
+    {
+        "id": "combat_simulation_easy",
+        "name": "Combat Sim (Easy)",
+        "description": "Enter the arena to battle basic simulated training data.",
+        "requirements": [
+            {
+                "type": "pool",
+                "key": "integrity",
+                "min": 1
+            }
+        ],
+        "isWebView": true,
+        "isCombat": true,
+        "combat": {
+            "enemyName": "Basic Virus",
+            "enemyClass": "virus",
+            "scaleWithPlayer": true,
+            "hpMultiplier": 0.8,
+            "tfMultiplier": 0.8,
+            "bandwidthMultiplier": 0.8,
+            "winEffects": [
+                { "type": "loot", "table": "dojo_win_easy" }
+            ]
         }
     },
     {
-        "id": "combat_simulation",
-        "name": "Combat Simulation",
-        "description": "Enter the arena to battle simulated training data.",
-        "prereq": {
-            "pools": {
-                "integrity": {
-                    "min": 1
-                }
+        "id": "combat_simulation_normal",
+        "name": "Combat Sim (Normal)",
+        "description": "Enter the arena to battle standard simulated training data.",
+        "requirements": [
+            {
+                "type": "pool",
+                "key": "integrity",
+                "min": 1
             }
-        },
-        "isWebView": true
+        ],
+        "isWebView": true,
+        "isCombat": true,
+        "combat": {
+            "enemyName": "Training Virus",
+            "enemyClass": "virus",
+            "scaleWithPlayer": true,
+            "hpMultiplier": 1.0,
+            "tfMultiplier": 1.0,
+            "bandwidthMultiplier": 1.0,
+            "winEffects": [
+                { "type": "loot", "table": "dojo_win_normal" }
+            ]
+        }
+    },
+    {
+        "id": "combat_simulation_hard",
+        "name": "Combat Sim (Hard)",
+        "description": "Enter the arena to battle advanced simulated training data.",
+        "requirements": [
+            {
+                "type": "pool",
+                "key": "integrity",
+                "min": 1
+            }
+        ],
+        "isWebView": true,
+        "isCombat": true,
+        "combat": {
+            "enemyName": "Elite Virus",
+            "enemyClass": "virus",
+            "scaleWithPlayer": true,
+            "hpMultiplier": 1.2,
+            "tfMultiplier": 1.2,
+            "bandwidthMultiplier": 1.2,
+            "skills": {
+                "assault": 5,
+                "firewall": 5
+            },
+            "winEffects": [
+                { "type": "loot", "table": "dojo_win_hard" }
+            ]
+        }
     },
     {
         "id": "debug_refill_all",
         "name": "Refill All",
         "description": "Instantly refills all needs and pools to maximum.",
-        "effects": {
-            "charge": 9999,
-            "thermal": 9999,
-            "defrag": 9999,
-            "telemetry": 9999,
-            "integrity": 9999,
-            "teraflops": 9999,
-            "bandwidth": 9999,
-            "energy": 9999,
-            "bits": 9999
-        }
+        "effects": [
+            { "type": "charge", "amount": 9999 },
+            { "type": "thermal", "amount": 9999 },
+            { "type": "defrag", "amount": 9999 },
+            { "type": "telemetry", "amount": 9999 },
+            { "type": "integrity", "amount": 9999 },
+            { "type": "teraflops", "amount": 9999 },
+            { "type": "bandwidth", "amount": 9999 },
+            { "type": "energy", "amount": 9999 },
+            { "type": "bits", "amount": 9999 }
+        ]
     },
     {
         "id": "debug_fill_charge",
         "name": "Fill Charge",
         "description": "Instantly fills the Charge need.",
-        "effects": {
-            "charge": 9999
-        }
+        "effects": [{ "type": "charge", "amount": 9999 }]
     },
     {
         "id": "debug_fill_thermal",
         "name": "Fill Thermal",
         "description": "Instantly fills the Thermal need.",
-        "effects": {
-            "thermal": 9999
-        }
+        "effects": [{ "type": "thermal", "amount": 9999 }]
     },
     {
         "id": "debug_fill_defrag",
         "name": "Fill Defrag",
         "description": "Instantly fills the Defrag need.",
-        "effects": {
-            "defrag": 9999
-        }
+        "effects": [{ "type": "defrag", "amount": 9999 }]
     },
     {
         "id": "debug_fill_telemetry",
         "name": "Fill Telemetry",
         "description": "Instantly fills the Telemetry need.",
-        "effects": {
-            "telemetry": 9999
-        }
+        "effects": [{ "type": "telemetry", "amount": 9999 }]
     },
     {
         "id": "debug_fill_integrity",
         "name": "Fill Integrity",
         "description": "Instantly fills the Integrity pool.",
-        "effects": {
-            "integrity": 9999
-        }
+        "effects": [{ "type": "integrity", "amount": 9999 }]
     },
     {
         "id": "debug_fill_teraflops",
         "name": "Fill Teraflops",
         "description": "Instantly fills the Teraflops pool.",
-        "effects": {
-            "teraflops": 9999
-        }
+        "effects": [{ "type": "teraflops", "amount": 9999 }]
     },
     {
         "id": "debug_fill_bandwidth",
         "name": "Fill Bandwidth",
         "description": "Instantly fills the Bandwidth pool.",
-        "effects": {
-            "bandwidth": 9999
-        }
+        "effects": [{ "type": "bandwidth", "amount": 9999 }]
     },
     {
         "id": "debug_fill_bits",
         "name": "Gain 100 Bits",
         "description": "Grants 100 Bits.",
-        "effects": {
-            "bits": 100
-        }
+        "effects": [{ "type": "bits", "amount": 100 }]
     },
     {
         "id": "debug_fill_energy",
         "name": "Fill Energy",
         "description": "Instantly fills player Energy.",
-        "effects": {
-            "energy": 9999
-        }
+        "effects": [{ "type": "energy", "amount": 9999 }]
     },
     {
         "id": "debug_add_1000_bits",
         "name": "Gain 1000 Bits",
         "description": "Grants 1000 Bits.",
-        "effects": {
-            "bits": 1000
-        }
+        "effects": [{ "type": "bits", "amount": 1000 }]
     },
     {
         "id": "debug_level_up_all",
         "name": "Level Up All",
         "description": "Instantly adds 1 level to all skills and pools.",
-        "effects": {
-            "upgrade_integrity": 1,
-            "upgrade_teraflops": 1,
-            "upgrade_bandwidth": 1,
-            "upgrade_assault": 1,
-            "upgrade_firewall": 1,
-            "upgrade_compile": 1,
-            "upgrade_shred": 1,
-            "upgrade_scan": 1,
-            "upgrade_parse": 1,
-            "upgrade_datamine": 1,
-            "upgrade_override": 1,
-            "upgrade_sync": 1,
-            "upgrade_spoof": 1,
-            "upgrade_compression": 1
-        }
+        "effects": [
+            { "type": "upgrade_integrity", "amount": 1 },
+            { "type": "upgrade_teraflops", "amount": 1 },
+            { "type": "upgrade_bandwidth", "amount": 1 },
+            { "type": "upgrade_assault", "amount": 1 },
+            { "type": "upgrade_firewall", "amount": 1 },
+            { "type": "upgrade_compile", "amount": 1 },
+            { "type": "upgrade_shred", "amount": 1 },
+            { "type": "upgrade_scan", "amount": 1 },
+            { "type": "upgrade_parse", "amount": 1 },
+            { "type": "upgrade_datamine", "amount": 1 },
+            { "type": "upgrade_override", "amount": 1 },
+            { "type": "upgrade_sync", "amount": 1 },
+            { "type": "upgrade_spoof", "amount": 1 },
+            { "type": "upgrade_compression", "amount": 1 }
+        ]
     },
     {
         "id": "access_shop",
@@ -198,12 +250,74 @@
         "isWebView": true
     },
     {
-        "id": "packet_sniffer",
-        "name": "Packet Sniffer",
-        "description": "Intercept and decrypt packets on the network to extract valuable data.",
+        "id": "packet_sniffer_easy",
+        "name": "Packet Sniffer (Easy)",
+        "description": "Intercept and decrypt basic packets on the network.",
         "isMinigame": true,
-        "effects": {
-            "energy": -5
-        }
+        "minigame": {
+            "id": "packet_sniffer",
+            "difficulty": {
+                "level": "easy",
+                "guessLength": 3,
+                "poolSize": 6,
+                "maxGuesses": 8
+            },
+            "winEffects": [
+                { "type": "loot", "table": "packet_sniffer_win_easy" }
+            ]
+        },
+        "effects": [{ "type": "energy", "amount": -5 }]
+    },
+    {
+        "id": "packet_sniffer_normal",
+        "name": "Packet Sniffer (Normal)",
+        "description": "Intercept and decrypt standard packets. Requires Packet Sniffer Novice.",
+        "isMinigame": true,
+        "minigame": {
+            "id": "packet_sniffer",
+            "difficulty": {
+                "level": "normal",
+                "guessLength": 4,
+                "poolSize": 8,
+                "maxGuesses": 6
+            },
+            "winEffects": [
+                { "type": "loot", "table": "packet_sniffer_win_normal" }
+            ]
+        },
+        "requirements": [
+            {
+                "type": "achievement",
+                "id": "packet_sniffer_easy_wins",
+                "rank": 1
+            }
+        ],
+        "effects": [{ "type": "energy", "amount": -5 }]
+    },
+    {
+        "id": "packet_sniffer_hard",
+        "name": "Packet Sniffer (Hard)",
+        "description": "Intercept and decrypt complex encrypted packets. Requires Packet Sniffer Expert.",
+        "isMinigame": true,
+        "minigame": {
+            "id": "packet_sniffer",
+            "difficulty": {
+                "level": "hard",
+                "guessLength": 5,
+                "poolSize": 10,
+                "maxGuesses": 5
+            },
+            "winEffects": [
+                { "type": "loot", "table": "packet_sniffer_win_hard" }
+            ]
+        },
+        "requirements": [
+            {
+                "type": "achievement",
+                "id": "packet_sniffer_normal_wins",
+                "rank": 1
+            }
+        ],
+        "effects": [{ "type": "energy", "amount": -5 }]
     }
 ]

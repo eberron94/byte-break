@@ -1,6 +1,14 @@
 const GameEvents = require('../util/GameEvents');
 const minigameManager = require('../managers/minigame/MinigameManager');
 
+/**
+ * Handles all inline keyboard callback queries from Telegram.
+ * Extracted from TelegramBotController to prevent the main class from becoming
+ * a monolith, keeping routing logic organized and easier to debug.
+ *
+ * @param {Object} query - The Telegram callback query object containing interaction data.
+ * @this TelegramBotController
+ */
 async function handleCallbackQuery(query) {
     const chatId = query.message.chat.id;
     const messageId = query.message.message_id;
@@ -53,7 +61,10 @@ async function handleCallbackQuery(query) {
                 alertMessage = `You already have the maximum number of living bytes (${maxBytes})!`;
             } else {
                 this.userStates.set(chatId, { state: 'AWAITING_BYTE_NAME' });
-                await this.bot.sendMessage(chatId, 'What would you like to name your new byte?');
+                await this.bot.sendMessage(
+                    chatId,
+                    'What would you like to name your new byte?',
+                );
             }
             return;
         } else if (action.startsWith('spawn_class_')) {
@@ -73,7 +84,8 @@ async function handleCallbackQuery(query) {
             if (livingBytes.length === 0) {
                 alertMessage = 'No bytes to delete.';
             } else {
-                const { text, options } = this.getDeleteSelectionDisplay(livingBytes);
+                const { text, options } =
+                    this.getDeleteSelectionDisplay(livingBytes);
                 await this.updateMessageDisplay(query, text, options);
             }
             return;
@@ -87,14 +99,30 @@ async function handleCallbackQuery(query) {
             } else {
                 const timeoutId = setTimeout(async () => {
                     const state = this.userStates.get(chatId);
-                    if (state && state.state === 'AWAITING_DELETE_CONFIRM' && state.byteId === byteId) {
+                    if (
+                        state &&
+                        state.state === 'AWAITING_DELETE_CONFIRM' &&
+                        state.byteId === byteId
+                    ) {
                         this.userStates.delete(chatId);
-                        await this.bot.sendMessage(chatId, `Deletion of **${targetByte.name}** timed out.`, { parse_mode: 'Markdown' });
+                        await this.bot.sendMessage(
+                            chatId,
+                            `Deletion of **${targetByte.name}** timed out.`,
+                            { parse_mode: 'Markdown' },
+                        );
                     }
                 }, 30000);
 
-                this.userStates.set(chatId, { state: 'AWAITING_DELETE_CONFIRM', byteId: byteId, timeoutId: timeoutId });
-                await this.bot.sendMessage(chatId, `⚠️ Are you sure you want to permanently delete **${targetByte.name}**?\n\nType \`YES\` to confirm. Any other input will cancel this action. (Times out in 30 seconds)`, { parse_mode: 'Markdown' });
+                this.userStates.set(chatId, {
+                    state: 'AWAITING_DELETE_CONFIRM',
+                    byteId: byteId,
+                    timeoutId: timeoutId,
+                });
+                await this.bot.sendMessage(
+                    chatId,
+                    `⚠️ Are you sure you want to permanently delete **${targetByte.name}**?\n\nType \`YES\` to confirm. Any other input will cancel this action. (Times out in 30 seconds)`,
+                    { parse_mode: 'Markdown' },
+                );
             }
             return;
         } else if (action.startsWith('wake_byte_')) {
@@ -111,7 +139,12 @@ async function handleCallbackQuery(query) {
                 }
                 byteToWake.isAsleep = false;
                 await this.game.saveByte(byteToWake);
-                await this.sendStatusUI(chatId, byteToWake, player, `Woke up ${byteToWake.name}!`);
+                await this.sendStatusUI(
+                    chatId,
+                    byteToWake,
+                    player,
+                    `Woke up ${byteToWake.name}!`,
+                );
             } else {
                 alertMessage = 'Byte not found.';
             }
@@ -128,7 +161,9 @@ async function handleCallbackQuery(query) {
         } else if (action.startsWith('nav_move_')) {
             const newRoomId = action.replace('nav_move_', '');
             const room = this.roomManager.getRoom(newRoomId);
-            const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map((id) => id.trim());
+            const adminIds = (process.env.ADMIN_USER_IDS || '')
+                .split(',')
+                .map((id) => id.trim());
             const isAdmin = adminIds.includes(chatId.toString());
             let statusMessage = '';
             if (room && (room.id !== 'debug_room' || isAdmin)) {
@@ -153,7 +188,11 @@ async function handleCallbackQuery(query) {
             const page = parseInt(payload.slice(lastUnderscore + 1), 10);
             const activity = this.activityManager.getActivity(actId);
             if (activity) {
-                const { text, options } = this.getActivityItemSelectDisplay(player, activity, page);
+                const { text, options } = this.getActivityItemSelectDisplay(
+                    player,
+                    activity,
+                    page,
+                );
                 await this.updateMessageDisplay(query, text, options);
             }
         } else if (action.startsWith('act_ex|')) {
@@ -186,21 +225,38 @@ async function handleCallbackQuery(query) {
                 const activity = this.activityManager.getActivity(actId);
                 if (!activity) {
                     alertMessage = 'Activity not found!';
-                } else if (!activity.canPerform(byte, player, this.itemManager)) {
+                } else if (
+                    !activity.canPerform(byte, player, this.itemManager)
+                ) {
                     alertMessage = `${byte.name} isn't able to do that right now.`;
                 } else if (activity.itemSelect) {
-                    const { text, options } = this.getActivityItemSelectDisplay(player, activity, 0);
+                    const { text, options } = this.getActivityItemSelectDisplay(
+                        player,
+                        activity,
+                        0,
+                    );
                     await this.updateMessageDisplay(query, text, options);
                     return;
                 } else if (activity.isMinigame) {
                     const minigame = minigameManager.getMinigame(actId);
                     if (minigame) {
-                        const result = await minigame.start(chatId, this.game, byte, player, this.itemManager, activity);
+                        const result = await minigame.start(
+                            chatId,
+                            this.game,
+                            byte,
+                            player,
+                            this.itemManager,
+                            activity,
+                        );
                         if (result.error) {
                             alertMessage = result.error;
                         } else {
                             this.userStates.set(chatId, result.state);
-                            await this.sendOrUpdateUI(chatId, result.display.text, result.display.options);
+                            await this.sendOrUpdateUI(
+                                chatId,
+                                result.display.text,
+                                result.display.options,
+                            );
                         }
                     } else {
                         alertMessage = 'Minigame not found!';
@@ -227,7 +283,10 @@ async function handleCallbackQuery(query) {
             const itemId = action.replace('item_info_', '');
             const item = this.itemManager.getItem(itemId);
             if (item) {
-                const { text, options } = this.getItemDetailDisplay(player, itemId);
+                const { text, options } = this.getItemDetailDisplay(
+                    player,
+                    itemId,
+                );
                 await this.updateMessageDisplay(query, text, options);
             } else {
                 alertMessage = 'Item not found.';
@@ -243,7 +302,12 @@ async function handleCallbackQuery(query) {
                     player.removeItem(itemId, 1);
                     await this.game.saveByte(byte);
                     await this.game.savePlayer(player);
-                    await this.sendStatusUI(chatId, byte, player, `Used ${item.name}!`);
+                    await this.sendStatusUI(
+                        chatId,
+                        byte,
+                        player,
+                        `Used ${item.name}!`,
+                    );
                     return;
                 } else {
                     alertMessage = `Cannot use ${item.name} right now.`;
@@ -260,11 +324,21 @@ async function handleCallbackQuery(query) {
 
             const cmd = action.replace(`minigame_${minigameId}_`, '');
             if (cmd === 'abort') {
-                const guessesRemaining = userState.history ? 6 - userState.history.length : 6;
-                this.game.emit(GameEvents.MINIGAME_END, chatId, minigameId, { result: 'abort', guessesRemaining });
+                const guessesRemaining = userState.history
+                    ? 6 - userState.history.length
+                    : 6;
+                this.game.emit(GameEvents.MINIGAME_END, chatId, minigameId, {
+                    result: 'abort',
+                    guessesRemaining,
+                });
                 this.userStates.delete(chatId);
                 if (byte) {
-                    await this.sendStatusUI(chatId, byte, player, "Minigame aborted.");
+                    await this.sendStatusUI(
+                        chatId,
+                        byte,
+                        player,
+                        'Minigame aborted.',
+                    );
                 } else {
                     const bytes = await this.game.getBytes(chatId);
                     await this.sendStasisUI(chatId, bytes, player);
@@ -273,20 +347,35 @@ async function handleCallbackQuery(query) {
             }
 
             if (minigame) {
-                const display = await minigame.handleInput(cmd, userState, this.game, chatId, byte, player, this.itemManager);
+                const display = await minigame.handleInput(
+                    cmd,
+                    userState,
+                    this.game,
+                    chatId,
+                    byte,
+                    player,
+                    this.itemManager,
+                );
                 if (display) {
                     if (display.alert) {
                         alertMessage = display.alert;
                         showAlert = true;
                     } else {
-                        await this.updateMessageDisplay(query, display.text, display.options);
+                        await this.updateMessageDisplay(
+                            query,
+                            display.text,
+                            display.options,
+                        );
                     }
                 }
             }
             return;
         }
     } finally {
-        await this.bot.answerCallbackQuery(query.id, { text: alertMessage, show_alert: showAlert });
+        await this.bot.answerCallbackQuery(query.id, {
+            text: alertMessage,
+            show_alert: showAlert,
+        });
     }
 }
 

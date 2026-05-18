@@ -9,7 +9,7 @@ const SpawnManager = require('./SpawnManager');
 class GameManager extends EventEmitter {
     constructor() {
         super();
-        
+
         // Centralize console logging for all GameEvents
         Object.values(GameEvents).forEach((eventName) => {
             this.on(eventName, (...args) => {
@@ -21,7 +21,9 @@ class GameManager extends EventEmitter {
                     }
                     return arg;
                 });
-                console.log(`[GameEvent] ${eventName} -> ${parsedArgs.join(' | ')}`);
+                console.log(
+                    `[GameEvent] ${eventName} -> ${parsedArgs.join(' | ')}`,
+                );
             });
         });
     }
@@ -31,7 +33,7 @@ class GameManager extends EventEmitter {
         await dbManager.init();
         return new GameManager();
     }
-    
+
     // Returns the dynamic energy cost for merging bytes
     getMergeCost(player) {
         return MergeManager.getMergeCost(player);
@@ -145,10 +147,10 @@ class GameManager extends EventEmitter {
 
             if (byte.isAsleep) {
                 if (this.tickCounter % 10 === 0) {
-                    byte.tick(player);
+                    byte.tick(player, itemManager);
                 }
             } else {
-                byte.tick(player);
+                byte.tick(player, itemManager);
             }
 
             if (!tickedPlayers.has(player.id)) {

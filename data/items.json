@@ -20,9 +20,7 @@
         "description": "Basic repair module to restore structural integrity.",
         "type": "consumable",
         "cost": 15,
-        "effects": {
-            "integrity": 50
-        }
+        "effects": [{ "type": "integrity", "amount": 50 }]
     },
     {
         "id": "byte_rebooter",
@@ -46,11 +44,11 @@
         "shortname": "Restore",
         "description": "Instantly satisfies all core system needs (Charge, Thermal, Defrag, Telemetry).",
         "type": "consumable",
-        "effects": {
-            "charge": 100,
-            "thermal": 100,
-            "defrag": 100,
-            "telemetry": 100
-        }
+        "effects": [
+            { "type": "charge", "amount": 100 },
+            { "type": "thermal", "amount": 100 },
+            { "type": "defrag", "amount": 100 },
+            { "type": "telemetry", "amount": 100 }
+        ]
     }
 ]

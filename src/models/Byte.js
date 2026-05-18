@@ -17,7 +17,7 @@ const Bandwidth = require('./pools/Bandwidth');
 const Bits = require('./pools/Bits');
 
 const RoomManager = require('../managers/RoomManager');
-const { calculateEffects } = require('../util/effects');
+const { calculateEffects, applyEffects } = require('../util/effects');
 
 /**
  * Represents a digital monster (byte), managing its nested stats, skills, needs, and pools.
@@ -159,7 +159,7 @@ class Byte {
     /**
      * Global clock cycle action for the byte. Drives need decay over time.
      */
-    tick(player = null) {
+    tick(player = null, itemManager = null) {
         if (!this.isAlive) return;
 
         // Trigger natural decay across all loaded needs
@@ -176,7 +176,7 @@ class Byte {
                 this,
                 player,
             );
-            this.applyEffects(calculatedEffects);
+            applyEffects(calculatedEffects, this, player, itemManager);
         }
     }
 

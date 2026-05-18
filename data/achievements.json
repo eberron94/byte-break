@@ -40,5 +40,19 @@
         "description": "Suffer defeat in the Dojo.",
         "tiers": [1, 10],
         "rewards": [1, 2]
+    },
+    {
+        "id": "packet_sniffer_easy_wins",
+        "name": "Script Kiddie",
+        "description": "Successfully decrypt 5 Easy packets.",
+        "tiers": [5],
+        "rewards": [5]
+    },
+    {
+        "id": "packet_sniffer_normal_wins",
+        "name": "Black Hat",
+        "description": "Successfully decrypt 5 Normal packets.",
+        "tiers": [5],
+        "rewards": [10]
     }
 ]

@@ -44,11 +44,14 @@ async function startCombat() {
     }
 
     try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const activityId = urlParams.get('activity') || 'combat_simulation';
+
         // Call the API to pre-calculate the battle
         const response = await fetch('/api/combat/simulate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: user.id }),
+            body: JSON.stringify({ userId: user.id, activityId }),
         });
 
         if (!response.ok) throw new Error('Failed to initiate simulation.');
@@ -56,7 +59,7 @@ async function startCombat() {
 
         // Fetch and display avatars
         const playerAvatarUrl = `/api/avatar?name=${encodeURIComponent(window.currentByte.name)}&class=${window.currentByte.byteClass}&level=${window.currentByte.level}&generation=${window.currentByte.generation}`;
-        const enemyAvatarUrl = `/api/avatar?name=Training%20Virus&class=virus&level=5&generation=0`;
+        const enemyAvatarUrl = `/api/avatar?name=${encodeURIComponent(result.enemyConfig.name)}&class=${result.enemyConfig.byteClass}&level=5&generation=0`;
 
         // We can let these load in the background while the first log message appears
         Promise.all([
@@ -70,7 +73,7 @@ async function startCombat() {
             document.getElementById('combat-player-name').innerText =
                 window.currentByte.name;
             document.getElementById('combat-enemy-name').innerText =
-                'Training Virus';
+                result.enemyConfig.name;
 
             const pState = startLog.state.player;
             const eState = startLog.state.enemy;

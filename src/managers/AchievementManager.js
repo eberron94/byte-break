@@ -63,6 +63,15 @@ class AchievementManager {
         gameManager.on(GameEvents.BYTE_MERGED, (userId) => this.processAchievement(gameManager, userId, 'bytes_merged'));
         gameManager.on(GameEvents.COMBAT_LOSS, (userId) => this.processAchievement(gameManager, userId, 'combat_losses'));
         
+        gameManager.on(GameEvents.MINIGAME_END, (userId, minigameId, data) => {
+            if (minigameId === 'packet_sniffer' && data.result === 'win') {
+                if (data.difficulty === 'easy') {
+                    this.processAchievement(gameManager, userId, 'packet_sniffer_easy_wins');
+                } else if (data.difficulty === 'normal') {
+                    this.processAchievement(gameManager, userId, 'packet_sniffer_normal_wins');
+                }
+            }
+        });
     }
 }
 

@@ -3,6 +3,13 @@ const { calculateEffects } = require('../util/effects');
 const ShopManager = require('../managers/ShopManager');
 const classesData = require('../../data/classes.json');
 
+/**
+ * @mixin TelegramUIBuilders
+ *
+ * This mixin contains all the UI formatting logic for Telegram messages.
+ * By separating these builders into their own file, we keep the main
+ * TelegramBotController clean and focused on routing and state management.
+ */
 const TelegramUIBuilders = {
     getClassSelectionDisplay(byteName) {
         let text = `Great! Now, select a class for **${byteName}**:`;

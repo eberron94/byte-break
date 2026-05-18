@@ -21,25 +21,31 @@
         "id": "network_hub",
         "name": "Network Hub",
         "description": "A chaotic nexus of data streams and incoming connections.",
-        "allowedActivities": ["ping_servers", "packet_sniffer"]
+        "allowedActivities": [
+            "ping_servers",
+            "packet_sniffer_easy",
+            "packet_sniffer_normal",
+            "packet_sniffer_hard"
+        ]
     },
     {
         "id": "repair_bay",
         "name": "Repair Bay",
         "description": "An automated workshop equipped to restore structural integrity.",
         "allowedActivities": ["patch_code"],
-        "tickEffects": {
-            "integrity": 1
-        }
+        "tickEffects": [{ "type": "integrity", "amount": 1 }]
     },
     {
         "id": "dojo",
         "name": "The Dojo",
         "description": "A combat simulation arena.",
-        "allowedActivities": ["debug_refill_all", "combat_simulation"],
-        "tickEffects": {
-            "bits": 1
-        }
+        "allowedActivities": [
+            "debug_refill_all",
+            "combat_simulation_easy",
+            "combat_simulation_normal",
+            "combat_simulation_hard"
+        ],
+        "tickEffects": [{ "type": "bits", "amount": 1 }]
     },
     {
         "id": "debug_room",

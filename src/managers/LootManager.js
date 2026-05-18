@@ -35,5 +35,33 @@ class LootManager {
         }
         return result;
     }
+
+    processLoot(effectsObj) {
+        const result = {
+            bits: effectsObj.bits || 0,
+            items: Object.entries(effectsObj.inventory || {}).map(([id, amount]) => ({ id, amount }))
+        };
+        if (effectsObj.loot) {
+            for (const tableId of effectsObj.loot) {
+                const lootResults = this.rollLoot(tableId);
+                if (lootResults.bits) {
+                    result.bits += lootResults.bits;
+                    effectsObj.bits = (effectsObj.bits || 0) + lootResults.bits;
+                }
+                if (lootResults.items) {
+                    lootResults.items.forEach(itemLoot => {
+                        const existing = result.items.find(i => i.id === itemLoot.id);
+                        if (existing) existing.amount += itemLoot.amount;
+                        else result.items.push({ id: itemLoot.id, amount: itemLoot.amount });
+
+                        effectsObj.inventory = effectsObj.inventory || {};
+                        effectsObj.inventory[itemLoot.id] = (effectsObj.inventory[itemLoot.id] || 0) + itemLoot.amount;
+                    });
+                }
+            }
+            delete effectsObj.loot; // Delete so applyEffects doesn't double-roll
+        }
+        return result;
+    }
 }
 module.exports = new LootManager();

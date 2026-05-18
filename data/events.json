@@ -4,28 +4,21 @@
         "name": "Found a Treat",
         "description": "Your pet found a yummy treat hiding under the sofa!",
         "probability": 0.05,
-        "requirements": {
-            "room": "living_room",
-            "needs": {
-                "charge": { "max": 80 }
-            }
-        },
-        "effects": {
-            "charge": 15,
-            "defrag": 10
-        }
+        "requirements": [
+            { "type": "room", "id": "charging_station" },
+            { "type": "need", "key": "charge", "max": 80 }
+        ],
+        "effects": [{ "type": "loot", "table": "found_treat" }]
     },
     {
         "id": "zoomies",
         "name": "The Zoomies!",
         "description": "Random burst of energy! Your pet runs around wildly.",
         "probability": 0.1,
-        "requirements": {
-            "timePhase": ["day", "evening"]
-        },
-        "effects": {
-            "clock": -30,
-            "telemetry": 20
-        }
+        "requirements": [{ "type": "timePhase", "phases": ["day", "evening"] }],
+        "effects": [
+            { "type": "telemetry", "amount": 20, "die": 2 },
+            { "type": "energy", "amount": 5, "die": 4 }
+        ]
     }
 ]

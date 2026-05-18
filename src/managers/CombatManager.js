@@ -6,7 +6,7 @@ class CombatManager {
      * @param {Byte} playerByte - The player's Byte model
      * @param {Byte} enemyByte - The NPC Byte model
      */
-    static simulate(playerByte, enemyByte) {
+    static simulate(playerByte, enemyByte, winEffectsConfig = []) {
         const log = [];
         let turn = 1;
         const maxTurns = 50; // Safety cap to prevent infinite loops
@@ -51,14 +51,20 @@ class CombatManager {
         const winner = p.hp > 0 ? (e.hp > 0 ? 'draw' : 'player') : 'enemy';
 
         // Calculate Post-Match Loot and Pacification
-        let lootMultiplier = 1.0;
         let pacified = false;
+        let winEffects = [];
 
         if (winner === 'player') {
-            // Datamine increases the loot modifier
-            lootMultiplier += (p.skills.datamine || 0) * 0.05;
+            winEffects = JSON.parse(JSON.stringify(winEffectsConfig || []));
 
-            // Sync has a chance to pacify the enemy (e.g. higher capture chance later)
+            // Datamine increases the loot modifier
+            if (p.skills.datamine > 0) {
+                const bonusBits = Math.floor(15 * p.skills.datamine * 0.05);
+                if (bonusBits > 0) {
+                    winEffects.push({ type: 'bits', amount: bonusBits });
+                }
+            }
+
             if (LuckManager.checkCombatSync(p)) {
                 pacified = true;
                 log.push({
@@ -80,8 +86,9 @@ class CombatManager {
         return {
             winner,
             log,
-            lootMultiplier,
             pacified,
+            winEffects,
+            enemyConfig: { name: enemyByte.name, byteClass: enemyByte.byteClass },
             finalState: {
                 player: { hp: p.hp, tf: p.tf },
                 enemy: { hp: e.hp, tf: e.tf },

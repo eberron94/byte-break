@@ -1,5 +1,15 @@
 {
-    "packet_sniffer_win": {
+    "packet_sniffer_win_easy": {
+        "bits": 150,
+        "items": [
+            {
+                "id": "patch_kit",
+                "amount": 1,
+                "chance": 0.5
+            }
+        ]
+    },
+    "packet_sniffer_win_normal": {
         "bits": 250,
         "items": [
             {
@@ -11,6 +21,54 @@
                 "id": "system_restore",
                 "amount": 1,
                 "chance": 0.25
+            }
+        ]
+    },
+    "packet_sniffer_win_hard": {
+        "bits": 500,
+        "items": [
+            {
+                "id": "patch_kit",
+                "amount": 2,
+                "chance": 1.0
+            },
+            {
+                "id": "system_restore",
+                "amount": 1,
+                "chance": 0.5
+            }
+        ]
+    },
+    "found_treat": {
+        "bits": 50,
+        "items": [
+            {
+                "id": "system_restore",
+                "amount": 1,
+                "chance": 0.1
+            }
+        ]
+    },
+    "dojo_win_easy": {
+        "bits": 10
+    },
+    "dojo_win_normal": {
+        "bits": 15,
+        "items": [
+            {
+                "id": "patch_kit",
+                "amount": 1,
+                "chance": 0.1
+            }
+        ]
+    },
+    "dojo_win_hard": {
+        "bits": 25,
+        "items": [
+            {
+                "id": "patch_kit",
+                "amount": 1,
+                "chance": 0.2
             }
         ]
     }
