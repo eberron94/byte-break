@@ -5,7 +5,7 @@
         "description": "Connect to a high-voltage port to rapidly restore power.",
         "effects": {
             "charge": 30,
-            "energy": -5
+            "energy": -1
         }
     },
     {
@@ -14,7 +14,7 @@
         "description": "Cycle the liquid cooling system to drop operating temperatures.",
         "effects": {
             "thermal": 25,
-            "energy": -5
+            "energy": -1
         }
     },
     {
@@ -23,7 +23,7 @@
         "description": "Reorganize memory sectors to maintain peak processing speeds.",
         "effects": {
             "defrag": "20 + (byte.stats.syntax.value || 0) * 2",
-            "energy": -10
+            "energy": -1
         }
     },
     {
@@ -33,7 +33,7 @@
         "effects": {
             "telemetry": 20,
             "defrag": -5,
-            "energy": -10,
+            "energy": -1,
             "bits": "2 + Math.floor((byte.stats.curiosity.value || 0) / 2)"
         }
     },
@@ -43,20 +43,16 @@
         "description": "Apply integrity patches to repair damaged system files.",
         "effects": {
             "integrity": 30,
-            "energy": -15
+            "energy": -1
         }
     },
     {
         "id": "sleep_mode",
         "name": "Sleep Mode",
-        "description": "Put the Byte in low-power mode while you recharge your own energy.",
-        "prereq": {
-            "energy": {
-                "max": 90
-            }
-        },
+        "description": "Put the Byte into stasis mode, reducing resource consumption heavily. Use /status to swap to another Byte.",
         "effects": {
-            "energy": 30
+            "isAsleep": true,
+            "energy": -5
         }
     },
     {
@@ -64,7 +60,6 @@
         "name": "Combat Simulation",
         "description": "Enter the arena to battle simulated training data.",
         "prereq": {
-            "energy": { "min": 20 },
             "pools": {
                 "integrity": {
                     "min": 1
@@ -188,6 +183,27 @@
             "upgrade_sync": 1,
             "upgrade_spoof": 1,
             "upgrade_compression": 1
+        }
+    },
+    {
+        "id": "access_shop",
+        "name": "Access Shop",
+        "description": "Browse items and consumables available for purchase.",
+        "isWebView": true
+    },
+    {
+        "id": "debug_menu",
+        "name": "Debug Menu",
+        "description": "Access the developer debug menu.",
+        "isWebView": true
+    },
+    {
+        "id": "packet_sniffer",
+        "name": "Packet Sniffer",
+        "description": "Intercept and decrypt packets on the network to extract valuable data.",
+        "isMinigame": true,
+        "effects": {
+            "energy": -5
         }
     }
 ]

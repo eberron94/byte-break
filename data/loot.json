@@ -1,0 +1,17 @@
+{
+    "packet_sniffer_win": {
+        "bits": 250,
+        "items": [
+            {
+                "id": "patch_kit",
+                "amount": 1,
+                "chance": 1.0
+            },
+            {
+                "id": "system_restore",
+                "amount": 1,
+                "chance": 0.25
+            }
+        ]
+    }
+}

@@ -1,8 +1,9 @@
-const Pagination = require('./Pagination');
 const sharp = require('sharp');
-const generateTradingCard = require('../util/card');
+const { generateTradingCard, generateStasisCard, generateAchievementCard } = require('../util/card');
 const dbManager = require('../database/db');
-const { calculateEffects } = require('../util/effects');
+const GameEvents = require('../util/GameEvents');
+const TelegramUIBuilders = require('./TelegramUIBuilders');
+const handleCallbackQuery = require('./TelegramCallbackHandler');
 
 /**
  * Acts as the UI layer mapping Telegram interactions into GameManager logic.
@@ -17,6 +18,9 @@ class TelegramBotController {
 
         // Simple state machine to track multi-step interactions per user
         this.userStates = new Map();
+
+        // Bind UI Builders
+        Object.assign(this, TelegramUIBuilders);
     }
 
     init() {
@@ -24,12 +28,16 @@ class TelegramBotController {
         this.bot.setMyCommands([
             { command: '/start', description: 'Welcome to Telegram-gotchi!' },
             {
-                command: '/adopt',
-                description: 'Adopt a new byte (usage: /adopt name)',
+                command: '/spawn',
+                description: 'Spawn a new byte (usage: /spawn name)',
             },
             {
                 command: '/status',
                 description: "View your byte's status and activities",
+            },
+            {
+                command: '/merge',
+                description: 'Merge two Bytes to create a stronger child',
             },
             { command: '/rooms', description: 'View all available rooms' },
             {
@@ -43,25 +51,74 @@ class TelegramBotController {
             },
             {
                 command: '/avatar',
-                description: 'Preview avatar at level(s) (usage: /avatar [level] [maxLevel])',
+                description:
+                    'Preview avatar at level(s) (usage: /avatar [level] [maxLevel])',
             },
         ]);
 
         // Map message commands
         this.bot.onText(/\/start/, this.handleStart.bind(this));
-        this.bot.onText(/\/adopt(?:\s+(.+))?/, this.handleAdopt.bind(this));
+        this.bot.onText(/\/spawn(?:\s+(.+))?/, this.handleSpawn.bind(this));
+        this.bot.onText(/\/merge/, this.handleMerge.bind(this));
         this.bot.onText(/\/status/, this.handleStatus.bind(this));
         this.bot.onText(/\/rooms/, this.handleRooms.bind(this));
         this.bot.onText(/\/move(?:\s+(.+))?/, this.handleMove.bind(this));
         this.bot.onText(/\/inventory/, this.handleInventory.bind(this));
         this.bot.onText(/\/tick(?:\s+(\d+))?/, this.handleTick.bind(this));
-        this.bot.onText(/\/avatar(?:\s+(\d+))?(?:\s+(\d+))?/, this.handleAvatar.bind(this));
+        this.bot.onText(
+            /\/avatar(?:\s+(\d+))?(?:\s+(\d+))?/,
+            this.handleAvatar.bind(this),
+        );
 
         // Intercept inline button clicks
-        this.bot.on('callback_query', this.handleCallbackQuery.bind(this));
+        this.bot.on('callback_query', handleCallbackQuery.bind(this));
 
         // Intercept general messages for state machine
         this.bot.on('message', this.handleMessage.bind(this));
+
+        // Register system callbacks for global messaging
+        this.game.on(GameEvents.RANDOM_EVENT, async (b, e) => {
+            try {
+                const player = await this.game.getPlayer(b.ownerId);
+                if (player.settings?.notifications?.events === false) return;
+
+                await this.bot.sendMessage(
+                    b.ownerId,
+                    `🔔 **Random Event:** ${e.name}\n_${e.description}_`,
+                    { parse_mode: 'Markdown' },
+                );
+            } catch (err) {}
+        });
+
+        this.game.on(GameEvents.ENERGY_REWARD, async (playerId, amount) => {
+            try {
+                const player = await this.game.getPlayer(playerId);
+                if (player.settings?.notifications?.energy === false) return;
+
+                await this.bot.sendMessage(
+                    playerId,
+                    `⚡ **Community Energy Reward!**\n_You gained ${amount} ε for being active._`,
+                    { parse_mode: 'Markdown' },
+                );
+            } catch (err) {}
+        });
+
+        this.game.on(
+            GameEvents.ACHIEVEMENT_UNLOCKED,
+            async (playerId, achievement) => {
+                try {
+                    const svgString = generateAchievementCard(achievement);
+                    const pngBuffer = await sharp(Buffer.from(svgString)).png().toBuffer();
+                    
+                    await this.bot.sendPhoto(playerId, pngBuffer, {
+                        caption: `🏆 **Achievement Unlocked!**\n*${achievement.name}*`,
+                        parse_mode: 'Markdown',
+                    });
+                } catch (err) {
+                    console.error('Failed to send achievement card:', err);
+                }
+            },
+        );
     }
 
     // Welcome response handler
@@ -70,28 +127,31 @@ class TelegramBotController {
         console.log(`[Command] /start from chat ${chatId}`);
         await this.bot.sendMessage(
             chatId,
-            'Welcome to Tele-grow! Use `/adopt [name]` to get your first byte.',
+            'Welcome to Tele-grow! Use `/spawn [name]` to get your first byte.',
         );
     }
 
     // Spawns a new byte and commits it to the database
-    async handleAdopt(msg, match) {
+    async handleSpawn(msg, match) {
         const chatId = msg.chat.id;
         const byteName = match[1];
 
-        // Check if they already have a byte before proceeding
-        const existingByte = await this.game.getByte(chatId);
-        if (existingByte && existingByte.isAlive) {
+        const bytes = await this.game.getBytes(chatId);
+        const player = await this.game.getPlayer(chatId);
+        const livingBytes = bytes.filter((b) => b.isAlive);
+        const maxBytes = player.maxBytes || 2;
+
+        if (livingBytes.length >= maxBytes) {
             await this.bot.sendMessage(
                 chatId,
-                'You already have a living byte!',
+                `You already have the maximum number of living bytes (${maxBytes})!`,
             );
             return;
         }
 
         if (!byteName) {
             console.log(
-                `[Command] /adopt (prompting for name) from chat ${chatId}`,
+                `[Command] /spawn (prompting for name) from chat ${chatId}`,
             );
             this.userStates.set(chatId, { state: 'AWAITING_BYTE_NAME' });
             await this.bot.sendMessage(
@@ -101,14 +161,18 @@ class TelegramBotController {
             return;
         }
 
-        console.log(`[Command] /adopt ${byteName} from chat ${chatId}`);
-        await this.processAdoption(chatId, byteName.trim());
+        console.log(`[Command] /spawn ${byteName} from chat ${chatId}`);
+        this.userStates.set(chatId, { state: 'AWAITING_BYTE_CLASS', byteName: byteName.trim() });
+        const { text, options } = this.getClassSelectionDisplay(byteName.trim());
+        await this.bot.sendMessage(chatId, text, options);
     }
 
     // Handles user state machine for multi-step interactions
     async handleMessage(msg) {
         if (!msg.text) return;
         const chatId = msg.chat.id;
+
+        this.game.recordPlayerActivity(chatId).catch(console.error);
 
         // If it's a command, clear any pending state and let the command handler take over
         if (msg.text.startsWith('/')) {
@@ -119,26 +183,105 @@ class TelegramBotController {
         const userState = this.userStates.get(chatId);
         if (userState) {
             if (userState.state === 'AWAITING_BYTE_NAME') {
-                this.userStates.delete(chatId);
+                const byteName = msg.text.trim();
                 console.log(
-                    `[State] Received byte name '${msg.text}' from chat ${chatId}`,
+                    `[State] Received byte name '${byteName}' from chat ${chatId}`,
                 );
-                await this.processAdoption(chatId, msg.text.trim());
+                this.userStates.set(chatId, { state: 'AWAITING_BYTE_CLASS', byteName: byteName });
+                const { text, options } = this.getClassSelectionDisplay(byteName);
+                await this.bot.sendMessage(chatId, text, options);
+            } else if (userState.state === 'AWAITING_DELETE_CONFIRM') {
+                clearTimeout(userState.timeoutId);
+                this.userStates.delete(chatId);
+
+                if (msg.text.trim() === 'YES') {
+                    try {
+                        await this.game.deleteByte(chatId, userState.byteId);
+                        await this.bot.sendMessage(
+                            chatId,
+                            `✅ Byte successfully deleted.`,
+                        );
+                    } catch (e) {
+                        await this.bot.sendMessage(
+                            chatId,
+                            `Failed to delete byte: ${e.message}`,
+                        );
+                    }
+                } else {
+                    await this.bot.sendMessage(
+                        chatId,
+                        `❌ Deletion cancelled.`,
+                    );
+                }
+
+                const bytes = await this.game.getBytes(chatId);
+                const player = await this.game.getPlayer(chatId);
+                await this.sendStasisUI(chatId, bytes, player);
+            } else if (userState.state.startsWith('MINIGAME_')) {
+                await this.bot.sendMessage(
+                    chatId,
+                    "⚠️ You are currently in a minigame session. Use the inline buttons to interact, or press ❌ Abort.",
+                );
+                return;
             }
         }
     }
 
-    async processAdoption(chatId, byteName) {
-        try {
-            await this.game.createByte(chatId, byteName);
-            await this.bot.sendMessage(
+    async handleMerge(msg) {
+        const chatId = msg.chat.id;
+        this.userStates.delete(chatId);
+        console.log(`[Command] /merge from chat ${chatId}`);
+
+        const bytes = await this.game.getBytes(chatId);
+        const livingBytes = bytes.filter((b) => b.isAlive);
+
+        if (livingBytes.length < 2) {
+            return this.bot.sendMessage(
                 chatId,
-                `Congratulations! You adopted ${byteName}. Use /status to check on them.`,
+                'You need at least 2 living Bytes to perform a merge.',
+            );
+        }
+
+        const webAppUrl = process.env.WEB_APP_URL;
+        if (!webAppUrl) return;
+
+        const separator = webAppUrl.includes('?') ? '&' : '?';
+        const options = {
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: '🧬 Enter Merge Lab',
+                            web_app: {
+                                url: `${webAppUrl}${separator}view=merge`,
+                            },
+                        },
+                    ],
+                ],
+            },
+        };
+
+        await this.bot.sendMessage(
+            chatId,
+            'The Merge Lab is ready. Click below to begin the sequence.',
+            options,
+        );
+    }
+
+    async processSpawn(chatId, byteName, byteClass = 'demo') {
+        try {
+            const newByte = await this.game.createByte(chatId, byteName, byteClass);
+            const player = await this.game.getPlayer(chatId);
+            await this.sendStatusUI(
+                chatId,
+                newByte,
+                player,
+                `🎉 Congratulations! You spawned ${newByte.name}!`
             );
         } catch (error) {
             await this.bot.sendMessage(
                 chatId,
-                'You already have a living byte!',
+                error.message || 'Failed to spawn a new byte.',
             );
         }
     }
@@ -247,6 +390,28 @@ class TelegramBotController {
         }
     }
 
+    // Generates the stasis bay image and updates the UI
+    async sendStasisUI(chatId, bytes, player, userMsgId = null) {
+        const { text, options } = this.getByteSelectionDisplay(bytes, player);
+
+        try {
+            const svgString = generateStasisCard(bytes, player);
+            const pngBuffer = await sharp(Buffer.from(svgString))
+                .png()
+                .toBuffer();
+            await this.sendOrUpdateUI(
+                chatId,
+                text,
+                options,
+                userMsgId,
+                pngBuffer,
+            );
+        } catch (error) {
+            console.error('Failed to generate stasis card:', error);
+            await this.sendOrUpdateUI(chatId, text, options, userMsgId, null);
+        }
+    }
+
     // Formats and constructs the main Telegram message displaying byte status
     getByteStatusDisplay(byte, player, lastActionMessage = null) {
         const status = byte.getStatus();
@@ -270,8 +435,7 @@ class TelegramBotController {
 
         let text = ` **Room:** ${roomName}\n`;
 
-        const isDormant = status.charge === 0 || status.thermal === 0 || status.defrag === 0 || status.telemetry === 0;
-        if (isDormant) {
+        if (status.isDormant) {
             text += `\n⚠️ **SYSTEM DORMANT** ⚠️\n_Core needs depleted. Passive operations suspended._\n\n`;
         }
 
@@ -290,7 +454,69 @@ class TelegramBotController {
             text += `⏱️ **Passive Effects:** ${effectsStr}\n`;
         }
 
-        text += `━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue}\n🎒 **Inventory:** ${invString}`;
+        if (room && room.id === 'market') {
+            const now = new Date();
+            const hour = now.getHours();
+            let timePhase = 'night';
+            if (hour >= 6 && hour < 18) timePhase = 'day';
+            else if (hour >= 18 && hour < 21) timePhase = 'evening';
+            const context = {
+                byte,
+                player,
+                timePhase,
+                dayOfWeek: now.getDay(),
+            };
+
+            const allShops = ShopManager.getAllShops();
+            if (allShops.length > 0) {
+                text += `\n🏪 **Market Directory:**\n`;
+                allShops.forEach((shop) => {
+                    const isOpen = shop.canAppear(context);
+                    const statusIcon = isOpen ? '🟢' : '🔴';
+                    const statusText = isOpen ? 'OPEN' : 'CLOSED';
+
+                    const d = shop.timeAvailable.daysOfWeek;
+                    let daysStr = 'Everyday';
+                    if (d && d.length < 7) {
+                        if (d.length === 2 && d.includes(0) && d.includes(6))
+                            daysStr = 'Weekends';
+                        else if (
+                            d.length === 5 &&
+                            !d.includes(0) &&
+                            !d.includes(6)
+                        )
+                            daysStr = 'Weekdays';
+                        else
+                            daysStr = d
+                                .map(
+                                    (day) =>
+                                        [
+                                            'Sun',
+                                            'Mon',
+                                            'Tue',
+                                            'Wed',
+                                            'Thu',
+                                            'Fri',
+                                            'Sat',
+                                        ][day],
+                                )
+                                .join(', ');
+                    }
+
+                    const p = shop.timeAvailable.timePhase;
+                    let phasesStr = 'All Day';
+                    if (p && p.length > 0) {
+                        phasesStr = p
+                            .map((x) => x.charAt(0).toUpperCase() + x.slice(1))
+                            .join('/');
+                    }
+
+                    text += `${statusIcon} **${shop.name}** (${statusText})\n   └ _${daysStr} | ${phasesStr}_\n`;
+                });
+            }
+        }
+
+        text += `\n━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue} ε | 🪙 **Achievement Points:** ${player.achievementPoints.available}/${player.achievementPoints.value} α\n🎒 **Inventory:** ${invString}`;
 
         if (lastActionMessage) {
             text += `\n📢 **Last Action:** ${lastActionMessage}`;
@@ -309,6 +535,8 @@ class TelegramBotController {
                         this.activityManager.getActivityButton(
                             activity,
                             webAppUrl,
+                            byte,
+                            player
                         ),
                     );
                 }
@@ -323,12 +551,37 @@ class TelegramBotController {
             { text: '🎒 Inventory', callback_data: 'nav_inventory' },
         ]);
 
+        inline_keyboard.push([
+            { text: '🔄 Refresh Status', callback_data: 'nav_status' },
+        ]);
+
         const webAppUrl = process.env.WEB_APP_URL;
         if (webAppUrl) {
             const separator = webAppUrl.includes('?') ? '&' : '?';
             inline_keyboard.push([
                 { text: '📱 Byte Specification', web_app: { url: webAppUrl } },
-                { text: '⬆️ Upgrades', web_app: { url: `${webAppUrl}${separator}view=upgrades` } },
+                {
+                    text: '⬆️ Upgrades',
+                    web_app: { url: `${webAppUrl}${separator}view=upgrades` },
+                },
+            ]);
+            inline_keyboard.push([
+                {
+                    text: '🏆 Achievements',
+                    web_app: {
+                        url: `${webAppUrl}${separator}view=achievements`,
+                    },
+                },
+                {
+                    text: '🧬 Talents',
+                    web_app: { url: `${webAppUrl}${separator}view=talents` },
+                },
+            ]);
+            inline_keyboard.push([
+                {
+                    text: '⚙️ Settings',
+                    web_app: { url: `${webAppUrl}${separator}view=settings` },
+                },
             ]);
         }
 
@@ -378,24 +631,52 @@ class TelegramBotController {
         return { text, options };
     }
 
+    // Formats and constructs the detailed item view
+    getItemDetailDisplay(player, itemId) {
+        const item = this.itemManager.getItem(itemId);
+        const amount = player.inventory[itemId] || 0;
+        let text = `🎒 **Item Details** 🎒\n\n`;
+        text += `**${item.name}** (x${amount})\n_${item.description}_\n`;
+
+        const inline_keyboard = [];
+        if (item.type === 'consumable' && amount > 0) {
+            inline_keyboard.push([
+                {
+                    text: `💊 Use ${item.shortname}`,
+                    callback_data: `use_item_${itemId}`,
+                },
+            ]);
+        }
+        inline_keyboard.push([
+            { text: '🔙 Back to Inventory', callback_data: 'nav_inventory' },
+        ]);
+
+        const options = {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard },
+        };
+        return { text, options };
+    }
+
     // Formats and constructs the room navigation view
-    getRoomsDisplay(byte, page = 0) {
+    getRoomsDisplay(byte, chatId, page = 0) {
         const rooms = this.roomManager.getAllRooms();
         const buttons = [];
+        const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim());
+        const isAdmin = adminIds.includes(chatId.toString());
 
         rooms.forEach((room) => {
-            if (room.id !== byte.room) {
-                buttons.push({
-                    text: room.name,
-                    callback_data: `nav_move_${room.id}`,
-                });
-            }
+            if (room.id === 'debug_room' && !isAdmin) return;
+            buttons.push({
+                text: room.name,
+                callback_data: `nav_move_${room.id}`,
+            });
         });
 
         const inline_keyboard = Pagination.getKeyboard(buttons, {
             page: parseInt(page, 10),
-            pageSize: 9,
-            columns: 3,
+            pageSize: 10,
+            columns: 2,
             actionPrefix: 'rooms_page',
         });
 
@@ -461,21 +742,141 @@ class TelegramBotController {
         return { text, options };
     }
 
+    getByteSelectionDisplay(bytes, player) {
+        const livingBytes = bytes.filter((b) => b.isAlive);
+        let text = `💤 **Stasis Bay**\n\nYou have ${livingBytes.length}/${player.maxBytes || 2} Bytes.\nSelect a Byte to wake up and connect to:`;
+
+        const inline_keyboard = [];
+
+        for (const byte of livingBytes) {
+            const status = byte.getStatus();
+            const gen = status.generation;
+
+            inline_keyboard.push([
+                {
+                    text: `⚡ Wake ${byte.name} (V${gen}.${byte.level})`,
+                    callback_data: `wake_byte_${byte.id}`,
+                },
+            ]);
+
+            text += `\n\n**${byte.name}** (V${gen}.${byte.level}) - Class: ${byte.byteClass}`;
+        }
+
+        text += `\n\n━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue} ε | 🪙 **Achievement Points:** ${player.achievementPoints.available}/${player.achievementPoints.value} α`;
+
+        const bottomRow = [];
+        const webAppUrl = process.env.WEB_APP_URL;
+        if (livingBytes.length >= 2 && webAppUrl) {
+            const separator = webAppUrl.includes('?') ? '&' : '?';
+            bottomRow.push({
+                text: '🧬 Merge Bytes',
+                web_app: { url: `${webAppUrl}${separator}view=merge` },
+            });
+        }
+        bottomRow.push({
+            text: '🔄 Refresh Status',
+            callback_data: 'nav_status',
+        });
+        inline_keyboard.push(bottomRow);
+
+        const adminRow = [];
+        if (livingBytes.length < (player.maxBytes || 2)) {
+            adminRow.push({
+                text: '🐣 Spawn New Byte',
+                callback_data: 'nav_spawn',
+            });
+        }
+        if (livingBytes.length > 0) {
+            adminRow.push({
+                text: '🗑️ Delete Byte',
+                callback_data: 'nav_delete',
+            });
+        }
+        if (adminRow.length > 0) {
+            inline_keyboard.push(adminRow);
+        }
+
+        if (webAppUrl) {
+            const separator = webAppUrl.includes('?') ? '&' : '?';
+            inline_keyboard.push([
+                {
+                    text: '🏆 Achievements',
+                    web_app: {
+                        url: `${webAppUrl}${separator}view=achievements`,
+                    },
+                },
+                {
+                    text: '🧬 Talents',
+                    web_app: { url: `${webAppUrl}${separator}view=talents` },
+                },
+            ]);
+            inline_keyboard.push([
+                {
+                    text: '⚙️ Settings',
+                    web_app: { url: `${webAppUrl}${separator}view=settings` },
+                },
+            ]);
+        }
+
+        const options = { parse_mode: 'Markdown' };
+        if (inline_keyboard.length > 0) {
+            options.reply_markup = { inline_keyboard };
+        }
+        return { text, options };
+    }
+
+    getDeleteSelectionDisplay(livingBytes) {
+        let text = `🗑️ **Delete Byte**\n\nSelect a Byte to permanently delete:`;
+        const inline_keyboard = [];
+
+        for (const byte of livingBytes) {
+            const gen = byte.generation || 0;
+            inline_keyboard.push([
+                {
+                    text: `🗑️ Delete ${byte.name} (V${gen}.${byte.level})`,
+                    callback_data: `delete_byte_${byte.id}`,
+                },
+            ]);
+        }
+
+        inline_keyboard.push([
+            { text: '🔙 Cancel', callback_data: 'nav_status' },
+        ]);
+
+        const options = {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard },
+        };
+        return { text, options };
+    }
+
     // Main entry point for user requesting to see their byte
     async handleStatus(msg) {
         const chatId = msg.chat.id;
         console.log(`[Command] /status from chat ${chatId}`);
-        const byte = await this.game.getByte(chatId);
+        const bytes = await this.game.getBytes(chatId);
 
-        if (!byte) {
+        if (!bytes || bytes.length === 0) {
             return this.bot.sendMessage(
                 chatId,
-                "You don't have a byte yet. Use `/adopt [name]` first.",
+                "You don't have a byte yet. Use `/spawn [name]` first.",
             );
         }
         const player = await this.game.getPlayer(chatId);
+        const activeByte = bytes.find((b) => !b.isAsleep && b.isAlive);
 
-        await this.sendStatusUI(chatId, byte, player, null, msg.message_id);
+        if (!activeByte) {
+            await this.sendStasisUI(chatId, bytes, player, msg.message_id);
+            return;
+        }
+
+        await this.sendStatusUI(
+            chatId,
+            activeByte,
+            player,
+            null,
+            msg.message_id,
+        );
     }
 
     // Lists the possible rooms a byte can currently travel to
@@ -487,7 +888,7 @@ class TelegramBotController {
         if (!byte)
             return this.bot.sendMessage(chatId, "You don't have a byte!");
 
-        const { text, options } = this.getRoomsDisplay(byte, 0);
+        const { text, options } = this.getRoomsDisplay(byte, chatId, 0);
         await this.sendOrUpdateUI(chatId, text, options, msg.message_id);
     }
 
@@ -503,15 +904,18 @@ class TelegramBotController {
         if (!byte)
             return this.bot.sendMessage(chatId, "You don't have a byte!");
 
+        const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim());
+        const isAdmin = adminIds.includes(chatId.toString());
+
         // If the user didn't specify a room, prompt them with the inline keyboard
         if (!newRoomId) {
-            const { text, options } = this.getRoomsDisplay(byte, 0);
+            const { text, options } = this.getRoomsDisplay(byte, chatId, 0);
             await this.sendOrUpdateUI(chatId, text, options, msg.message_id);
             return;
         }
 
         const room = this.roomManager.getRoom(newRoomId);
-        if (!room) {
+        if (!room || (room.id === 'debug_room' && !isAdmin)) {
             return this.bot.sendMessage(
                 chatId,
                 `Room '${newRoomId}' does not exist. Use /rooms to see available rooms.`,
@@ -527,6 +931,7 @@ class TelegramBotController {
 
         byte.room = newRoomId;
         await this.game.saveByte(byte);
+        this.game.emit(GameEvents.ROOM_ENTERED, chatId, newRoomId);
 
         await this.bot.sendMessage(
             chatId,
@@ -554,21 +959,7 @@ class TelegramBotController {
         const eventManager = require('../managers/EventManager');
 
         for (let i = 0; i < ticks; i++) {
-            await this.game.processTick(
-                eventManager,
-                this.itemManager,
-                (b, e) => {
-                    this.bot
-                        .sendMessage(
-                            b.ownerId,
-                            `🔔 **Random Event:** ${e.name}\n_${e.description}_`,
-                            { parse_mode: 'Markdown' },
-                        )
-                        .catch(() => {
-                            // Ignore send failures from forced ticks
-                        });
-                },
-            );
+            await this.game.processTick(eventManager, this.itemManager);
         }
 
         const byte = await this.game.getByte(chatId);
@@ -593,11 +984,11 @@ class TelegramBotController {
     async handleAvatar(msg, match) {
         const chatId = msg.chat.id;
         const byte = await this.game.getByte(chatId);
-        
+
         if (!byte) {
             return this.bot.sendMessage(
                 chatId,
-                "You don't have a byte yet. Use `/adopt [name]` first."
+                "You don't have a byte yet. Use `/spawn [name]` first.",
             );
         }
 
@@ -606,7 +997,7 @@ class TelegramBotController {
 
         try {
             const { generateClassBasedAvatar } = require('../util/avatar');
-            
+
             if (level2 !== null) {
                 let startLevel = Math.min(level1, level2);
                 let endLevel = Math.max(level1, level2);
@@ -614,29 +1005,48 @@ class TelegramBotController {
                 // Cap the range to 10 to avoid hitting Telegram API limits or lagging the server
                 if (endLevel - startLevel > 9) {
                     endLevel = startLevel + 9;
-                    await this.bot.sendMessage(chatId, "⚠️ Range too large. Limiting to 10 avatars.");
+                    await this.bot.sendMessage(
+                        chatId,
+                        '⚠️ Range too large. Limiting to 10 avatars.',
+                    );
                 }
 
-                console.log(`[Command] /avatar ${startLevel}-${endLevel} from chat ${chatId}`);
+                console.log(
+                    `[Command] /avatar ${startLevel}-${endLevel} from chat ${chatId}`,
+                );
                 const mediaGroup = [];
 
                 for (let lvl = startLevel; lvl <= endLevel; lvl++) {
-                    const svgString = generateClassBasedAvatar(byte.name, byte.byteClass, lvl);
-                    const pngBuffer = await sharp(Buffer.from(svgString)).png().toBuffer();
-                    
+                    const svgString = generateClassBasedAvatar(
+                        byte.name,
+                        byte.byteClass,
+                        lvl,
+                        byte.generation,
+                    );
+                    const pngBuffer = await sharp(Buffer.from(svgString))
+                        .png()
+                        .toBuffer();
+
                     mediaGroup.push({
                         type: 'photo',
                         media: pngBuffer,
                         caption: `📸 **${byte.name}** at Level ${lvl}`,
-                        parse_mode: 'Markdown'
+                        parse_mode: 'Markdown',
                     });
                 }
-                
+
                 await this.bot.sendMediaGroup(chatId, mediaGroup);
             } else {
                 console.log(`[Command] /avatar ${level1} from chat ${chatId}`);
-                const svgString = generateClassBasedAvatar(byte.name, byte.byteClass, level1);
-                const pngBuffer = await sharp(Buffer.from(svgString)).png().toBuffer();
+                const svgString = generateClassBasedAvatar(
+                    byte.name,
+                    byte.byteClass,
+                    level1,
+                    byte.generation,
+                );
+                const pngBuffer = await sharp(Buffer.from(svgString))
+                    .png()
+                    .toBuffer();
 
                 await this.bot.sendPhoto(chatId, pngBuffer, {
                     caption: `📸 **${byte.name}** at Level ${level1}`,
@@ -645,7 +1055,10 @@ class TelegramBotController {
             }
         } catch (error) {
             console.error('Failed to generate avatar:', error);
-            await this.bot.sendMessage(chatId, 'Failed to generate the avatar image(s).');
+            await this.bot.sendMessage(
+                chatId,
+                'Failed to generate the avatar image(s).',
+            );
         }
     }
 
@@ -655,15 +1068,32 @@ class TelegramBotController {
         const messageId = query.message.message_id;
         const action = query.data;
 
+        this.game.recordPlayerActivity(chatId).catch(console.error);
+
         console.log(`[Callback] Action '${action}' from chat ${chatId}`);
 
         const byte = await this.game.getByte(chatId);
         const player = await this.game.getPlayer(chatId);
         let alertMessage = '';
+        let showAlert = false;
 
         try {
-            if (!byte) {
-                alertMessage = "You don't have a byte!";
+            const isStasisAction =
+                action.startsWith('wake_byte_') ||
+                action === 'nav_status' ||
+                action === 'act_cancel' ||
+                action === 'nav_spawn' ||
+                action.startsWith('spawn_class_') ||
+                action === 'nav_delete' ||
+                action.startsWith('delete_byte_');
+
+            if (!byte && !isStasisAction) {
+                const bytes = await this.game.getBytes(chatId);
+                if (bytes.length > 0) {
+                    await this.sendStasisUI(chatId, bytes, player);
+                } else {
+                    alertMessage = "You don't have a byte!";
+                }
                 return;
             }
 
@@ -673,32 +1103,151 @@ class TelegramBotController {
             }
 
             // Gracefully ignore requests to back out of an action selector
-            if (action === 'act_cancel') {
-                await this.sendStatusUI(chatId, byte, player);
-            } else if (action === 'nav_status') {
-                await this.sendStatusUI(chatId, byte, player);
+            if (action === 'act_cancel' || action === 'nav_status') {
+                this.userStates.delete(chatId);
+                if (byte) {
+                    await this.sendStatusUI(chatId, byte, player);
+                } else {
+                    const bytes = await this.game.getBytes(chatId);
+                    await this.sendStasisUI(chatId, bytes, player);
+                }
+                return;
+            } else if (action === 'nav_spawn') {
+                const allBytes = await this.game.getBytes(chatId);
+                const livingBytes = allBytes.filter((b) => b.isAlive);
+                const maxBytes = player.maxBytes || 2;
+                if (livingBytes.length >= maxBytes) {
+                    alertMessage = `You already have the maximum number of living bytes (${maxBytes})!`;
+                } else {
+                    this.userStates.set(chatId, {
+                        state: 'AWAITING_BYTE_NAME',
+                    });
+                    await this.bot.sendMessage(
+                        chatId,
+                        'What would you like to name your new byte?',
+                    );
+                }
+                return;
+            } else if (action.startsWith('spawn_class_')) {
+                const classId = action.replace('spawn_class_', '');
+                const userState = this.userStates.get(chatId);
+                
+                if (userState && userState.state === 'AWAITING_BYTE_CLASS') {
+                    this.userStates.delete(chatId);
+                    await this.processSpawn(chatId, userState.byteName, classId);
+                } else {
+                    alertMessage = 'Spawn session expired or invalid.';
+                }
+                return;
+            } else if (action === 'nav_delete') {
+                this.userStates.delete(chatId);
+                const allBytes = await this.game.getBytes(chatId);
+                const livingBytes = allBytes.filter((b) => b.isAlive);
+                if (livingBytes.length === 0) {
+                    alertMessage = 'No bytes to delete.';
+                } else {
+                    const { text, options } =
+                        this.getDeleteSelectionDisplay(livingBytes);
+                    await this.updateMessageDisplay(query, text, options);
+                }
+                return;
+            } else if (action.startsWith('delete_byte_')) {
+                const byteId = action.replace('delete_byte_', '');
+                const allBytes = await this.game.getBytes(chatId);
+                const targetByte = allBytes.find((b) => b.id === byteId);
+
+                if (!targetByte) {
+                    alertMessage = 'Byte not found.';
+                } else {
+                    const timeoutId = setTimeout(async () => {
+                        const state = this.userStates.get(chatId);
+                        if (
+                            state &&
+                            state.state === 'AWAITING_DELETE_CONFIRM' &&
+                            state.byteId === byteId
+                        ) {
+                            this.userStates.delete(chatId);
+                            await this.bot.sendMessage(
+                                chatId,
+                                `Deletion of **${targetByte.name}** timed out.`,
+                                { parse_mode: 'Markdown' },
+                            );
+                        }
+                    }, 30000);
+
+                    this.userStates.set(chatId, {
+                        state: 'AWAITING_DELETE_CONFIRM',
+                        byteId: byteId,
+                        timeoutId: timeoutId,
+                    });
+
+                    await this.bot.sendMessage(
+                        chatId,
+                        `⚠️ Are you sure you want to permanently delete **${targetByte.name}**?\n\nType \`YES\` to confirm. Any other input will cancel this action. (Times out in 30 seconds)`,
+                        { parse_mode: 'Markdown' },
+                    );
+                }
+                return;
+            } else if (action.startsWith('wake_byte_')) {
+                const byteIdToWake = action.replace('wake_byte_', '');
+                const allBytes = await this.game.getBytes(chatId);
+                const byteToWake = allBytes.find((b) => b.id === byteIdToWake);
+
+                if (byteToWake) {
+                    for (const b of allBytes) {
+                        if (b.id !== byteToWake.id && !b.isAsleep) {
+                            b.isAsleep = true;
+                            await this.game.saveByte(b);
+                        }
+                    }
+                    byteToWake.isAsleep = false;
+                    await this.game.saveByte(byteToWake);
+
+                    await this.sendStatusUI(
+                        chatId,
+                        byteToWake,
+                        player,
+                        `Woke up ${byteToWake.name}!`,
+                    );
+                } else {
+                    alertMessage = 'Byte not found.';
+                }
             } else if (action === 'nav_inventory') {
                 const { text, options } = this.getInventoryDisplay(player, 0);
                 await this.updateMessageDisplay(query, text, options);
             } else if (action === 'nav_rooms') {
-                const { text, options } = this.getRoomsDisplay(byte, 0);
+                const { text, options } = this.getRoomsDisplay(byte, chatId, 0);
                 await this.updateMessageDisplay(query, text, options);
             } else if (action.startsWith('rooms_page_')) {
                 const page = parseInt(action.replace('rooms_page_', ''), 10);
-                const { text, options } = this.getRoomsDisplay(byte, page);
+                const { text, options } = this.getRoomsDisplay(byte, chatId, page);
                 await this.updateMessageDisplay(query, text, options);
             } else if (action.startsWith('nav_move_')) {
                 const newRoomId = action.replace('nav_move_', '');
                 const room = this.roomManager.getRoom(newRoomId);
+                const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim());
+                const isAdmin = adminIds.includes(chatId.toString());
+
                 let statusMessage = '';
-                if (room) {
-                    byte.room = newRoomId;
-                    await this.game.saveByte(byte);
-                    statusMessage = `Moved to the ${room.name}! 🚶`;
+                if (room && (room.id !== 'debug_room' || isAdmin)) {
+                    if (byte.room !== newRoomId) {
+                        byte.room = newRoomId;
+                        await this.game.saveByte(byte);
+                        statusMessage = `Moved to the ${room.name}! 🚶`;
+                        this.game.emit(
+                            GameEvents.ROOM_ENTERED,
+                            chatId,
+                            newRoomId,
+                        );
+                    } else {
+                        statusMessage = `You look around the ${room.name}. 👀`;
+                    }
                 } else {
                     alertMessage = 'Room not found!';
                 }
-                await this.sendStatusUI(chatId, byte, player, statusMessage);
+                if (room && (room.id !== 'debug_room' || isAdmin)) {
+                    await this.sendStatusUI(chatId, byte, player, statusMessage);
+                }
             } else if (action.startsWith('act_pg|')) {
                 const payload = action.replace('act_pg|', '');
                 const lastUnderscore = payload.lastIndexOf('_');
@@ -771,11 +1320,31 @@ class TelegramBotController {
                             );
                         await this.updateMessageDisplay(query, text, options);
                         return; // Stop here, wait for item selection
+                    } else if (activity.isMinigame) {
+                        const minigame = minigameManager.getMinigame(actId);
+                        if (minigame) {
+                            const result = await minigame.start(chatId, this.game, byte, player, this.itemManager, activity);
+                            if (result.error) {
+                                alertMessage = result.error;
+                            } else {
+                                this.userStates.set(chatId, result.state);
+                                await this.sendOrUpdateUI(chatId, result.display.text, result.display.options);
+                            }
+                        } else {
+                            alertMessage = 'Minigame not found!';
+                        }
+                        return;
                     } else {
                         activity.perform(byte, player, this.itemManager);
                         await this.game.saveByte(byte);
                         await this.game.savePlayer(player);
                         statusMessage = `Performed ${activity.name}!`;
+
+                        if (byte.isAsleep) {
+                            const bytes = await this.game.getBytes(chatId);
+                            await this.sendStasisUI(chatId, bytes, player);
+                            return;
+                        }
                     }
                 }
 
@@ -791,13 +1360,81 @@ class TelegramBotController {
             } else if (action.startsWith('item_info_')) {
                 const itemId = action.replace('item_info_', '');
                 const item = this.itemManager.getItem(itemId);
-                alertMessage = item
-                    ? `${item.name}: ${item.description}`
-                    : 'Item not found.';
+                if (item) {
+                    const { text, options } = this.getItemDetailDisplay(
+                        player,
+                        itemId,
+                    );
+                    await this.updateMessageDisplay(query, text, options);
+                    return;
+                } else {
+                    alertMessage = 'Item not found.';
+                }
+            } else if (action.startsWith('use_item_')) {
+                const itemId = action.replace('use_item_', '');
+                const item = this.itemManager.getItem(itemId);
+
+                if (!item || !player.hasItem(itemId, 1)) {
+                    alertMessage = "You don't have that item.";
+                } else {
+                    const success = item.use(byte, player);
+                    if (success) {
+                        player.removeItem(itemId, 1);
+                        await this.game.saveByte(byte);
+                        await this.game.savePlayer(player);
+                        await this.sendStatusUI(
+                            chatId,
+                            byte,
+                            player,
+                            `Used ${item.name}!`,
+                        );
+                        return;
+                    } else {
+                        alertMessage = `Cannot use ${item.name} right now.`;
+                    }
+                }
+                } else if (action.startsWith('minigame_')) {
+                    const userState = this.userStates.get(chatId);
+                    
+                    if (!userState || !userState.state.startsWith('MINIGAME_')) {
+                        alertMessage = 'No active minigame session.';
+                        return;
+                    }
+                    const minigameId = userState.state.replace('MINIGAME_', '');
+                    const minigame = minigameManager.getMinigame(minigameId);
+        
+                    const cmd = action.replace(`minigame_${minigameId}_`, '');
+                    if (cmd === 'abort') {
+                        const guessesRemaining = userState.history ? 6 - userState.history.length : 6;
+                        this.game.emit(GameEvents.MINIGAME_END, chatId, minigameId, { result: 'abort', guessesRemaining });
+
+                        this.userStates.delete(chatId);
+                        if (byte) {
+                            await this.sendStatusUI(chatId, byte, player, "Minigame aborted.");
+                        } else {
+                            const bytes = await this.game.getBytes(chatId);
+                            await this.sendStasisUI(chatId, bytes, player);
+                        }
+                        return;
+                    }
+                    
+                    if (minigame) {
+                        const display = await minigame.handleInput(cmd, userState, this.game, chatId, byte, player, this.itemManager);
+                        if (display) {
+                            if (display.alert) {
+                                alertMessage = display.alert;
+                                showAlert = true;
+                            } else {
+                                await this.updateMessageDisplay(query, display.text, display.options);
+                            }
+                        }
+                    }
+                    return;
             }
         } finally {
             await this.bot.answerCallbackQuery(query.id, {
                 text: alertMessage,
+                show_alert: showAlert
             });
         }
     }

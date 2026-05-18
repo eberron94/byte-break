@@ -21,7 +21,7 @@ class Need {
     }
 
     // Processes the automatic loss of satisfaction caused by the passage of time
-    tick() {
+    tick(byte = null, player = null) {
         // Naturally depletes over time
         this.deplete(this.decayRate);
     }

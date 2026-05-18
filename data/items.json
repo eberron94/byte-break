@@ -1,17 +1,56 @@
 [
     {
-        "id": "tennis_ball",
-        "name": "Tennis Ball",
-        "shortname": "Ball",
-        "description": "A bouncy green ball.",
-        "type": "general",
-        "maxCount": 5
-    },
-    {
         "id": "gold_coin",
         "name": "Gold Coin",
-        "shortname": "G",
-        "description": "Shiny currency used for buying things.",
-        "type": "currency"
+        "description": "Shiny metal chip used by ancient humans probably. It is probably worth a lot to a collector.",
+        "type": "currency",
+        "cost": 1000
+    },
+    {
+        "id": "silver_coin",
+        "name": "Silver Coin",
+        "description": "Shiny metal chip used by ancient humans probably. It is probably worth something to a collector.",
+        "type": "currency",
+        "cost": 100
+    },
+    {
+        "id": "patch_kit",
+        "name": "Patch Kit",
+        "shortname": "Patch",
+        "description": "Basic repair module to restore structural integrity.",
+        "type": "consumable",
+        "cost": 15,
+        "effects": {
+            "integrity": 50
+        }
+    },
+    {
+        "id": "byte_rebooter",
+        "name": "Byte Rebooter",
+        "shortname": "Rebooter",
+        "description": "A powerful utility that refunds all invested β from a Byte's skills and capacities to their Buffer Overflow.",
+        "type": "special",
+        "cost": 25
+    },
+    {
+        "id": "user_mutator",
+        "name": "User Mutator",
+        "shortname": "Mutator",
+        "description": "A rare consumable that refunds all invested α from your Talent tree, allowing for complete respecification.",
+        "type": "special",
+        "cost": 50
+    },
+    {
+        "id": "system_restore",
+        "name": "System Restore",
+        "shortname": "Restore",
+        "description": "Instantly satisfies all core system needs (Charge, Thermal, Defrag, Telemetry).",
+        "type": "consumable",
+        "effects": {
+            "charge": 100,
+            "thermal": 100,
+            "defrag": 100,
+            "telemetry": 100
+        }
     }
 ]

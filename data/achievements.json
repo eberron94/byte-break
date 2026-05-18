@@ -1,0 +1,44 @@
+[
+    {
+        "id": "dojo_wins",
+        "name": "Dojo Champion",
+        "description": "Emerge victorious from combat simulations.",
+        "tiers": [1, 10, 100],
+        "rewards": [1, 5, 20]
+    },
+    {
+        "id": "level_ups",
+        "name": "Power Overwhelming",
+        "description": "Upgrade a Byte's capabilities.",
+        "tiers": [1, 10, 50],
+        "rewards": [1, 5, 10]
+    },
+    {
+        "id": "shop_purchases",
+        "name": "Consumerism",
+        "description": "Purchase items from the Market.",
+        "tiers": [1, 10, 50],
+        "rewards": [1, 5, 10]
+    },
+    {
+        "id": "bytes_spawned",
+        "name": "Hello World",
+        "description": "Spawn a new Byte.",
+        "tiers": [1, 5],
+        "rewards": [1, 5]
+    },
+    {
+        "id": "bytes_merged",
+        "name": "Evolution",
+        "description": "Successfully merge Bytes into a new generation.",
+        "tiers": [1, 5, 20],
+        "rewards": [1, 5, 20]
+    },
+    {
+        "id": "combat_losses",
+        "name": "Learning Experience",
+        "description": "Suffer defeat in the Dojo.",
+        "tiers": [1, 10],
+        "rewards": [1, 2]
+    }
+]

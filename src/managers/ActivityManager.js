@@ -1,5 +1,6 @@
 const Activity = require('../models/Activity');
 const activitiesData = require('../../data/activities.json');
+const { calculateEffects } = require('../util/effects');
 
 /**
  * Loads and manages all activities available in the game from JSON configuration.
@@ -62,18 +63,28 @@ class ActivityManager {
     }
 
     // Formats the inline keyboard button for an activity, appending web parameters if needed
-    getActivityButton(activity, webAppUrl) {
+    getActivityButton(activity, webAppUrl, byte = null, player = null) {
+        let energyCostStr = '';
+        if (activity.effects && activity.effects.energy) {
+            const effects = calculateEffects(activity.effects, byte, player);
+            if (effects.energy < 0) {
+                energyCostStr = ` (-${Math.abs(effects.energy)} ε)`;
+            } else if (effects.energy > 0) {
+                energyCostStr = ` (+${effects.energy} ε)`;
+            }
+        }
+
         if (activity.isWebView && webAppUrl) {
             const separator = webAppUrl.includes('?') ? '&' : '?';
             return {
-                text: `📱 ${activity.name}`,
+                text: `📱 ${activity.name}${energyCostStr}`,
                 web_app: {
                     url: `${webAppUrl}${separator}activity=${activity.id}`,
                 },
             };
         }
         return {
-            text: activity.name,
+            text: `${activity.isMinigame ? '🎮 ' : ''}${activity.name}${energyCostStr}`,
             callback_data: `act_${activity.id}`,
         };
     }

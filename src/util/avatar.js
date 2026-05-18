@@ -1,7 +1,10 @@
 const crypto = require('crypto');
 
-function getAvatarColors(name, charClass = 'demo') {
-    const nameHash = crypto.createHash('sha256').update(name).digest('hex');
+function getAvatarColors(name, charClass = 'demo', generation = 0) {
+    const nameHash = crypto
+        .createHash('sha256')
+        .update(`${name}_${generation}`)
+        .digest('hex');
     const classHash = crypto
         .createHash('sha256')
         .update(charClass)
@@ -24,10 +27,16 @@ function getAvatarColors(name, charClass = 'demo') {
     return { primary, secondary, tertiary, bgColor, nameHash, finalHue };
 }
 
-function generateClassBasedAvatar(name, charClass = 'demo', level = 1) {
+function generateClassBasedAvatar(
+    name,
+    charClass = 'demo',
+    level = 1,
+    generation = 0,
+) {
     const { primary, secondary, tertiary, bgColor, nameHash } = getAvatarColors(
         name,
         charClass,
+        generation,
     );
 
     const gridWidth = 22;
@@ -226,8 +235,89 @@ function generateClassBasedAvatar(name, charClass = 'demo', level = 1) {
             </svg>`;
 }
 
+function generateAchievementIcon(name, rank, maxRank) {
+    const nameHash = crypto.createHash('sha256').update(name).digest('hex');
+
+    // CMY Palette
+    const cmyColors = ['#00FFFF', '#FF00FF', '#FFFF00'];
+    const bgColor = '#1e1e30';
+
+    const size = 100;
+    const padding = 15;
+    let svgElements = '';
+
+    let style = 1;
+    if (maxRank > 1 && maxRank <= 5) style = 2;
+    else if (maxRank > 5) style = 3;
+
+    let totalShapes = 0;
+    if (style === 1) totalShapes = 8;
+    else if (style === 2) totalShapes = maxRank * 3;
+    else if (style === 3) totalShapes = Math.min(20, maxRank);
+
+    let unlockedShapes = 0;
+    if (style === 1) unlockedShapes = rank > 0 ? totalShapes : 0;
+    else if (style === 2) unlockedShapes = rank * 3;
+    else if (style === 3) {
+        unlockedShapes = Math.floor((rank / maxRank) * totalShapes);
+    }
+
+    for (let i = 0; i < totalShapes; i++) {
+        const hashIndex = (i * 7) % 60;
+        const seed = parseInt(nameHash.substring(hashIndex, hashIndex + 4), 16);
+
+        const w = 15 + (seed % 35);
+        const h = 15 + ((seed >> 2) % 35);
+        const x = padding + ((seed >> 4) % Math.max(1, size - 2 * padding - w));
+        const y = padding + ((seed >> 6) % Math.max(1, size - 2 * padding - h));
+        const rotation = ((seed >> 8) % 90) - 45;
+
+        // Guarantee equal use of CMY colors, even when locked
+        let color = cmyColors[i % 3];
+
+        // Randomize the locked transparency to be very faint (inactive neon effect)
+        let opacity = 0.05 + ((seed >> 12) % 3) * 0.05;
+
+        if (i < unlockedShapes) {
+            // If unlocked, brighten the transparency significantly
+            opacity = 0.4 + ((seed >> 14) % 4) * 0.15;
+        }
+
+        const cx = x + w / 2;
+        const cy = y + h / 2;
+
+        if (style === 1) {
+            svgElements += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" fill-opacity="${opacity}" transform="rotate(${rotation}, ${cx}, ${cy})" />`;
+        } else if (style === 2) {
+            svgElements += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" fill-opacity="${opacity}" transform="rotate(${rotation}, ${cx}, ${cy})" rx="8" />`;
+        } else if (style === 3) {
+            if (seed % 2 === 0) {
+                svgElements += `<ellipse cx="${cx}" cy="${cy}" rx="${w / 2}" ry="${h / 2}" fill="${color}" fill-opacity="${opacity}" transform="rotate(${rotation}, ${cx}, ${cy})" />`;
+            } else {
+                svgElements += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${color}" fill-opacity="${opacity}" transform="rotate(${rotation}, ${cx}, ${cy})" rx="4" />`;
+            }
+        }
+    }
+
+    const isEarned = rank > 0;
+    const borderColor = isEarned ? `url(#cmyGradIcon_${nameHash})` : '#4d4d73';
+
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="cmyGradIcon_${nameHash}" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00FFFF" />
+                <stop offset="50%" stop-color="#FF00FF" />
+                <stop offset="100%" stop-color="#FFFF00" />
+            </linearGradient>
+        </defs>
+        <rect width="${size}" height="${size}" rx="12" fill="${bgColor}" stroke="${borderColor}" stroke-width="4" />
+        ${svgElements}
+    </svg>`;
+}
+
 module.exports = {
     generateClassBasedAvatar,
     getAvatarColors,
+    generateAchievementIcon,
 };
 //

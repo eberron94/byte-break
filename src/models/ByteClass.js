@@ -6,6 +6,7 @@ class ByteClass {
         this.id = data.id || data.name.toLowerCase().replace(/\s+/g, '_');
         this.name = data.name;
         this.description = data.description;
+        this.enhanceStat = data.enhanceStat || 'aptitude';
         this.investmentRates = data.investmentRates || {};
         this.innatePointsPerLevel = data.innatePointsPerLevel || {};
     }

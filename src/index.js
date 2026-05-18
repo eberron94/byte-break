@@ -12,12 +12,16 @@ const ngrok = require('@ngrok/ngrok');
 
 // --- Verify Data Files Exist Before Loading Managers ---
 const requiredDataFiles = [
+    'achievements.json',
     'activities.json',
     'classes.json',
     'events.json',
     'items.json',
     'rooms.json',
     'skills.json',
+    'shops.json',
+    'talents.json',
+    'loot.json',
 ];
 let missingFiles = false;
 for (const file of requiredDataFiles) {
@@ -41,6 +45,7 @@ const eventManager = require('./managers/EventManager');
 const itemManager = require('./managers/ItemManager');
 const WebApiController = require('./controllers/WebApiController');
 const byteClassManager = require('./managers/ByteClassManager');
+const achievementManager = require('./managers/AchievementManager');
 const dumpUsableVariables = require('./util/dumpVariables');
 
 const TOKEN = process.env.TELEGRAM_TOKEN;
@@ -58,6 +63,12 @@ async function start() {
 
     // 2. Start the bot and inject the managers to handle business logic
     const bot = new TelegramBot(TOKEN, { polling: true });
+
+    // Catch polling errors to prevent console spam on minor network drops
+    bot.on('polling_error', (error) => {
+        console.log(`[Telegram Polling Error] ${error.code || error.message}`);
+    });
+
     const controller = new TelegramBotController(
         bot,
         gameManager,
@@ -67,24 +78,11 @@ async function start() {
     );
     controller.init();
 
+    // Initialize achievements system
+    achievementManager.init(gameManager);
+
     // 3. Start the game loop (e.g. tick every 60 seconds)
-    gameManager.startGameLoop(
-        60000,
-        eventManager,
-        itemManager,
-        (byte, event) => {
-            bot.sendMessage(
-                byte.ownerId,
-                `🔔 **Random Event:** ${event.name}\n_${event.description}_`,
-                { parse_mode: 'Markdown' },
-            ).catch((err) => {
-                console.error(
-                    `Failed to send event notification to ${byte.ownerId}:`,
-                    err.message,
-                );
-            });
-        },
-    );
+    gameManager.startGameLoop(60000, eventManager, itemManager);
 
     // 4. Start the Express API server to serve the Web App
     const app = express();
@@ -99,7 +97,7 @@ async function start() {
         app,
         gameManager,
         byteClassManager,
-        controller
+        controller,
     );
     webApiController.init();
 
@@ -111,10 +109,15 @@ async function start() {
     // 5. Start ngrok tunnel automatically for local Web App testing
     try {
         console.log(`Starting ngrok tunnel on port ${PORT}...`);
-        const listener = await ngrok.forward({
+        const ngrokOptions = {
             addr: PORT,
             authtoken: process.env.NGROK_AUTHTOKEN,
-        });
+        };
+        if (process.env.NGROK_DOMAIN) {
+            ngrokOptions.domain = process.env.NGROK_DOMAIN;
+        }
+
+        const listener = await ngrok.forward(ngrokOptions);
         const url = listener.url();
         console.log(`Ngrok tunnel created: ${url}`);
 

@@ -21,7 +21,7 @@
         "id": "network_hub",
         "name": "Network Hub",
         "description": "A chaotic nexus of data streams and incoming connections.",
-        "allowedActivities": ["ping_servers"]
+        "allowedActivities": ["ping_servers", "packet_sniffer"]
     },
     {
         "id": "repair_bay",
@@ -57,7 +57,14 @@
             "debug_fill_bits",
             "debug_fill_energy",
             "debug_add_1000_bits",
-            "debug_level_up_all"
+            "debug_level_up_all",
+            "debug_menu"
         ]
+    },
+    {
+        "id": "market",
+        "name": "The Market",
+        "description": "A bustling digital exchange where bits flow freely.",
+        "allowedActivities": ["access_shop"]
     }
 ]

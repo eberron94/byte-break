@@ -12,16 +12,13 @@ class Skill {
         this.stat = config.stat;
 
         let invested = 0;
-        let innate = 0;
 
         if (typeof dbData === 'number') {
             invested = dbData; // Backwards compatibility for old raw numbers
         } else if (dbData !== null && typeof dbData === 'object') {
             invested = dbData.investedValue || 0;
-            innate = dbData.innateValue || 0;
         }
         this.investedValue = invested;
-        this.innateValue = innate;
 
         this._byte = byte; // Internal reference to the parent byte
     }

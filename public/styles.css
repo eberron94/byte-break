@@ -211,6 +211,10 @@ body {
     cursor: pointer;
     margin-top: 15px;
 }
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 .log-box {
     height: 200px;
     overflow-y: auto;
@@ -470,4 +474,81 @@ body {
 .upgrade-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.shop-item-desc {
+    font-size: 10px;
+    color: var(--tg-theme-hint-color, #aaa);
+    margin-bottom: 8px;
+    line-height: 1.2;
+}
+
+.shop-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+/* Merge Animations */
+@keyframes slideRight {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+        filter: brightness(1);
+    }
+    100% {
+        transform: translateX(75px);
+        opacity: 0;
+        filter: brightness(2);
+    }
+}
+@keyframes slideLeft {
+    0% {
+        transform: translateX(0);
+        opacity: 1;
+        filter: brightness(1);
+    }
+    100% {
+        transform: translateX(-75px);
+        opacity: 0;
+        filter: brightness(2);
+    }
+}
+@keyframes mergeFlash {
+    0% {
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+    }
+    80% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        display: none;
+    }
+}
+.merge-slide-right {
+    animation: slideRight 1.5s forwards cubic-bezier(0.4, 0, 1, 1);
+}
+.merge-slide-left {
+    animation: slideLeft 1.5s forwards cubic-bezier(0.4, 0, 1, 1);
+}
+.merge-flash {
+    animation: mergeFlash 1s forwards;
+}
+
+.merge-byte-card {
+    min-width: 110px;
+    background: #0c0c0c;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+}
+.merge-byte-card img {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 8px;
 }

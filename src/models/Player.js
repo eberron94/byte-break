@@ -1,4 +1,5 @@
 const Energy = require('./Energy');
+const AchievementPoints = require('./pools/AchievementPoints');
 
 /**
  * Represents a Telegram user, tracking their id and personal inventory.
@@ -8,10 +9,34 @@ class Player {
         this.id = data.id.toString();
         this.inventory = data.inventory || {};
         this.energy = new Energy(data.energy !== undefined ? data.energy : 100);
+        this.history = data.history || {};
+        this.maxBytes = data.maxBytes || 2;
+        this.lastAction = data.lastAction
+            ? new Date(data.lastAction)
+            : new Date();
+        this.achievementPoints = new AchievementPoints(
+            {
+                progress: data.achievements || {},
+            },
+            this,
+        );
+        this.talents = data.talents || {};
+        this.settings = data.settings || {};
+
+        // Handle daily resets (resets shop stock at UTC midnight)
+        const today = new Date().toISOString().split('T')[0];
+        if (this.history['last_login_date'] !== today) {
+            for (const key of Object.keys(this.history)) {
+                if (key.startsWith('shop_')) {
+                    delete this.history[key];
+                }
+            }
+            this.history['last_login_date'] = today;
+        }
     }
 
     // Restores energy over time
-    tick() {
+    tick(byte = null) {
         this.energy.increase(1);
     }
 
@@ -48,13 +73,54 @@ class Player {
         return true;
     }
 
+    // Logs an activity or event occurrence to the player's historical record
+    recordHistory(id) {
+        if (!this.history[id]) {
+            this.history[id] = 0;
+        }
+        this.history[id]++;
+    }
+
+    /**
+     * Refunds all invested achievement points from Talents.
+     * @returns {boolean} True if talents were refunded, false if there were none to refund.
+     */
+    refundAchievementPoints() {
+        let hasInvestments = false;
+        for (const key of Object.keys(this.talents)) {
+            if (this.talents[key] > 0) {
+                hasInvestments = true;
+                break;
+            }
+        }
+
+        if (!hasInvestments) return false;
+
+        this.talents = {};
+        return true;
+    }
+
     // Prepares the player object to be saved directly to the database
     serialize() {
         return {
             id: this.id,
             inventory: this.inventory,
             energy: this.energy.value,
+            history: this.history,
+            maxBytes: this.maxBytes,
+            lastAction: this.lastAction.toISOString(),
+            talents: this.talents,
+            settings: this.settings,
+            achievements: this.achievementPoints.progress,
         };
+    }
+
+    // Prepares the player object with additional calculated properties for the Web API
+    toWeb() {
+        const data = this.serialize();
+        data.availableAchievementPoints = this.achievementPoints.available;
+        data.achievementPoints = this.achievementPoints.value;
+        return data;
     }
 }
 

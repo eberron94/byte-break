@@ -17,6 +17,7 @@ class Item {
                 ? data.maxCount
                 : Number.MAX_SAFE_INTEGER;
         this.effects = data.effects || {};
+        this.cost = data.cost;
     }
 
     // Applies the item's configured effects to the byte and player

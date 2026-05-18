@@ -12,6 +12,7 @@ class Activity {
         this.effects = data.effects || {};
         this.itemSelect = data.itemSelect || null;
         this.isWebView = data.isWebView || false;
+        this.isMinigame = data.isMinigame || false;
     }
 
     /**

@@ -18,7 +18,8 @@ class DatabaseManager {
         // Table for persisting digital monster data using JSON strings for nested objects
         await this.db.exec(`
         CREATE TABLE IF NOT EXISTS bytes (
-          ownerId TEXT PRIMARY KEY,
+          id TEXT PRIMARY KEY,
+          ownerId TEXT NOT NULL,
           name TEXT NOT NULL,
           byteClass TEXT NOT NULL,
           needs TEXT NOT NULL,
@@ -29,7 +30,10 @@ class DatabaseManager {
           isAlive INTEGER NOT NULL,
           history TEXT NOT NULL,
           birthDate TEXT NOT NULL,
-          lastInteraction TEXT NOT NULL
+          lastInteraction TEXT NOT NULL,
+          isAsleep INTEGER NOT NULL DEFAULT 0,
+          generation INTEGER NOT NULL DEFAULT 0,
+          bufferOverflow INTEGER NOT NULL DEFAULT 0
         )
         `);
 
@@ -38,7 +42,13 @@ class DatabaseManager {
         CREATE TABLE IF NOT EXISTS players (
           id TEXT PRIMARY KEY,
           inventory TEXT NOT NULL,
-          energy INTEGER NOT NULL
+          energy INTEGER NOT NULL,
+          history TEXT DEFAULT '{}',
+          maxBytes INTEGER DEFAULT 2,
+          lastAction TEXT DEFAULT '',
+          talents TEXT DEFAULT '{}',
+          settings TEXT DEFAULT '{}',
+          achievements TEXT DEFAULT '{}'
         )
         `);
 
@@ -63,17 +73,20 @@ class DatabaseManager {
             ...JSON.parse(data.skills),
             ...JSON.parse(data.pools),
             history: JSON.parse(data.history),
+            isAsleep: data.isAsleep === 1,
+            generation: data.generation || 0,
+            bufferOverflow: data.bufferOverflow || 0,
         };
     }
 
     // --- BYTE QUERIES ---
 
-    async getByteByOwner(ownerId) {
-        const data = await this.db.get(
+    async getBytesByOwner(ownerId) {
+        const rows = await this.db.all(
             'SELECT * FROM bytes WHERE ownerId = ?',
             [ownerId.toString()],
         );
-        return this._parseByteData(data);
+        return rows.map((row) => this._parseByteData(row));
     }
 
     async getAliveBytes() {
@@ -81,17 +94,16 @@ class DatabaseManager {
         return rows.map((row) => this._parseByteData(row));
     }
 
-    async deleteByte(ownerId) {
-        return this.db.run('DELETE FROM bytes WHERE ownerId = ?', [
-            ownerId.toString(),
-        ]);
+    async deleteByte(id) {
+        return this.db.run('DELETE FROM bytes WHERE id = ?', [id.toString()]);
     }
 
     async insertByte(s) {
         return this.db.run(
-            `INSERT INTO bytes (ownerId, name, byteClass, needs, stats, skills, pools, room, isAlive, history, birthDate, lastInteraction)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO bytes (id, ownerId, name, byteClass, needs, stats, skills, pools, room, isAlive, history, birthDate, lastInteraction, isAsleep, generation, bufferOverflow)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
+                s.id,
                 s.ownerId,
                 s.name,
                 s.byteClass,
@@ -104,6 +116,9 @@ class DatabaseManager {
                 JSON.stringify(s.history),
                 s.birthDate,
                 s.lastInteraction,
+                s.isAsleep,
+                s.generation,
+                s.bufferOverflow,
             ],
         );
     }
@@ -111,9 +126,10 @@ class DatabaseManager {
     async updateByte(s) {
         return this.db.run(
             `UPDATE bytes 
-             SET byteClass = ?, needs = ?, stats = ?, skills = ?, pools = ?, room = ?, isAlive = ?, history = ?, lastInteraction = ?
-             WHERE ownerId = ?`,
+             SET name = ?, byteClass = ?, needs = ?, stats = ?, skills = ?, pools = ?, room = ?, isAlive = ?, history = ?, lastInteraction = ?, isAsleep = ?, generation = ?, bufferOverflow = ?
+             WHERE id = ?`,
             [
+                s.name,
                 s.byteClass,
                 JSON.stringify(s.needs),
                 JSON.stringify(s.stats),
@@ -123,12 +139,27 @@ class DatabaseManager {
                 s.isAlive,
                 JSON.stringify(s.history),
                 s.lastInteraction,
-                s.ownerId,
+                s.isAsleep,
+                s.generation,
+                s.bufferOverflow,
+                s.id,
             ],
         );
     }
 
     // --- PLAYER QUERIES ---
+
+    _safeParse(val) {
+        if (!val) return {};
+        try {
+            let parsed = JSON.parse(val);
+            // Correctly unwrap double-stringified objects on the fly
+            if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+            return parsed || {};
+        } catch (e) {
+            return {};
+        }
+    }
 
     async getPlayer(id) {
         const data = await this.db.get('SELECT * FROM players WHERE id = ?', [
@@ -137,17 +168,58 @@ class DatabaseManager {
         if (!data) return null;
         return {
             ...data,
-            inventory: JSON.parse(data.inventory),
+            inventory: this._safeParse(data.inventory),
+            history: this._safeParse(data.history),
+            maxBytes: data.maxBytes || 2,
+            lastAction: data.lastAction || new Date().toISOString(),
+            talents: this._safeParse(data.talents),
+            settings: this._safeParse(data.settings),
+            achievements: this._safeParse(data.achievements),
         };
     }
 
     async savePlayer(s) {
         return this.db.run(
-            `INSERT INTO players (id, inventory, energy)
-             VALUES (?, ?, ?)
-             ON CONFLICT(id) DO UPDATE SET inventory = excluded.inventory, energy = excluded.energy`,
-            [s.id, JSON.stringify(s.inventory), s.energy],
+            `INSERT INTO players (id, inventory, energy, history, maxBytes, lastAction, talents, settings, achievements)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET inventory = excluded.inventory, energy = excluded.energy, history = excluded.history, maxBytes = excluded.maxBytes, lastAction = excluded.lastAction, talents = excluded.talents, settings = excluded.settings, achievements = excluded.achievements`,
+            [
+                s.id,
+                JSON.stringify(s.inventory),
+                s.energy,
+                JSON.stringify(s.history || {}),
+                s.maxBytes,
+                s.lastAction,
+                JSON.stringify(s.talents || {}),
+                JSON.stringify(s.settings || {}),
+                JSON.stringify(s.achievements || {}),
+            ],
         );
+    }
+
+    async getActivePlayers(sinceIsoString) {
+        const rows = await this.db.all(
+            'SELECT * FROM players WHERE lastAction >= ?',
+            [sinceIsoString],
+        );
+        return rows.map((row) => ({
+            ...row,
+            inventory: this._safeParse(row.inventory),
+            history: this._safeParse(row.history),
+            maxBytes: row.maxBytes || 2,
+            lastAction: row.lastAction || new Date().toISOString(),
+            talents: this._safeParse(row.talents),
+            settings: this._safeParse(row.settings),
+            achievements: this._safeParse(row.achievements),
+        }));
+    }
+
+    async updatePlayerActivity(id) {
+        const now = new Date().toISOString();
+        return this.db.run(`UPDATE players SET lastAction = ? WHERE id = ?`, [
+            now,
+            id.toString(),
+        ]);
     }
 
     // --- UI QUERIES ---

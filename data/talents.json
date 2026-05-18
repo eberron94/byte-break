@@ -1,0 +1,54 @@
+[
+    {
+        "id": "overflow_bonus",
+        "name": "Buffer Capacity",
+        "description": "Increases buffer overflow granted upon merging Bytes by 5 per level.",
+        "maxLevel": 5,
+        "cost": 1,
+        "prereq": {}
+    },
+    {
+        "id": "genetic_memory",
+        "name": "Genetic Memory",
+        "description": "Increases inherited base stats of newly merged Bytes by 1 per level.",
+        "maxLevel": 5,
+        "cost": 2,
+        "prereq": {
+            "overflow_bonus": 2
+        }
+    },
+    {
+        "id": "merge_optimization",
+        "name": "Evolution Efficiency",
+        "description": "Reduces the Energy cost of merging Bytes by 15 per level.",
+        "maxLevel": 5,
+        "cost": 2,
+        "prereq": {
+            "overflow_bonus": 2
+        }
+    },
+    {
+        "id": "dojo_veteran",
+        "name": "Dojo Veteran",
+        "description": "Increases Bits earned from Combat Simulations by 5% per level.",
+        "maxLevel": 100,
+        "cost": 1,
+        "prereq": {},
+        "reqAchievements": {
+            "dojo_wins": 5
+        }
+    },
+    {
+        "id": "genetic_dominance",
+        "name": "Genetic Dominance",
+        "description": "Increases inherited base stats of newly merged Bytes by an additional 1 per level.",
+        "maxLevel": 3,
+        "cost": 5,
+        "prereq": {
+            "genetic_memory": 2
+        },
+        "reqAchievements": {
+            "bytes_merged": 2
+        }
+    }
+]

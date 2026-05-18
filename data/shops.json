@@ -1,0 +1,52 @@
+[
+    {
+        "id": "general_store",
+        "name": "General Store",
+        "description": "A reliable source for everyday digital necessities.",
+        "timeAvailable": {
+            "daysOfWeek": [0, 1, 2, 3, 4, 5, 6]
+        },
+        "categories": ["general", "consumable", "special"],
+        "items": [],
+        "priceMultiplier": 1.0,
+        "sellMultiplier": 0.5,
+        "requirements": {},
+        "stock": {
+            "patch_kit": 3,
+            "byte_rebooter": 1,
+            "user_mutator": 1
+        }
+    },
+    {
+        "id": "night_market",
+        "name": "Night Market",
+        "description": "Shady deals and rare finds, only open after dark.",
+        "timeAvailable": {
+            "timePhase": ["evening", "night"]
+        },
+        "categories": [],
+        "items": ["patch_kit", "byte_rebooter", "user_mutator"],
+        "priceMultiplier": 1.5,
+        "sellMultiplier": 0.8,
+        "requirements": {},
+        "stock": {
+            "patch_kit": 3,
+            "byte_rebooter": 1,
+            "user_mutator": 1
+        }
+    },
+    {
+        "id": "weekend_blowout",
+        "name": "Weekend Blowout",
+        "description": "Crazy weekend discounts! Everything must go!",
+        "timeAvailable": {
+            "daysOfWeek": [0, 6]
+        },
+        "categories": ["general", "consumable"],
+        "items": [],
+        "priceMultiplier": 0.8,
+        "sellMultiplier": 0.2,
+        "requirements": {},
+        "stock": {}
+    }
+]

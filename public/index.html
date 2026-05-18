@@ -36,13 +36,307 @@
         </div>
 
         <div id="upgrades-view" style="display: none; padding: 20px">
-            <span class="close-btn" onclick="window.Telegram.WebApp.close()"
-                >&times;</span
-            >
+            <span class="close-btn" onclick="closeWebView()">&times;</span>
             <h2 style="margin-top: 0">System Upgrades</h2>
             <p>Bit Buffer: <strong id="upgrade-bits">0</strong> β</p>
             <div id="upgrade-list" style="margin-bottom: 15px"></div>
-            <button class="btn" onclick="hideUpgrades()">Back to Status</button>
+        </div>
+
+        <div id="shop-view" style="display: none; padding: 20px">
+            <span class="close-btn" onclick="closeWebView()">&times;</span>
+            <h2 style="margin-top: 0">🛒 Shop</h2>
+            <p>
+                Bit Buffer:
+                <strong id="shop-bits" style="color: #ffd700">0</strong> β
+            </p>
+            <div id="shop-list" style="margin-bottom: 15px"></div>
+        </div>
+
+        <div id="merge-view" style="display: none; padding: 20px">
+            <span class="close-btn" onclick="closeWebView()">&times;</span>
+            <h2 style="margin-top: 0; color: #9c27b0">🧬 Merge Lab</h2>
+            <p id="merge-instruction" style="margin-bottom: 15px">
+                Select two Bytes to merge.
+                <strong style="color: #f44336">Parents will be lost!</strong
+                ><br /><br />
+                <span
+                    style="
+                        font-size: 12px;
+                        color: #ccc;
+                        line-height: 1.4;
+                        display: block;
+                        background: #2a2a40;
+                        padding: 10px;
+                        border-radius: 8px;
+                        border: 1px solid #4d4d73;
+                    "
+                >
+                    🧬 <b>Evolution Mechanics:</b><br />
+                    • <b>Class:</b> Inherits the class of the
+                    <i>first</i> selected Byte (Primary).<br />
+                    • <b>Stats:</b> Averages the Core Stats of both parents.<br />
+                    • <b>Secondary Bonus:</b> The second Byte adds its
+                    (Generation + 1) to its class's Enhance Stat.<br />
+                    • <b>Generation:</b> Increases by +1 over the highest
+                    parent.<br />
+                    • <b>Overflow:</b> Grants bonus β based on the lowest
+                    parent's level.<br />
+                    • <b>Cost:</b> Requires
+                    <span id="merge-cost-instruction">100</span> Player Energy (ε)
+                    to execute.
+                </span>
+            </p>
+
+            <div
+                id="merge-selection"
+                style="
+                    display: flex;
+                    gap: 15px;
+                    overflow-x: auto;
+                    margin-bottom: 20px;
+                    padding-top: 12px;
+                    padding-bottom: 10px;
+                "
+            ></div>
+
+            <div id="merge-form" style="display: none">
+                <input
+                    type="text"
+                    id="merge-name-input"
+                    placeholder="Enter new Byte designation..."
+                    style="
+                        width: 100%;
+                        padding: 12px;
+                        margin-bottom: 15px;
+                        background: #2a2a40;
+                        color: #fff;
+                        border: 2px solid #4d4d73;
+                        border-radius: 8px;
+                        box-sizing: border-box;
+                        font-size: 16px;
+                    "
+                />
+                <button
+                    id="merge-btn"
+                    class="btn"
+                    onclick="executeMerge()"
+                    style="
+                        background: linear-gradient(to right, #9c27b0, #3f51b5);
+                    "
+                >
+                    Initiate Sequence (Cost: 100 ε)
+                </button>
+            </div>
+
+            <div
+                id="merge-animation"
+                style="
+                    display: none;
+                    text-align: center;
+                    margin-top: 40px;
+                    position: relative;
+                "
+            >
+                <div
+                    style="
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        gap: 50px;
+                    "
+                >
+                    <img
+                        id="merge-parent-1"
+                        src=""
+                        style="width: 100px; height: 100px"
+                    />
+                    <img
+                        id="merge-parent-2"
+                        src=""
+                        style="width: 100px; height: 100px"
+                    />
+                </div>
+                <div
+                    id="merge-flash"
+                    style="
+                        display: none;
+                        width: 100vw;
+                        height: 100vh;
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        background: white;
+                        z-index: 9999;
+                        pointer-events: none;
+                    "
+                ></div>
+                <div id="merge-result" style="display: none; margin-top: -30px">
+                    <h3
+                        style="
+                            color: #4caf50;
+                            font-size: 24px;
+                            margin-bottom: 10px;
+                        "
+                    >
+                        Evolution Complete!
+                    </h3>
+                    <img
+                        id="merge-child"
+                        src=""
+                        style="
+                            width: 150px;
+                            height: 150px;
+                            background: #0c0c0c;
+                            border-radius: 15px;
+                            border: 3px solid #9c27b0;
+                        "
+                        class="pop"
+                    />
+                    <button
+                        class="btn"
+                        onclick="closeWebView()"
+                        style="margin-top: 30px"
+                    >
+                        Return to Stasis Bay
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="talents-view" style="display: none; padding: 20px">
+            <span class="close-btn" onclick="closeWebView()">&times;</span>
+            <h2 style="margin-top: 0; color: #ff9800">🧬 Talents</h2>
+            <p>
+                Achievement Points:
+                <strong id="talent-alpha" style="color: #ff9800">0 / 0</strong>
+                α
+            </p>
+            <div id="talent-list" style="margin-bottom: 15px"></div>
+        </div>
+
+        <div id="achievements-view" style="display: none; padding: 20px">
+            <span class="close-btn" onclick="closeWebView()">&times;</span>
+            <h2 style="margin-top: 0; color: #4caf50">🏆 Achievements</h2>
+            <div id="achievement-list" style="margin-bottom: 15px"></div>
+        </div>
+
+        <div id="settings-view" style="display: none; padding: 20px">
+            <span class="close-btn" onclick="closeWebView()">&times;</span>
+            <h2 style="margin-top: 0">⚙️ Settings</h2>
+
+            <div class="section-title" style="margin: 20px 0 10px 0">
+                NOTIFICATIONS
+            </div>
+            <div
+                class="settings-list"
+                style="
+                    background: #2a2a40;
+                    border: 2px solid #4d4d73;
+                    border-radius: 10px;
+                    padding: 15px;
+                    margin-bottom: 20px;
+                "
+            >
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-bottom: 15px;
+                    "
+                >
+                    <div>
+                        <div style="font-weight: bold; color: #fff">
+                            Random Events
+                        </div>
+                        <div
+                            style="
+                                font-size: 11px;
+                                color: var(--tg-theme-hint-color, #aaa);
+                            "
+                        >
+                            Get notified when events occur in the background.
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input
+                            type="checkbox"
+                            id="setting-notify-events"
+                            onchange="
+                                toggleSetting(
+                                    'notifications',
+                                    'events',
+                                    this.checked,
+                                )
+                            "
+                        />
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+
+                <div
+                    style="
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    "
+                >
+                    <div>
+                        <div style="font-weight: bold; color: #fff">
+                            Energy Rewards
+                        </div>
+                        <div
+                            style="
+                                font-size: 11px;
+                                color: var(--tg-theme-hint-color, #aaa);
+                            "
+                        >
+                            Get notified when you receive community energy.
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input
+                            type="checkbox"
+                            id="setting-notify-energy"
+                            onchange="
+                                toggleSetting(
+                                    'notifications',
+                                    'energy',
+                                    this.checked,
+                                )
+                            "
+                        />
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="debug-view" style="display: none; padding: 20px">
+            <span class="close-btn" onclick="closeWebView()">&times;</span>
+            <h2 style="margin-top: 0; color: #f44336">🛠️ Debug Menu</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 20px">
+                <button
+                    class="btn"
+                    style="margin-top: 0; padding: 8px"
+                    onclick="expandAllDebug()"
+                >
+                    Expand All
+                </button>
+                <button
+                    class="btn"
+                    style="margin-top: 0; padding: 8px; background: #555"
+                    onclick="collapseAllDebug()"
+                >
+                    Collapse All
+                </button>
+            </div>
+            <div id="debug-content">
+                <div id="debug-player" style="margin-bottom: 20px"></div>
+                <div id="debug-achievements" style="margin-bottom: 20px"></div>
+                <div id="debug-items" style="margin-bottom: 20px"></div>
+                <div id="debug-bytes"></div>
+            </div>
         </div>
 
         <div id="arena" style="display: none">
@@ -130,7 +424,7 @@
                 id="btn-finish"
                 class="btn"
                 style="display: none"
-                onclick="window.Telegram.WebApp.close()"
+                onclick="closeWebView()"
             >
                 Extract Data & Disconnect
             </button>
@@ -144,6 +438,17 @@
             </div>
         </div>
 
+        <script src="js/globals.js"></script>
+        <script src="js/utils.js"></script>
+        <script src="js/main.js"></script>
+        <script src="js/upgrades.js"></script>
+        <script src="js/shop.js"></script>
+        <script src="js/combat.js"></script>
+        <script src="js/merge.js"></script>
+        <script src="js/talents.js"></script>
+        <script src="js/achievements.js"></script>
+        <script src="js/settings.js"></script>
+        <script src="js/debug.js"></script>
         <script src="app.js"></script>
     </body>
 </html>

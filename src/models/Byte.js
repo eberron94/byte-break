@@ -24,6 +24,7 @@ const { calculateEffects } = require('../util/effects');
  */
 class Byte {
     constructor(data) {
+        this.id = data.id || `${data.ownerId}_${data.name}`;
         this.ownerId = data.ownerId;
         this.name = data.name;
         this.byteClass = data.byteClass || 'demo';
@@ -57,20 +58,22 @@ class Byte {
             integrity: new Integrity(data.integrity, this),
             teraflops: new TeraFlops(data.teraflops, this),
             bandwidth: new Bandwidth(data.bandwidth, this),
-            bits: new Bits(data.bits || data.xp, this), // Fallback to 'xp' data for legacy bytes
+            bits: new Bits(data.bits, this),
         };
 
         this.room = data.room || 'charging_station';
-        if (this.room === 'living_room') this.room = 'charging_station'; // Migrate legacy bytes
         this.isAlive = data.isAlive === 1;
         this.birthDate = new Date(data.birthDate);
         this.lastInteraction = new Date(data.lastInteraction);
 
         this.history = data.history || {};
+
+        this.isAsleep = data.isAsleep === 1 || data.isAsleep === true;
+        this.generation = data.generation || 0;
+        this.bufferOverflow = data.bufferOverflow || 0;
     }
 
-    get level() {
-        // Calculate total Bits invested so far
+    get investedBits() {
         let totalInvestedBits = 0;
         Object.values(this.skills).forEach((skill) => {
             totalInvestedBits += skill.bitsInvested;
@@ -78,19 +81,20 @@ class Byte {
         Object.values(this.pools).forEach((pool) => {
             totalInvestedBits += pool.bitsInvested || 0; // Ignore Knowledge pools that don't have this property
         });
+        return totalInvestedBits;
+    }
+
+    get level() {
         // Base level 1 + 1 level per 100 invested bits (can be tuned later)
-        return 1 + Math.floor(totalInvestedBits / 100);
+        return 1 + Math.floor(this.investedBits / 100);
     }
 
     get bitsToNextLevel() {
-        let totalInvestedBits = 0;
-        Object.values(this.skills).forEach((skill) => {
-            totalInvestedBits += skill.bitsInvested;
-        });
-        Object.values(this.pools).forEach((pool) => {
-            totalInvestedBits += pool.bitsInvested || 0;
-        });
-        return this.level * 100 - totalInvestedBits;
+        return this.level * 100 - this.investedBits;
+    }
+
+    get isDormant() {
+        return Object.values(this.needs).some((need) => need.value === 0);
     }
 
     /**
@@ -108,7 +112,18 @@ class Byte {
                 if (value > 0) {
                     this.pools[key].increase(value);
                 } else {
-                    this.pools[key].decrease(Math.abs(value));
+                    const amount = Math.abs(value);
+                    if (key === 'bits' && this.bufferOverflow > 0) {
+                        if (this.bufferOverflow >= amount) {
+                            this.bufferOverflow -= amount;
+                        } else {
+                            const remaining = amount - this.bufferOverflow;
+                            this.bufferOverflow = 0;
+                            this.pools[key].decrease(remaining);
+                        }
+                    } else {
+                        this.pools[key].decrease(amount);
+                    }
                 }
             } else if (this.stats[key]) {
                 this.stats[key].value += value;
@@ -124,6 +139,8 @@ class Byte {
                         (this.pools[target].investedValue || 0) + value;
                     this.pools[target].increase(value);
                 }
+            } else if (key === 'isAsleep') {
+                this.isAsleep = value;
             }
         }
 
@@ -142,16 +159,13 @@ class Byte {
     /**
      * Global clock cycle action for the byte. Drives need decay over time.
      */
-    tick() {
+    tick(player = null) {
         if (!this.isAlive) return;
 
         // Trigger natural decay across all loaded needs
-        Object.values(this.needs).forEach((need) => need.tick());
+        Object.values(this.needs).forEach((need) => need.tick(this, player));
 
-        const isDormant = Object.values(this.needs).some(
-            (need) => need.value === 0,
-        );
-        if (isDormant) {
+        if (this.isDormant) {
             return;
         }
 
@@ -160,7 +174,7 @@ class Byte {
             const calculatedEffects = calculateEffects(
                 currentRoom.tickEffects,
                 this,
-                null,
+                player,
             );
             this.applyEffects(calculatedEffects);
         }
@@ -168,6 +182,34 @@ class Byte {
 
     updateLastInteraction() {
         this.lastInteraction = new Date();
+    }
+
+    /**
+     * Refunds all invested bits back into the buffer overflow.
+     * @param {Object} byteClass The canonical class definition for this byte
+     * @returns {number} The total bits refunded.
+     */
+    refundBits(byteClass) {
+        const refundedBits = this.investedBits;
+
+        for (const [key, cost] of Object.entries(byteClass.investmentRates)) {
+            if (this.pools[key] && this.pools[key].investedValue > 0) {
+                this.pools[key].maxValue -= this.pools[key].investedValue;
+                this.pools[key].value = Math.min(
+                    this.pools[key].value,
+                    this.pools[key].maxValue,
+                );
+                this.pools[key].investedValue = 0;
+            } else if (this.skills[key] && this.skills[key].investedValue > 0) {
+                this.skills[key].investedValue = 0;
+            }
+        }
+
+        if (refundedBits > 0) {
+            this.bufferOverflow = (this.bufferOverflow || 0) + refundedBits;
+        }
+
+        return refundedBits;
     }
 
     // Helper method to extract flat core stats
@@ -205,10 +247,7 @@ class Byte {
         const skills = Object.fromEntries(
             Object.entries(this.skills).map(([k, skill]) => [
                 k,
-                {
-                    investedValue: skill.investedValue,
-                    innateValue: skill.innateValue,
-                },
+                skill.investedValue,
             ]),
         );
         const pools = Object.fromEntries(
@@ -223,6 +262,7 @@ class Byte {
         );
 
         return {
+            id: this.id,
             ownerId: this.ownerId,
             name: this.name,
             byteClass: this.byteClass,
@@ -235,7 +275,18 @@ class Byte {
             history: this.history,
             birthDate: this.birthDate.toISOString(),
             lastInteraction: this.lastInteraction.toISOString(),
+            isAsleep: this.isAsleep ? 1 : 0,
+            generation: this.generation,
+            bufferOverflow: this.bufferOverflow,
         };
+    }
+
+    // Prepares the byte object with additional calculated properties for the Web API
+    toWeb() {
+        const data = this.serialize();
+        data.level = this.level;
+        data.investedBits = this.investedBits;
+        return data;
     }
 
     // Formats relevant display data for front-end rendering
@@ -254,6 +305,9 @@ class Byte {
             skills: this.getSkills(),
             pools: this.getPools(),
             isAlive: this.isAlive,
+            generation: this.generation,
+            isDormant: this.isDormant,
+            bufferOverflow: this.bufferOverflow,
         };
     }
 }
@@ -281,7 +335,14 @@ class ByteBuilder {
             .withRoom('charging_station')
             .withIsAlive(1)
             .withBirthDate(now)
-            .withLastInteraction(now);
+            .withLastInteraction(now)
+            .withGeneration(0)
+            .withBufferOverflow(0);
+    }
+
+    withId(id) {
+        this.byteData.id = id;
+        return this;
     }
 
     withOwnerId(ownerId) {
@@ -353,6 +414,16 @@ class ByteBuilder {
 
     withLastInteraction(lastInteraction) {
         this.byteData.lastInteraction = lastInteraction;
+        return this;
+    }
+
+    withGeneration(generation) {
+        this.byteData.generation = generation;
+        return this;
+    }
+
+    withBufferOverflow(bufferOverflow) {
+        this.byteData.bufferOverflow = bufferOverflow;
         return this;
     }
 

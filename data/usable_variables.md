@@ -5,6 +5,9 @@ These variables are injected into the context of effects when evaluated as strin
 ## `byte` Object
 ### Numbers
 - `byte.bitsToNextLevel`
+- `byte.bufferOverflow`
+- `byte.generation`
+- `byte.investedBits`
 - `byte.level`
 - `byte.needs.charge.decayRate`
 - `byte.needs.charge.maxValue`
@@ -33,47 +36,36 @@ These variables are injected into the context of effects when evaluated as strin
 - `byte.pools.teraflops.maxValue`
 - `byte.pools.teraflops.value`
 - `byte.skills.assault.bitsInvested`
-- `byte.skills.assault.innateValue`
 - `byte.skills.assault.investedValue`
 - `byte.skills.assault.value`
 - `byte.skills.compile.bitsInvested`
-- `byte.skills.compile.innateValue`
 - `byte.skills.compile.investedValue`
 - `byte.skills.compile.value`
 - `byte.skills.compression.bitsInvested`
-- `byte.skills.compression.innateValue`
 - `byte.skills.compression.investedValue`
 - `byte.skills.compression.value`
 - `byte.skills.datamine.bitsInvested`
-- `byte.skills.datamine.innateValue`
 - `byte.skills.datamine.investedValue`
 - `byte.skills.datamine.value`
 - `byte.skills.firewall.bitsInvested`
-- `byte.skills.firewall.innateValue`
 - `byte.skills.firewall.investedValue`
 - `byte.skills.firewall.value`
 - `byte.skills.override.bitsInvested`
-- `byte.skills.override.innateValue`
 - `byte.skills.override.investedValue`
 - `byte.skills.override.value`
 - `byte.skills.parse.bitsInvested`
-- `byte.skills.parse.innateValue`
 - `byte.skills.parse.investedValue`
 - `byte.skills.parse.value`
 - `byte.skills.scan.bitsInvested`
-- `byte.skills.scan.innateValue`
 - `byte.skills.scan.investedValue`
 - `byte.skills.scan.value`
 - `byte.skills.shred.bitsInvested`
-- `byte.skills.shred.innateValue`
 - `byte.skills.shred.investedValue`
 - `byte.skills.shred.value`
 - `byte.skills.spoof.bitsInvested`
-- `byte.skills.spoof.innateValue`
 - `byte.skills.spoof.investedValue`
 - `byte.skills.spoof.value`
 - `byte.skills.sync.bitsInvested`
-- `byte.skills.sync.innateValue`
 - `byte.skills.sync.investedValue`
 - `byte.skills.sync.value`
 - `byte.stats.aptitude.value`
@@ -84,9 +76,12 @@ These variables are injected into the context of effects when evaluated as strin
 
 ### Booleans
 - `byte.isAlive`
+- `byte.isAsleep`
+- `byte.isDormant`
 
 ### Strings
 - `byte.byteClass`
+- `byte.id`
 - `byte.name`
 - `byte.needs.charge.id`
 - `byte.needs.charge.name`
@@ -164,11 +159,19 @@ These variables are injected into the context of effects when evaluated as strin
 
 ## `player` Object
 ### Numbers
+- `player.achievementPoints.available`
+- `player.achievementPoints.invested`
+- `player.achievementPoints.maxValue`
+- `player.achievementPoints.value`
 - `player.energy.maxValue`
 - `player.energy.value`
+- `player.maxBytes`
 
 ### Strings
+- `player.achievementPoints.id`
+- `player.achievementPoints.name`
 - `player.energy.id`
 - `player.energy.name`
+- `player.history.last_login_date`
 - `player.id`
 
