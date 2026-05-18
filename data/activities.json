@@ -80,7 +80,6 @@
             "scaleWithPlayer": true,
             "hpMultiplier": 0.8,
             "tfMultiplier": 0.8,
-            "bandwidthMultiplier": 0.8,
             "winEffects": [
                 { "type": "loot", "table": "dojo_win_easy" }
             ]
@@ -105,7 +104,6 @@
             "scaleWithPlayer": true,
             "hpMultiplier": 1.0,
             "tfMultiplier": 1.0,
-            "bandwidthMultiplier": 1.0,
             "winEffects": [
                 { "type": "loot", "table": "dojo_win_normal" }
             ]
@@ -130,7 +128,6 @@
             "scaleWithPlayer": true,
             "hpMultiplier": 1.2,
             "tfMultiplier": 1.2,
-            "bandwidthMultiplier": 1.2,
             "skills": {
                 "assault": 5,
                 "firewall": 5
@@ -223,7 +220,6 @@
         "effects": [
             { "type": "upgrade_integrity", "amount": 1 },
             { "type": "upgrade_teraflops", "amount": 1 },
-            { "type": "upgrade_bandwidth", "amount": 1 },
             { "type": "upgrade_assault", "amount": 1 },
             { "type": "upgrade_firewall", "amount": 1 },
             { "type": "upgrade_compile", "amount": 1 },

@@ -13,7 +13,6 @@ const SkillManager = require('../managers/SkillManager');
 
 const Integrity = require('./pools/Integrity');
 const TeraFlops = require('./pools/TeraFlops');
-const Bandwidth = require('./pools/Bandwidth');
 const Bits = require('./pools/Bits');
 
 const RoomManager = require('../managers/RoomManager');
@@ -57,7 +56,6 @@ class Byte {
         this.pools = {
             integrity: new Integrity(data.integrity, this),
             teraflops: new TeraFlops(data.teraflops, this),
-            bandwidth: new Bandwidth(data.bandwidth, this),
             bits: new Bits(data.bits, this),
         };
 

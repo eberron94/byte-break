@@ -59,7 +59,6 @@
             "debug_fill_telemetry",
             "debug_fill_integrity",
             "debug_fill_teraflops",
-            "debug_fill_bandwidth",
             "debug_fill_bits",
             "debug_fill_energy",
             "debug_add_1000_bits",

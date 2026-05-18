@@ -70,8 +70,7 @@ function renderStatsHtml(byte) {
     statsHtml += `<div class="section-title">CAPACITIES</div>`;
     const displayPools = [
         { key: 'integrity', color: '#f44336' },
-        { key: 'teraflops', color: '#3f51b5' },
-        { key: 'bandwidth', color: '#8bc34a' },
+        { key: 'teraflops', color: '#3f51b5' }
     ];
 
     for (const poolConfig of displayPools) {

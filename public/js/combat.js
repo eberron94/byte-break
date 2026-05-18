@@ -93,15 +93,11 @@ async function startCombat() {
                 `${(pState.hp / pState.maxHp) * 100}%`;
             document.getElementById('combat-player-tf').style.width =
                 `${(pState.tf / pState.maxTf) * 100}%`;
-            document.getElementById('combat-player-bw').style.width =
-                `${(pState.bandwidth / pState.maxBandwidth) * 100}%`;
 
             document.getElementById('combat-enemy-hp').style.width =
                 `${(eState.hp / eState.maxHp) * 100}%`;
             document.getElementById('combat-enemy-tf').style.width =
                 `${(eState.tf / eState.maxTf) * 100}%`;
-            document.getElementById('combat-enemy-bw').style.width =
-                `${(eState.bandwidth / eState.maxBandwidth) * 100}%`;
         }
 
         // Animate the log entries sequentially

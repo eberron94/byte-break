@@ -17,8 +17,7 @@
             "spoof": 10,
             "compression": 10,
             "integrity": 5,
-            "teraflops": 5,
-            "bandwidth": 5
+            "teraflops": 5
         },
         "innatePointsPerLevel": {
             "assault": 1,
@@ -33,8 +32,7 @@
             "spoof": 1,
             "compression": 1,
             "integrity": 5,
-            "teraflops": 5,
-            "bandwidth": 5
+            "teraflops": 5
         }
     },
     {
@@ -55,8 +53,7 @@
             "spoof": 6,
             "compression": 10,
             "integrity": 8,
-            "teraflops": 5,
-            "bandwidth": 5
+            "teraflops": 5
         },
         "innatePointsPerLevel": {
             "assault": 1,
@@ -71,8 +68,7 @@
             "spoof": 2,
             "compression": 1,
             "integrity": 3,
-            "teraflops": 6,
-            "bandwidth": 6
+            "teraflops": 6
         }
     },
     {
@@ -93,8 +89,7 @@
             "spoof": 20,
             "compression": 10,
             "integrity": 3,
-            "teraflops": 8,
-            "bandwidth": 6
+            "teraflops": 8
         },
         "innatePointsPerLevel": {
             "assault": 1,
@@ -109,8 +104,7 @@
             "spoof": 0,
             "compression": 1,
             "integrity": 8,
-            "teraflops": 3,
-            "bandwidth": 4
+            "teraflops": 3
         }
     },
     {
@@ -131,8 +125,7 @@
             "spoof": 12,
             "compression": 10,
             "integrity": 8,
-            "teraflops": 4,
-            "bandwidth": 6
+            "teraflops": 4
         },
         "innatePointsPerLevel": {
             "assault": 3,
@@ -147,8 +140,7 @@
             "spoof": 1,
             "compression": 1,
             "integrity": 3,
-            "teraflops": 6,
-            "bandwidth": 4
+            "teraflops": 6
         }
     },
     {
@@ -169,8 +161,7 @@
             "spoof": 12,
             "compression": 5,
             "integrity": 5,
-            "teraflops": 5,
-            "bandwidth": 4
+            "teraflops": 5
         },
         "innatePointsPerLevel": {
             "assault": 0,
@@ -185,8 +176,7 @@
             "spoof": 0,
             "compression": 2,
             "integrity": 5,
-            "teraflops": 6,
-            "bandwidth": 6
+            "teraflops": 6
         }
     },
     {
@@ -207,8 +197,7 @@
             "spoof": 10,
             "compression": 8,
             "integrity": 6,
-            "teraflops": 6,
-            "bandwidth": 3
+            "teraflops": 6
         },
         "innatePointsPerLevel": {
             "assault": 1,
@@ -223,8 +212,7 @@
             "spoof": 1,
             "compression": 1,
             "integrity": 4,
-            "teraflops": 4,
-            "bandwidth": 8
+            "teraflops": 4
         }
     }
 ]

@@ -24,16 +24,12 @@ class CombatManager {
                     maxHp: p.maxHp,
                     tf: p.tf,
                     maxTf: p.maxTf,
-                    bandwidth: p.bandwidth,
-                    maxBandwidth: p.maxBandwidth,
                 },
                 enemy: {
                     hp: e.hp,
                     maxHp: e.maxHp,
                     tf: e.tf,
                     maxTf: e.maxTf,
-                    bandwidth: e.bandwidth,
-                    maxBandwidth: e.maxBandwidth,
                 },
             },
         });
@@ -104,8 +100,6 @@ class CombatManager {
             maxHp: byte.pools.integrity.maxValue || 100,
             tf: byte.pools.teraflops.value,
             maxTf: byte.pools.teraflops.maxValue || 100,
-            bandwidth: byte.pools.bandwidth.value,
-            maxBandwidth: byte.pools.bandwidth.maxValue || 100,
             skills: byte.getSkills(),
             modifiers: {
                 firewallShred: 0,
