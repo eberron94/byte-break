@@ -1,3 +1,5 @@
+const { checkRequirements } = require('../util/requirements');
+
 class Shop {
     constructor(data) {
         this.id = data.id;
@@ -10,7 +12,7 @@ class Shop {
             data.priceMultiplier !== undefined ? data.priceMultiplier : 1.0;
         this.sellMultiplier =
             data.sellMultiplier !== undefined ? data.sellMultiplier : 0.5;
-        this.requirements = data.requirements || {};
+        this.requirements = data.requirements || [];
         this.stock = data.stock || {};
     }
 
@@ -30,46 +32,16 @@ class Shop {
             return false;
 
         // Check prerequisites
-        const req = this.requirements;
-        if (!req || Object.keys(req).length === 0) return true;
-
-        const categories = ['needs', 'stats', 'skills', 'pools'];
-        for (const category of categories) {
-            if (req[category] && byte && byte[category]) {
-                for (const [key, range] of Object.entries(req[category])) {
-                    const item = byte[category][key];
-                    if (!item) continue;
-                    if (item.value !== undefined) {
-                        if (range.min !== undefined && item.value < range.min)
-                            return false;
-                        if (range.max !== undefined && item.value > range.max)
-                            return false;
-                    }
-                }
-            }
-        }
-
-        if (req.energy && player && player.energy) {
-            if (
-                req.energy.min !== undefined &&
-                player.energy.value < req.energy.min
+        if (
+            !checkRequirements(
+                this.requirements,
+                byte,
+                player,
+                context.itemManager,
+                context,
             )
-                return false;
-            if (
-                req.energy.max !== undefined &&
-                player.energy.value > req.energy.max
-            )
-                return false;
-        }
-
-        if (req.history && byte && byte.history) {
-            for (const [key, range] of Object.entries(req.history)) {
-                const historyValue = byte.history[key] || 0;
-                if (range.min !== undefined && historyValue < range.min)
-                    return false;
-                if (range.max !== undefined && historyValue > range.max)
-                    return false;
-            }
+        ) {
+            return false;
         }
 
         return true;
@@ -77,7 +49,9 @@ class Shop {
 
     acceptsItem(item) {
         if (!item) return false;
-        return this.categories.includes(item.type) || this.items.includes(item.id);
+        return (
+            this.categories.includes(item.type) || this.items.includes(item.id)
+        );
     }
 
     // Finds all items valid for this shop and applies the price multiplier
@@ -86,6 +60,8 @@ class Shop {
         return allItems
             .filter((item) => {
                 if (item.cost === undefined) return false;
+                if (item.type === 'key' && player && player.hasItem(item.id, 1))
+                    return false;
                 return this.acceptsItem(item);
             })
             .map((item) => {

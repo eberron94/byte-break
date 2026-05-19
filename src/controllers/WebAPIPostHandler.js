@@ -25,7 +25,9 @@ const WebAPIPostHandler = {
     async mergeBytes(req, res) {
         const { userId, byte1Id, byte2Id, newName } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -69,7 +71,9 @@ const WebAPIPostHandler = {
     async upgradeByte(req, res) {
         const { userId, upgradeKey } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -150,7 +154,9 @@ const WebAPIPostHandler = {
     async handleBuyItem(req, res) {
         const { userId, shopId, itemId } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -167,10 +173,14 @@ const WebAPIPostHandler = {
             const timeContext = getTimeContext();
             const context = { byte, player, ...timeContext };
             if (!shop.canAppear(context)) {
-                return res.status(400).json({ error: 'Shop is currently closed' });
+                return res
+                    .status(400)
+                    .json({ error: 'Shop is currently closed' });
             }
             if (!shop.acceptsItem(item)) {
-                return res.status(400).json({ error: 'Shop does not trade this item' });
+                return res
+                    .status(400)
+                    .json({ error: 'Shop does not trade this item' });
             }
 
             if (item.cost === undefined) {
@@ -192,8 +202,19 @@ const WebAPIPostHandler = {
                 }
             }
 
-            if (item.maxCount !== undefined && (player.inventory[itemId] || 0) >= item.maxCount) {
-                return res.status(400).json({ error: 'Inventory full for this item' });
+            if (
+                item.maxCount !== undefined &&
+                (player.inventory[itemId] || 0) >= item.maxCount
+            ) {
+                return res
+                    .status(400)
+                    .json({ error: 'Inventory full for this item' });
+            }
+
+            if (item.type === 'key' && player.hasItem(itemId, 1)) {
+                return res
+                    .status(400)
+                    .json({ error: 'You already own this key' });
             }
 
             // Deduct cost and add item
@@ -238,7 +259,9 @@ const WebAPIPostHandler = {
     async handleSellItem(req, res) {
         const { userId, shopId, itemId } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -255,10 +278,14 @@ const WebAPIPostHandler = {
             const timeContext = getTimeContext();
             const context = { byte, player, ...timeContext };
             if (!shop.canAppear(context)) {
-                return res.status(400).json({ error: 'Shop is currently closed' });
+                return res
+                    .status(400)
+                    .json({ error: 'Shop is currently closed' });
             }
             if (!shop.acceptsItem(item)) {
-                return res.status(400).json({ error: 'Shop does not trade this item' });
+                return res
+                    .status(400)
+                    .json({ error: 'Shop does not trade this item' });
             }
 
             if (!player.hasItem(itemId, 1)) {
@@ -296,7 +323,9 @@ const WebAPIPostHandler = {
     async simulateCombat(req, res) {
         const { userId, activityId } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -306,7 +335,11 @@ const WebAPIPostHandler = {
             if (!playerByte)
                 return res.status(404).json({ error: 'Byte not found' });
             if (playerByte.pools.integrity.value <= 0)
-                return res.status(400).json({ error: 'Byte lacks sufficient Integrity to fight.' });
+                return res
+                    .status(400)
+                    .json({
+                        error: 'Byte lacks sufficient Integrity to fight.',
+                    });
 
             const activity = this.gameManager.activityManager.getActivity(
                 activityId || 'combat_simulation',
@@ -396,8 +429,11 @@ const WebAPIPostHandler = {
                     playerByte,
                     player,
                 );
-                const grantedLoot =
-                    LootManager.processLoot(calculatedWinEffects, player, ItemManager);
+                const grantedLoot = LootManager.processLoot(
+                    calculatedWinEffects,
+                    player,
+                    ItemManager,
+                );
                 applyEffects(
                     calculatedWinEffects,
                     playerByte,
@@ -486,7 +522,9 @@ const WebAPIPostHandler = {
     async buyTalent(req, res) {
         const { userId, talentId } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -505,7 +543,15 @@ const WebAPIPostHandler = {
             const timeContext = getTimeContext();
             const context = { byte, player, ...timeContext };
 
-            if (!checkRequirements(talent.requirements, byte, player, ItemManager, context)) {
+            if (
+                !checkRequirements(
+                    talent.requirements,
+                    byte,
+                    player,
+                    ItemManager,
+                    context,
+                )
+            ) {
                 return res.status(400).json({ error: 'Prerequisites not met' });
             }
 
@@ -526,7 +572,9 @@ const WebAPIPostHandler = {
     async useRebooter(req, res) {
         const { userId } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -583,7 +631,9 @@ const WebAPIPostHandler = {
     async useMutator(req, res) {
         const { userId } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -669,7 +719,7 @@ const WebAPIPostHandler = {
 
     async debugItem(req, res) {
         try {
-            const { userId, itemId, amount } = req.body;
+            const { userId, itemId, amount, resetCooldown } = req.body;
             const player = await this.gameManager.getPlayer(userId);
             if (!player)
                 return res.status(404).json({ error: 'Player not found' });
@@ -680,11 +730,15 @@ const WebAPIPostHandler = {
                 player.removeItem(itemId, Math.abs(amount));
             }
 
+            if (resetCooldown) {
+                delete player.history[`item_used_${itemId}`];
+            }
+
             await this.gameManager.savePlayer(player);
             this.gameManager.emit(
                 GameEvents.DEBUG_ACTION,
                 userId,
-                `Item ${itemId} modified by ${amount}`,
+                `Item ${itemId} modified (Amount: ${amount}, Cooldown Reset: ${!!resetCooldown})`,
             );
             res.json({ success: true });
         } catch (error) {

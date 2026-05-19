@@ -270,6 +270,7 @@ class GameManager extends EventEmitter {
                         player,
                         ...timeContext,
                         itemManager,
+                        tickCounter: this.tickCounter,
                     };
 
                     // Attempt to trigger a random event

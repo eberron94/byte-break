@@ -174,6 +174,9 @@ function renderDebugItems() {
                 <button class="btn" style="width: auto; padding: 5px 10px; background: #f44336; margin: 0; font-size: 14px;" onclick="setDebugItem('${item.id}', -1)">-1</button>
                 <button class="btn" style="width: auto; padding: 5px 10px; background: #4caf50; margin: 0; font-size: 14px;" onclick="setDebugItem('${item.id}', 1)">+1</button>
             </div>
+            <div style="display: flex; justify-content: center; margin-top: 5px;">
+                <button class="btn" style="width: auto; padding: 5px 10px; background: #2196f3; margin: 0; font-size: 12px;" onclick="resetDebugItemCooldown('${item.id}')">Reset CD</button>
+            </div>
         </div>`;
     }
     html += '</div></div>';
@@ -186,6 +189,19 @@ async function setDebugItem(itemId, amount) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ userId: user.id, itemId, amount }),
+        });
+        await loadDebugData();
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+async function resetDebugItemCooldown(itemId) {
+    try {
+        await fetch('/api/debug/item', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, itemId, amount: 0, resetCooldown: true }),
         });
         await loadDebugData();
     } catch (e) {

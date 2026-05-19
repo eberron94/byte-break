@@ -19,13 +19,45 @@ class Item {
                 : Number.MAX_SAFE_INTEGER;
         this.effects = data.effects || {};
         this.cost = data.cost;
+        this.isConsumed = data.isConsumed !== undefined ? data.isConsumed : (this.type === 'consumable');
+        this.cooldown = data.cooldown || 0;
+    }
+
+    isOnCooldown(player) {
+        if (this.cooldown <= 0 || !player) return false;
+        const lastUsedStr = player.history[`item_used_${this.id}`];
+        if (!lastUsedStr) return false;
+        const lastUsed = new Date(lastUsedStr).getTime();
+        const now = Date.now();
+        const diffMins = (now - lastUsed) / (1000 * 60);
+        return diffMins < this.cooldown;
+    }
+
+    getCooldownRemaining(player) {
+        if (this.cooldown <= 0 || !player) return 0;
+        const lastUsedStr = player.history[`item_used_${this.id}`];
+        if (!lastUsedStr) return 0;
+        const lastUsed = new Date(lastUsedStr).getTime();
+        const now = Date.now();
+        const diffMins = (now - lastUsed) / (1000 * 60);
+        if (diffMins >= this.cooldown) return 0;
+        return Math.ceil(this.cooldown - diffMins);
     }
 
     // Applies the item's configured effects to the byte and player
     use(byte, player = null, itemManager = null) {
+        if (this.isOnCooldown(player)) {
+            throw new Error(`Item is on cooldown. Wait ${this.getCooldownRemaining(player)} minute(s).`);
+        }
         const locals = getTimeContext();
         const calculatedEffects = calculateEffects(this.effects, byte, player, locals);
-        return applyEffects(calculatedEffects, byte, player, itemManager);
+        const success = applyEffects(calculatedEffects, byte, player, itemManager);
+
+        if (success && this.cooldown > 0 && player) {
+            player.history[`item_used_${this.id}`] = new Date().toISOString();
+        }
+
+        return success;
     }
 }
 

@@ -152,11 +152,21 @@ async function handleCallbackQuery(query) {
             const { text, options } = this.getInventoryDisplay(player, 0);
             await this.updateMessageDisplay(query, text, options);
         } else if (action === 'nav_rooms') {
-            const { text, options } = this.getRoomsDisplay(byte, player, chatId, 0);
+            const { text, options } = this.getRoomsDisplay(
+                byte,
+                player,
+                chatId,
+                0,
+            );
             await this.updateMessageDisplay(query, text, options);
         } else if (action.startsWith('rooms_page_')) {
             const page = parseInt(action.replace('rooms_page_', ''), 10);
-            const { text, options } = this.getRoomsDisplay(byte, player, chatId, page);
+            const { text, options } = this.getRoomsDisplay(
+                byte,
+                player,
+                chatId,
+                page,
+            );
             await this.updateMessageDisplay(query, text, options);
         } else if (action.startsWith('nav_move_')) {
             const newRoomId = action.replace('nav_move_', '');
@@ -168,7 +178,8 @@ async function handleCallbackQuery(query) {
             let statusMessage = '';
             if (room && (room.id !== 'debug_room' || isAdmin)) {
                 if (!room.canEnter(byte, player, this.itemManager)) {
-                    alertMessage = "You do not meet the requirements to enter this room.";
+                    alertMessage =
+                        'You do not meet the requirements to enter this room.';
                 } else if (byte.room !== newRoomId) {
                     byte.room = newRoomId;
                     await this.game.saveByte(byte);
@@ -209,6 +220,8 @@ async function handleCallbackQuery(query) {
                 const item = this.itemManager.getItem(itemId);
                 if (!item || !player.hasItem(itemId, 1)) {
                     alertMessage = "You don't have that item.";
+                } else if (item.isOnCooldown(player)) {
+                    alertMessage = `Item is on cooldown. Wait ${item.getCooldownRemaining(player)} minute(s).`;
                 } else {
                     activity.perform(byte, player, this.itemManager, itemId);
                     await this.game.saveByte(byte);
@@ -299,20 +312,26 @@ async function handleCallbackQuery(query) {
             if (!item || !player.hasItem(itemId, 1)) {
                 alertMessage = "You don't have that item.";
             } else {
-                const success = item.use(byte, player, this.itemManager);
-                if (success) {
-                    player.removeItem(itemId, 1);
-                    await this.game.saveByte(byte);
-                    await this.game.savePlayer(player);
-                    await this.sendStatusUI(
-                        chatId,
-                        byte,
-                        player,
-                        `Used ${item.name}!`,
-                    );
-                    return;
-                } else {
-                    alertMessage = `Cannot use ${item.name} right now.`;
+                try {
+                    const success = item.use(byte, player, this.itemManager);
+                    if (success) {
+                        if (item.isConsumed) {
+                            player.removeItem(itemId, 1);
+                        }
+                        await this.game.saveByte(byte);
+                        await this.game.savePlayer(player);
+                        await this.sendStatusUI(
+                            chatId,
+                            byte,
+                            player,
+                            `Used ${item.name}!`,
+                        );
+                        return;
+                    } else {
+                        alertMessage = `Cannot use ${item.name} right now.`;
+                    }
+                } catch (err) {
+                    alertMessage = err.message;
                 }
             }
         } else if (action.startsWith('minigame_')) {
@@ -376,8 +395,12 @@ async function handleCallbackQuery(query) {
             return;
         }
     } catch (error) {
-        console.error(`[TelegramCallbackHandler] Error processing action '${action}':`, error);
-        alertMessage = 'A critical error occurred while processing your request.';
+        console.error(
+            `[TelegramCallbackHandler] Error processing action '${action}':`,
+            error,
+        );
+        alertMessage =
+            'A critical error occurred while processing your request.';
         showAlert = true;
     } finally {
         await this.bot.answerCallbackQuery(query.id, {

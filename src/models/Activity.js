@@ -53,7 +53,7 @@ class Activity {
             for (const [itemId, amount] of Object.entries(player.inventory)) {
                 if (amount > 0) {
                     const item = itemManager.getItem(itemId);
-                    if (item) {
+                    if (item && !item.isOnCooldown(player)) {
                         if (
                             this.itemSelect.type &&
                             item.type === this.itemSelect.type
@@ -107,10 +107,14 @@ class Activity {
             if (this.itemSelect && selectedItemId && itemManager && player) {
                 const item = itemManager.getItem(selectedItemId);
                 if (item && player.hasItem(selectedItemId, 1)) {
-                    item.use(byte, player, itemManager);
-                    // Only remove the item if it's consumable
-                    if (item.type === 'consumable') {
-                        player.removeItem(selectedItemId, 1);
+                    try {
+                        item.use(byte, player, itemManager);
+                        // Only remove the item if it's consumed
+                        if (item.isConsumed) {
+                            player.removeItem(selectedItemId, 1);
+                        }
+                    } catch (err) {
+                        console.error('Failed to use item during activity:', err);
                     }
                 }
             }

@@ -12,6 +12,7 @@ class Event {
         this.probability = data.probability || 0;
         this.requirements = data.requirements || [];
         this.effects = data.effects || {};
+        this.ticksPerCheck = data.ticksPerCheck;
     }
 
     /**

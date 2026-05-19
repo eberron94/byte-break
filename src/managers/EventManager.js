@@ -60,6 +60,19 @@ class EventManager {
         delete locals.itemManager;
 
         for (const event of events) {
+            if (event.ticksPerCheck && context.tickCounter) {
+                const tpc = evaluateExpression(
+                    event.ticksPerCheck,
+                    context.byte,
+                    context.player,
+                    locals,
+                );
+                // If tpc is greater than 1, only check on the appropriate tick interval
+                if (tpc > 1 && context.tickCounter % tpc !== 0) {
+                    continue;
+                }
+            }
+
             const evaluatedProb =
                 typeof event.probability === 'string'
                     ? evaluateExpression(
