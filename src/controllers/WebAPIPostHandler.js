@@ -108,7 +108,6 @@ const WebAPIPostHandler = {
             if (playerByte.skills[upgradeKey])
                 playerByte.skills[upgradeKey].investedValue += 1;
             else if (playerByte.pools[upgradeKey]) {
-                playerByte.pools[upgradeKey].maxValue += 1;
                 playerByte.pools[upgradeKey].investedValue += 1;
                 playerByte.pools[upgradeKey].increase(1); // Heal the newly gained capacity immediately
             } else
@@ -652,13 +651,12 @@ const WebAPIPostHandler = {
                 if (byte.pools[key])
                     byte.pools[key].value = byte.pools[key].maxValue;
             } else if (field === 'stats') {
-                if (byte.stats[key]) byte.stats[key].value = numValue;
+                if (byte.stats[key]) byte.stats[key].baseValue = numValue;
             } else if (field === 'skills') {
                 if (byte.skills[key]) byte.skills[key].investedValue = numValue;
             } else if (field === 'pools') {
                 if (byte.pools[key]) {
                     byte.pools[key].investedValue = numValue;
-                    byte.pools[key].maxValue = numValue; // Approximate debug override
                     byte.pools[key].value = Math.min(
                         byte.pools[key].value,
                         byte.pools[key].maxValue,

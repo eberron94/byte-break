@@ -1,14 +1,23 @@
 const LootManager = require('../managers/LootManager');
+const exprCache = new Map();
 
 /**
  * Evaluates a mathematical expression string using byte and player data.
  */
-function evaluateExpression(expr, byte, player) {
+function evaluateExpression(expr, byte, player, locals = {}) {
     if (typeof expr === 'number' || typeof expr === 'boolean') return expr;
     if (typeof expr === 'string') {
         try {
-            const func = new Function('byte', 'player', `return ${expr};`);
-            const result = func(byte, player);
+            const localKeys = Object.keys(locals).sort();
+            const cacheKey = expr + '|' + localKeys.join(',');
+            let func = exprCache.get(cacheKey);
+            if (!func) {
+                const args = ['byte', 'player', ...localKeys];
+                func = new Function(...args, `return ${expr};`);
+                exprCache.set(cacheKey, func);
+            }
+            const localValues = localKeys.map(k => locals[k]);
+            const result = func(byte, player, ...localValues);
             if (typeof result === 'number')
                 return isNaN(result) ? 0 : Math.floor(result);
             return result;
@@ -23,7 +32,7 @@ function evaluateExpression(expr, byte, player) {
 /**
  * Calculates the effects based on an array of effect objects.
  */
-function calculateEffects(effects, byte, player) {
+function calculateEffects(effects, byte, player, locals = {}) {
     if (!Array.isArray(effects)) {
         console.warn('`effects` is not an array. Please update JSON format.');
         return {};
@@ -38,7 +47,7 @@ function calculateEffects(effects, byte, player) {
         let shouldApply = true;
 
         if (effect.die !== undefined) {
-            const dieSize = evaluateExpression(effect.die, byte, player);
+            const dieSize = evaluateExpression(effect.die, byte, player, locals);
             if (dieSize < 1 || Math.floor(Math.random() * dieSize) + 1 !== 1) {
                 shouldApply = false;
             }
@@ -50,16 +59,19 @@ function calculateEffects(effects, byte, player) {
                     const currentAmount = calculated.inventory[effect.id] || 0;
                     calculated.inventory[effect.id] =
                         currentAmount +
-                        evaluateExpression(effect.amount, byte, player);
+                        evaluateExpression(effect.amount, byte, player, locals);
                 }
             } else if (key === 'loot') {
                 if (effect.table) {
                     if (!calculated.loot) calculated.loot = [];
                     calculated.loot.push(effect.table);
                 }
+            } else if (key === 'hediff') {
+                if (!calculated.hediffs) calculated.hediffs = [];
+                calculated.hediffs.push({ id: effect.id, action: effect.action || 'escalate' });
             } else {
                 if (effect.amount !== undefined) {
-                    const value = evaluateExpression(effect.amount, byte, player);
+                    const value = evaluateExpression(effect.amount, byte, player, locals);
                     if (typeof value === 'number') {
                         const currentAmount = calculated[key] || 0;
                         calculated[key] = currentAmount + value;

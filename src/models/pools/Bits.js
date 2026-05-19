@@ -9,7 +9,11 @@ class Bits extends Knowledge {
     }
 
     get maxValue() {
-        return 10 * Math.pow(2, this._byte ? this._byte.level + 2 : 3);
+        let max = 10 * Math.pow(2, this._byte ? this._byte.level + 2 : 3);
+        if (this._byte && typeof this._byte.getHediffModifier === 'function') {
+            max += this._byte.getHediffModifier('pool', this.id);
+        }
+        return max;
     }
 }
 

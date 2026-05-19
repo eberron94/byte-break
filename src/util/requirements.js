@@ -17,6 +17,11 @@ function checkRequirements(
 
     const { timePhase, dayOfWeek } = context;
 
+    // Safely prepare locals for expression evaluation without shadowing core parameters
+    const locals = { ...context, ...(context.locals || {}) };
+    delete locals.byte;
+    delete locals.player;
+
     for (const req of requirements) {
         switch (req.type) {
             case 'room':
@@ -46,19 +51,29 @@ function checkRequirements(
 
                 const reqMin =
                     req.min !== undefined
-                        ? evaluateExpression(req.min, byte, player)
+                        ? evaluateExpression(req.min, byte, player, locals)
                         : undefined;
                 const reqMax =
                     req.max !== undefined
-                        ? evaluateExpression(req.max, byte, player)
+                        ? evaluateExpression(req.max, byte, player, locals)
                         : undefined;
                 const reqMaxValMin =
                     req.maxValueMin !== undefined
-                        ? evaluateExpression(req.maxValueMin, byte, player)
+                        ? evaluateExpression(
+                              req.maxValueMin,
+                              byte,
+                              player,
+                              locals,
+                          )
                         : undefined;
                 const reqMaxValMax =
                     req.maxValueMax !== undefined
-                        ? evaluateExpression(req.maxValueMax, byte, player)
+                        ? evaluateExpression(
+                              req.maxValueMax,
+                              byte,
+                              player,
+                              locals,
+                          )
                         : undefined;
 
                 if (reqMin !== undefined && item.value < reqMin) return false;
@@ -72,11 +87,11 @@ function checkRequirements(
                 if (!player || !player.energy) return false;
                 const eMin =
                     req.min !== undefined
-                        ? evaluateExpression(req.min, byte, player)
+                        ? evaluateExpression(req.min, byte, player, locals)
                         : undefined;
                 const eMax =
                     req.max !== undefined
-                        ? evaluateExpression(req.max, byte, player)
+                        ? evaluateExpression(req.max, byte, player, locals)
                         : undefined;
                 if (eMin !== undefined && player.energy.value < eMin)
                     return false;
@@ -88,11 +103,11 @@ function checkRequirements(
                 const histVal = byte.history[req.key] || 0;
                 const hMin =
                     req.min !== undefined
-                        ? evaluateExpression(req.min, byte, player)
+                        ? evaluateExpression(req.min, byte, player, locals)
                         : undefined;
                 const hMax =
                     req.max !== undefined
-                        ? evaluateExpression(req.max, byte, player)
+                        ? evaluateExpression(req.max, byte, player, locals)
                         : undefined;
                 if (hMin !== undefined && histVal < hMin) return false;
                 if (hMax !== undefined && histVal > hMax) return false;
@@ -102,11 +117,11 @@ function checkRequirements(
                 const invAmt = player.inventory[req.id] || 0;
                 const iMin =
                     req.min !== undefined
-                        ? evaluateExpression(req.min, byte, player)
+                        ? evaluateExpression(req.min, byte, player, locals)
                         : undefined;
                 const iMax =
                     req.max !== undefined
-                        ? evaluateExpression(req.max, byte, player)
+                        ? evaluateExpression(req.max, byte, player, locals)
                         : undefined;
                 if (iMin !== undefined && invAmt < iMin) return false;
                 if (iMax !== undefined && invAmt > iMax) return false;
@@ -127,7 +142,7 @@ function checkRequirements(
                 }
                 const aRank =
                     req.rank !== undefined
-                        ? evaluateExpression(req.rank, byte, player)
+                        ? evaluateExpression(req.rank, byte, player, locals)
                         : undefined;
                 if (aRank !== undefined && currentRank < aRank) return false;
                 break;
@@ -136,9 +151,36 @@ function checkRequirements(
                 const talentLvl = player.talents[req.id] || 0;
                 const tLevel =
                     req.level !== undefined
-                        ? evaluateExpression(req.level, byte, player)
+                        ? evaluateExpression(req.level, byte, player, locals)
                         : undefined;
                 if (tLevel !== undefined && talentLvl < tLevel) return false;
+                break;
+            case 'hediff':
+                if (!byte || !byte.hediffs) return false;
+                const hData = byte.hediffs[req.id];
+                if (!hData) return false;
+
+                const sMin =
+                    req.minStacks !== undefined
+                        ? evaluateExpression(
+                              req.minStacks,
+                              byte,
+                              player,
+                              locals,
+                          )
+                        : undefined;
+                const sMax =
+                    req.maxStacks !== undefined
+                        ? evaluateExpression(
+                              req.maxStacks,
+                              byte,
+                              player,
+                              locals,
+                          )
+                        : undefined;
+
+                if (sMin !== undefined && hData.stacks < sMin) return false;
+                if (sMax !== undefined && hData.stacks > sMax) return false;
                 break;
             case 'timePhase':
                 if (

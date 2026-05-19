@@ -1,8 +1,8 @@
 const Need = require('./Need');
 
 class Telemetry extends Need {
-    constructor(value) {
-        super('Telemetry', value, 1);
+    constructor(value, byte = null) {
+        super('Telemetry', value, 1, 100, byte);
     }
 
     tick(byte = null, player = null) {

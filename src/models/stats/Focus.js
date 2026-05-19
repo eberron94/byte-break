@@ -1,8 +1,8 @@
 const Stat = require('./Stat');
 
 class Focus extends Stat {
-    constructor(data) {
-        super('Focus', data);
+    constructor(data, byte = null) {
+        super('Focus', data, byte);
     }
 }
 

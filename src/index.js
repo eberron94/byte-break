@@ -22,6 +22,7 @@ const requiredDataFiles = [
     'shops.json',
     'talents.json',
     'loot.json',
+    'hediffs.json',
 ];
 let missingFiles = false;
 for (const file of requiredDataFiles) {

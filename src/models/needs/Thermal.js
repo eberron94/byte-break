@@ -1,8 +1,8 @@
 const Need = require('./Need');
 
 class Thermal extends Need {
-    constructor(value) {
-        super('Thermal', value, 3); // Decays a bit faster than charge
+    constructor(value, byte = null) {
+        super('Thermal', value, 3, 100, byte); // Decays a bit faster than charge
     }
 
     tick(byte = null, player = null) {

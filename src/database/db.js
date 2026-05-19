@@ -37,6 +37,12 @@ class DatabaseManager {
         )
         `);
 
+        try {
+            await this.db.exec(`ALTER TABLE bytes ADD COLUMN hediffs TEXT DEFAULT '{}'`);
+        } catch (e) {
+            // Column might already exist
+        }
+
         // Table for persisting player data (e.g., inventory tracking)
         await this.db.exec(`
         CREATE TABLE IF NOT EXISTS players (
@@ -76,6 +82,7 @@ class DatabaseManager {
             isAsleep: data.isAsleep === 1,
             generation: data.generation || 0,
             bufferOverflow: data.bufferOverflow || 0,
+            hediffs: data.hediffs ? (typeof data.hediffs === 'string' ? JSON.parse(data.hediffs) : data.hediffs) : {},
         };
     }
 
@@ -100,8 +107,8 @@ class DatabaseManager {
 
     async insertByte(s) {
         return this.db.run(
-            `INSERT INTO bytes (id, ownerId, name, byteClass, needs, stats, skills, pools, room, isAlive, history, birthDate, lastInteraction, isAsleep, generation, bufferOverflow)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO bytes (id, ownerId, name, byteClass, needs, stats, skills, pools, room, isAlive, history, birthDate, lastInteraction, isAsleep, generation, bufferOverflow, hediffs)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 s.id,
                 s.ownerId,
@@ -119,6 +126,7 @@ class DatabaseManager {
                 s.isAsleep,
                 s.generation,
                 s.bufferOverflow,
+                JSON.stringify(s.hediffs || {})
             ],
         );
     }
@@ -126,7 +134,7 @@ class DatabaseManager {
     async updateByte(s) {
         return this.db.run(
             `UPDATE bytes 
-             SET name = ?, byteClass = ?, needs = ?, stats = ?, skills = ?, pools = ?, room = ?, isAlive = ?, history = ?, lastInteraction = ?, isAsleep = ?, generation = ?, bufferOverflow = ?
+             SET name = ?, byteClass = ?, needs = ?, stats = ?, skills = ?, pools = ?, room = ?, isAlive = ?, history = ?, lastInteraction = ?, isAsleep = ?, generation = ?, bufferOverflow = ?, hediffs = ?
              WHERE id = ?`,
             [
                 s.name,
@@ -142,6 +150,7 @@ class DatabaseManager {
                 s.isAsleep,
                 s.generation,
                 s.bufferOverflow,
+                JSON.stringify(s.hediffs || {}),
                 s.id,
             ],
         );

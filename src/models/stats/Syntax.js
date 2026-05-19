@@ -1,8 +1,8 @@
 const Stat = require('./Stat');
 
 class Syntax extends Stat {
-    constructor(data) {
-        super('Syntax', data);
+    constructor(data, byte = null) {
+        super('Syntax', data, byte);
     }
 }
 

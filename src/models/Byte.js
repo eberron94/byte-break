@@ -16,7 +16,8 @@ const TeraFlops = require('./pools/TeraFlops');
 const Bits = require('./pools/Bits');
 
 const RoomManager = require('../managers/RoomManager');
-const { calculateEffects, applyEffects } = require('../util/effects');
+const HediffManager = require('../managers/HediffManager');
+const { calculateEffects, applyEffects, evaluateExpression } = require('../util/effects');
 
 /**
  * Represents a digital monster (byte), managing its nested stats, skills, needs, and pools.
@@ -27,21 +28,24 @@ class Byte {
         this.ownerId = data.ownerId;
         this.name = data.name;
         this.byteClass = data.byteClass || 'demo';
+        
+        this.hediffs = data.hediffs || {};
+
         // Needs automatically decay over time
         this.needs = {
-            charge: new Charge(data.charge),
-            thermal: new Thermal(data.thermal),
-            defrag: new Defrag(data.defrag),
-            telemetry: new Telemetry(data.telemetry),
+            charge: new Charge(data.charge, this),
+            thermal: new Thermal(data.thermal, this),
+            defrag: new Defrag(data.defrag, this),
+            telemetry: new Telemetry(data.telemetry, this),
         };
 
         // Core attributes
         this.stats = {
-            focus: new Focus(data.focus),
-            aptitude: new Aptitude(data.aptitude),
-            logic: new Logic(data.logic),
-            curiosity: new Curiosity(data.curiosity),
-            syntax: new Syntax(data.syntax),
+            focus: new Focus(data.focus, this),
+            aptitude: new Aptitude(data.aptitude, this),
+            logic: new Logic(data.logic, this),
+            curiosity: new Curiosity(data.curiosity, this),
+            syntax: new Syntax(data.syntax, this),
         };
         // Skills are dynamically loaded from canonical definitions
         this.skills = {};
@@ -124,7 +128,7 @@ class Byte {
                     }
                 }
             } else if (this.stats[key]) {
-                this.stats[key].value += value;
+                this.stats[key].baseValue += value;
             } else if (this.skills[key]) {
                 this.skills[key].investedValue += value;
             } else if (key.startsWith('upgrade_')) {
@@ -132,13 +136,46 @@ class Byte {
                 if (this.skills[target]) {
                     this.skills[target].investedValue += value;
                 } else if (this.pools[target]) {
-                    this.pools[target].maxValue += value;
                     this.pools[target].investedValue =
                         (this.pools[target].investedValue || 0) + value;
                     this.pools[target].increase(value);
                 }
             } else if (key === 'isAsleep') {
                 this.isAsleep = value;
+            } else if (key === 'hediffs' && Array.isArray(value)) {
+                for (const h of value) {
+                    const hDef = HediffManager.getHediff(h.id);
+                    if (!hDef) continue;
+
+                    if (h.action === 'escalate') {
+                        if (!this.hediffs[h.id]) this.hediffs[h.id] = { stacks: 1 };
+                        else this.hediffs[h.id].stacks += 1;
+
+                        if (hDef.maxStacks && this.hediffs[h.id].stacks > hDef.maxStacks) {
+                            if (hDef.nextTier) {
+                                delete this.hediffs[h.id];
+                                this.hediffs[hDef.nextTier] = { stacks: 1 };
+                            } else {
+                                this.hediffs[h.id].stacks = hDef.maxStacks;
+                            }
+                        }
+                    } else if (h.action === 'reduce') {
+                        if (this.hediffs[h.id]) {
+                            this.hediffs[h.id].stacks -= 1;
+                            if (this.hediffs[h.id].stacks <= 0) {
+                                delete this.hediffs[h.id];
+                                if (hDef.prevTier) {
+                                    const prevDef = HediffManager.getHediff(hDef.prevTier);
+                                    this.hediffs[hDef.prevTier] = {
+                                        stacks: prevDef && prevDef.maxStacks ? prevDef.maxStacks : 1,
+                                    };
+                                }
+                            }
+                        }
+                    } else if (h.action === 'remove') {
+                        delete this.hediffs[h.id];
+                    }
+                }
             }
         }
 
@@ -176,6 +213,15 @@ class Byte {
             );
             applyEffects(calculatedEffects, this, player, itemManager);
         }
+
+        // Process Passive Hediffs
+        for (const [hId, hData] of Object.entries(this.hediffs)) {
+            const hDef = HediffManager.getHediff(hId);
+            if (hDef && hDef.tickEffects) {
+                const calculatedEffects = calculateEffects(hDef.tickEffects, this, player, { stacks: hData.stacks });
+                applyEffects(calculatedEffects, this, player, itemManager);
+            }
+        }
     }
 
     updateLastInteraction() {
@@ -192,12 +238,8 @@ class Byte {
 
         for (const [key, cost] of Object.entries(byteClass.investmentRates)) {
             if (this.pools[key] && this.pools[key].investedValue > 0) {
-                this.pools[key].maxValue -= this.pools[key].investedValue;
-                this.pools[key].value = Math.min(
-                    this.pools[key].value,
-                    this.pools[key].maxValue,
-                );
                 this.pools[key].investedValue = 0;
+                this.pools[key].value = this.pools[key].value;
             } else if (this.skills[key] && this.skills[key].investedValue > 0) {
                 this.skills[key].investedValue = 0;
             }
@@ -208,6 +250,21 @@ class Byte {
         }
 
         return refundedBits;
+    }
+
+    getHediffModifier(type, key) {
+        let modifier = 0;
+        for (const [hId, hData] of Object.entries(this.hediffs)) {
+            const hDef = HediffManager.getHediff(hId);
+            if (hDef && hDef.modifiers) {
+                for (const mod of hDef.modifiers) {
+                    if (mod.type === type && mod.key === key) {
+                        modifier += evaluateExpression(mod.amount, this, null, { stacks: hData.stacks });
+                    }
+                }
+            }
+        }
+        return modifier;
     }
 
     // Helper method to extract flat core stats
@@ -240,7 +297,7 @@ class Byte {
             Object.entries(this.needs).map(([k, need]) => [k, need.value]),
         );
         const stats = Object.fromEntries(
-            Object.entries(this.stats).map(([k, stat]) => [k, stat.value]),
+            Object.entries(this.stats).map(([k, stat]) => [k, stat.baseValue]),
         );
         const skills = Object.fromEntries(
             Object.entries(this.skills).map(([k, skill]) => [
@@ -252,6 +309,7 @@ class Byte {
             Object.entries(this.pools).map(([k, pool]) => [
                 k,
                 {
+                    baseValue: pool.baseValue,
                     value: pool.value,
                     maxValue: pool.maxValue,
                     investedValue: pool.investedValue,
@@ -276,6 +334,7 @@ class Byte {
             isAsleep: this.isAsleep ? 1 : 0,
             generation: this.generation,
             bufferOverflow: this.bufferOverflow,
+            hediffs: this.hediffs,
         };
     }
 

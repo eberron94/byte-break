@@ -1,8 +1,8 @@
 const Need = require('./Need');
 
 class Charge extends Need {
-    constructor(value) {
-        super('Charge', value, 2); // Decays by 2 per tick
+    constructor(value, byte = null) {
+        super('Charge', value, 2, 100, byte); // Decays by 2 per tick
     }
 
     tick(byte = null, player = null) {

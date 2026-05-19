@@ -28,6 +28,25 @@ class TelegramBotController {
         // Simple state machine to track multi-step interactions per user
         this.userStates = new Map();
 
+        // Wrap the set method to automatically inject a timestamp for garbage collection
+        const originalSet = this.userStates.set.bind(this.userStates);
+        this.userStates.set = (key, value) => {
+            if (value && typeof value === 'object') {
+                value.timestamp = Date.now();
+            }
+            return originalSet(key, value);
+        };
+
+        // Garbage collection: Sweep stale user states every hour to prevent memory leaks from abandoned minigames/prompts
+        setInterval(() => {
+            const now = Date.now();
+            for (const [chatId, state] of this.userStates.entries()) {
+                if (state.timestamp && now - state.timestamp > 3600000) { // 1 hour
+                    this.userStates.delete(chatId);
+                }
+            }
+        }, 60 * 60 * 1000);
+
         // --- Mixin Pattern ---
         // The `Object.assign` method is used to "mix in" the methods from the
         // TelegramUIBuilders file. This allows us to keep the UI generation logic
@@ -136,6 +155,11 @@ class TelegramBotController {
                 }
             },
         );
+
+        // Clean up user state automatically when a minigame concludes naturally
+        this.game.on(GameEvents.MINIGAME_END, (chatId) => {
+            this.userStates.delete(chatId);
+        });
     }
 }
 

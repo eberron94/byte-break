@@ -11,14 +11,7 @@ class Skill {
         this.description = config.description;
         this.stat = config.stat;
 
-        let invested = 0;
-
-        if (typeof dbData === 'number') {
-            invested = dbData; // Backwards compatibility for old raw numbers
-        } else if (dbData !== null && typeof dbData === 'object') {
-            invested = dbData.investedValue || 0;
-        }
-        this.investedValue = invested;
+        this.investedValue = dbData.investedValue || 0;
 
         this._byte = byte; // Internal reference to the parent byte
     }
@@ -27,23 +20,23 @@ class Skill {
      * Calculates the total skill competency on demand.
      */
     get value() {
-        if (!this._byte) {
-            // Fallback for old logic if byte is not passed, though it always should be now
-            return this.investedValue + this.innateValue;
-        }
-
         // Extract the value from the linked core stat (e.g. Strength -> Athletics)
         const statValue = this._byte.stats[this.stat]
             ? this._byte.stats[this.stat].value
             : 0;
 
         const byteClass = ByteClassManager.getClass(this._byte.byteClass);
-        const innatePoints =
+        const innateValue =
             byteClass && byteClass.innatePointsPerLevel[this.id]
                 ? byteClass.innatePointsPerLevel[this.id]
                 : 0;
 
-        return statValue + this.investedValue + innatePoints * this._byte.level;
+        let val =
+            statValue + this.investedValue + innateValue * this._byte.level;
+        if (typeof this._byte.getHediffModifier === 'function') {
+            val += this._byte.getHediffModifier('skill', this.id);
+        }
+        return val;
     }
 
     get bitsInvested() {

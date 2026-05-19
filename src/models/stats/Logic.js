@@ -1,8 +1,8 @@
 const Stat = require('./Stat');
 
 class Logic extends Stat {
-    constructor(data) {
-        super('Logic', data);
+    constructor(data, byte = null) {
+        super('Logic', data, byte);
     }
 }
 

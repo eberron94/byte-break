@@ -1,8 +1,8 @@
 const Stat = require('./Stat');
 
 class Aptitude extends Stat {
-    constructor(data) {
-        super('Aptitude', data);
+    constructor(data, byte = null) {
+        super('Aptitude', data, byte);
     }
 }
 

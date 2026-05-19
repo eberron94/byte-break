@@ -1,0 +1,21 @@
+[
+    {
+        "id": "overclocked",
+        "name": "Overclocked",
+        "description": "Running beyond safe limits. Increased stats but higher thermal load.",
+        "maxStacks": 3,
+        "nextHediff": "melted_down",
+        "modifiers": [
+            { "type": "stat", "key": "logic", "amount": "1 * stacks" },
+            { "type": "skill", "key": "assault", "amount": "2 * stacks" }
+        ],
+        "tickEffects": [
+            { "type": "thermal", "amount": "-5 * stacks" }
+        ]
+    },
+    {
+        "id": "melted_down",
+        "name": "Melted Down",
+        "description": "The system has critically overheated."
+    }
+]
