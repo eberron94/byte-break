@@ -4,6 +4,7 @@ const ShopManager = require('../managers/ShopManager');
 const TalentManager = require('../managers/TalentManager');
 const AchievementManager = require('../managers/AchievementManager');
 const { checkRequirements } = require('../util/requirements');
+const { getTimeContext } = require('../util/time');
 
 /**
  * @mixin WebAPIGetHandler
@@ -47,8 +48,12 @@ const WebAPIGetHandler = {
                         status.byteClass,
                         status.generation,
                     );
-                    const bClass = this.byteClassManager.getClass(status.byteClass);
-                    status.enhanceStat = bClass ? bClass.enhanceStat : 'aptitude';
+                    const bClass = this.byteClassManager.getClass(
+                        status.byteClass,
+                    );
+                    status.enhanceStat = bClass
+                        ? bClass.enhanceStat
+                        : 'aptitude';
                     return status;
                 });
             res.json(livingBytes);
@@ -145,17 +150,12 @@ const WebAPIGetHandler = {
             const byte = await this.gameManager.getByte(userId);
             const player = await this.gameManager.getPlayer(userId);
 
-            const now = new Date();
-            const hour = now.getHours();
-            let timePhase = 'night';
-            if (hour >= 6 && hour < 18) timePhase = 'day';
-            else if (hour >= 18 && hour < 21) timePhase = 'evening';
+            const timeContext = getTimeContext();
 
             const context = {
                 byte,
                 player,
-                timePhase,
-                dayOfWeek: now.getDay(),
+                ...timeContext,
             };
 
             const availableShops = ShopManager.getAvailableShops(context);
@@ -180,6 +180,7 @@ const WebAPIGetHandler = {
             const player = await this.gameManager.getPlayer(req.params.id);
             if (!player)
                 return res.status(404).json({ error: 'Player not found' });
+            const byte = await this.gameManager.getByte(req.params.id);
 
             const allTalents = TalentManager.getAllTalents();
             const availableAP = player.achievementPoints.available;
@@ -188,8 +189,17 @@ const WebAPIGetHandler = {
             const hiddenTalents = new Set();
             const hintTalents = new Set();
 
+            const timeContext = getTimeContext();
+            const context = { byte, player, ...timeContext };
+
             for (const talent of allTalents) {
-                const meetsPrereq = checkRequirements(talent.requirements, null, player);
+                const meetsPrereq = checkRequirements(
+                    talent.requirements,
+                    byte,
+                    player,
+                    ItemManager,
+                    context
+                );
                 if (meetsPrereq) visibleTalents.add(talent.id);
                 else hiddenTalents.add(talent);
             }
@@ -197,7 +207,11 @@ const WebAPIGetHandler = {
             for (const hiddenTalent of hiddenTalents) {
                 if (hiddenTalent.requirements) {
                     for (const req of hiddenTalent.requirements) {
-                        if (req.type === 'talent' && visibleTalents.has(req.id) && (player.talents[req.id] || 0) < req.level) {
+                        if (
+                            req.type === 'talent' &&
+                            visibleTalents.has(req.id) &&
+                            (player.talents[req.id] || 0) < req.level
+                        ) {
                             hintTalents.add(req.id);
                         }
                     }
@@ -219,7 +233,11 @@ const WebAPIGetHandler = {
                     maxLevel: talent.maxLevel,
                     currentLevel,
                     isDisabled: isMaxed || !canAfford,
-                    btnBg: isMaxed ? 'var(--tg-theme-button-color, #2481cc)' : (canAfford ? '#ff9800' : '#888'),
+                    btnBg: isMaxed
+                        ? 'var(--tg-theme-button-color, #2481cc)'
+                        : canAfford
+                          ? '#ff9800'
+                          : '#888',
                     btnText: isMaxed ? 'MAXED' : `🧬 ${talent.cost} α`,
                     hasHint: hintTalents.has(talent.id),
                 });
@@ -248,7 +266,7 @@ const WebAPIGetHandler = {
             const achievements = allAchievements.map((ach) => {
                 const progress = player.achievementPoints.progress[ach.id] || 0;
                 let completedTiers = 0;
-                
+
                 const processedTiers = ach.tiers.map((tierReq, i) => {
                     const isCompleted = progress >= tierReq;
                     if (isCompleted) completedTiers++;
@@ -259,7 +277,8 @@ const WebAPIGetHandler = {
                     };
                 });
 
-                const allCompleted = progress >= ach.tiers[ach.tiers.length - 1];
+                const allCompleted =
+                    progress >= ach.tiers[ach.tiers.length - 1];
 
                 return {
                     id: ach.id,
@@ -270,8 +289,12 @@ const WebAPIGetHandler = {
                     totalTiers: ach.tiers.length,
                     tiers: processedTiers,
                     allCompleted,
-                    borderStyle: allCompleted ? 'border: 1px solid #4caf50;' : 'border: 1px solid rgba(255, 255, 255, 0.05);',
-                    nameColor: allCompleted ? '#4caf50' : 'var(--tg-theme-button-color, #2481cc)',
+                    borderStyle: allCompleted
+                        ? 'border: 1px solid #4caf50;'
+                        : 'border: 1px solid rgba(255, 255, 255, 0.05);',
+                    nameColor: allCompleted
+                        ? '#4caf50'
+                        : 'var(--tg-theme-button-color, #2481cc)',
                 };
             });
             res.json({ achievements });
@@ -291,9 +314,7 @@ const WebAPIGetHandler = {
 
             res.json({
                 player: player.toWeb(),
-                bytes: bytes
-                    .filter((b) => b.isAlive)
-                    .map((b) => b.toWeb()),
+                bytes: bytes.filter((b) => b.isAlive).map((b) => b.toWeb()),
                 achievements,
                 items,
                 talents,
@@ -302,7 +323,7 @@ const WebAPIGetHandler = {
             console.error('Debug Data API Error:', error);
             res.status(500).json({ error: error.message });
         }
-    }
+    },
 };
 
 module.exports = WebAPIGetHandler;

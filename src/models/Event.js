@@ -38,7 +38,18 @@ class Event {
         const { byte, player, itemManager } = context;
         if (!byte) return false;
 
-        const calculatedEffects = calculateEffects(this.effects, byte, player);
+        // Safely extract environment variables for effect evaluation
+        const locals = { ...context, ...(context.locals || {}) };
+        delete locals.byte;
+        delete locals.player;
+        delete locals.itemManager;
+
+        const calculatedEffects = calculateEffects(
+            this.effects,
+            byte,
+            player,
+            locals,
+        );
         const success = applyEffects(
             calculatedEffects,
             byte,

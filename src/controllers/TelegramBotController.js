@@ -31,10 +31,25 @@ class TelegramBotController {
         // Wrap the set method to automatically inject a timestamp for garbage collection
         const originalSet = this.userStates.set.bind(this.userStates);
         this.userStates.set = (key, value) => {
+            const oldState = this.userStates.get(key);
+            if (oldState && oldState.timeoutId) {
+                clearTimeout(oldState.timeoutId);
+            }
+
             if (value && typeof value === 'object') {
                 value.timestamp = Date.now();
             }
             return originalSet(key, value);
+        };
+
+        // Wrap the delete method to automatically clean up any active timeouts
+        const originalDelete = this.userStates.delete.bind(this.userStates);
+        this.userStates.delete = (key) => {
+            const state = this.userStates.get(key);
+            if (state && state.timeoutId) {
+                clearTimeout(state.timeoutId);
+            }
+            return originalDelete(key);
         };
 
         // Garbage collection: Sweep stale user states every hour to prevent memory leaks from abandoned minigames/prompts
@@ -121,7 +136,9 @@ class TelegramBotController {
                     `🔔 **Random Event:** ${e.name}\n_${e.description}_`,
                     { parse_mode: 'Markdown' },
                 );
-            } catch (err) {}
+            } catch (err) {
+                console.error('[GameEvents] Error in RANDOM_EVENT listener:', err);
+            }
         });
 
         this.game.on(GameEvents.ENERGY_REWARD, async (playerId, amount) => {
@@ -134,7 +151,9 @@ class TelegramBotController {
                     `⚡ **Community Energy Reward!**\n_You gained ${amount} ε for being active._`,
                     { parse_mode: 'Markdown' },
                 );
-            } catch (err) {}
+            } catch (err) {
+                console.error('[GameEvents] Error in ENERGY_REWARD listener:', err);
+            }
         });
 
         this.game.on(
@@ -159,6 +178,11 @@ class TelegramBotController {
         // Clean up user state automatically when a minigame concludes naturally
         this.game.on(GameEvents.MINIGAME_END, (chatId) => {
             this.userStates.delete(chatId);
+        });
+
+        // Clean up user state if their active byte is permanently deleted
+        this.game.on(GameEvents.BYTE_DELETED, (userId) => {
+            this.userStates.delete(userId);
         });
     }
 }

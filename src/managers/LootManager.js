@@ -36,11 +36,40 @@ class LootManager {
         return result;
     }
 
-    processLoot(effectsObj) {
+    processLoot(effectsObj, player = null, itemManager = null) {
         const result = {
             bits: effectsObj.bits || 0,
-            items: Object.entries(effectsObj.inventory || {}).map(([id, amount]) => ({ id, amount }))
+            items: []
         };
+
+        // Helper to check the inventory maximum constraint
+        const getActualAmount = (id, amount) => {
+            let actual = amount;
+            if (player && itemManager) {
+                const itemDef = itemManager.getItem(id);
+                if (itemDef && itemDef.maxCount !== undefined) {
+                    const currentCount = player.inventory[id] || 0;
+                    const pendingCount = result.items.find(i => i.id === id)?.amount || 0;
+                    const maxAddable = Math.max(0, itemDef.maxCount - (currentCount + pendingCount));
+                    actual = Math.min(actual, maxAddable);
+                }
+            }
+            return actual;
+        };
+
+        // Pre-process any explicit inventory drops in the payload
+        if (effectsObj.inventory) {
+            Object.entries(effectsObj.inventory).forEach(([id, amount]) => {
+                if (amount > 0) {
+                    const actualAmount = getActualAmount(id, amount);
+                    if (actualAmount > 0) {
+                        result.items.push({ id, amount: actualAmount });
+                    }
+                    effectsObj.inventory[id] = actualAmount; // Clamp the payload
+                }
+            });
+        }
+
         if (effectsObj.loot) {
             for (const tableId of effectsObj.loot) {
                 const lootResults = this.rollLoot(tableId);
@@ -50,12 +79,16 @@ class LootManager {
                 }
                 if (lootResults.items) {
                     lootResults.items.forEach(itemLoot => {
-                        const existing = result.items.find(i => i.id === itemLoot.id);
-                        if (existing) existing.amount += itemLoot.amount;
-                        else result.items.push({ id: itemLoot.id, amount: itemLoot.amount });
+                        const actualAmount = getActualAmount(itemLoot.id, itemLoot.amount);
+                        
+                        if (actualAmount > 0) {
+                            const existing = result.items.find(i => i.id === itemLoot.id);
+                            if (existing) existing.amount += actualAmount;
+                            else result.items.push({ id: itemLoot.id, amount: actualAmount });
 
-                        effectsObj.inventory = effectsObj.inventory || {};
-                        effectsObj.inventory[itemLoot.id] = (effectsObj.inventory[itemLoot.id] || 0) + itemLoot.amount;
+                            effectsObj.inventory = effectsObj.inventory || {};
+                            effectsObj.inventory[itemLoot.id] = (effectsObj.inventory[itemLoot.id] || 0) + actualAmount;
+                        }
                     });
                 }
             }

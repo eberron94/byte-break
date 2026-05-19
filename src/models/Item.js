@@ -1,4 +1,5 @@
 const { calculateEffects, applyEffects } = require('../util/effects');
+const { getTimeContext } = require('../util/time');
 
 /**
  * Represents a distinct object that can be stored in a Player's inventory.
@@ -21,9 +22,10 @@ class Item {
     }
 
     // Applies the item's configured effects to the byte and player
-    use(byte, player = null) {
-        const calculatedEffects = calculateEffects(this.effects, byte, player);
-        return applyEffects(calculatedEffects, byte, player);
+    use(byte, player = null, itemManager = null) {
+        const locals = getTimeContext();
+        const calculatedEffects = calculateEffects(this.effects, byte, player, locals);
+        return applyEffects(calculatedEffects, byte, player, itemManager);
     }
 }
 

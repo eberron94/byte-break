@@ -71,9 +71,38 @@ function calculateEffects(effects, byte, player, locals = {}) {
                 calculated.hediffs.push({ id: effect.id, action: effect.action || 'escalate' });
             } else {
                 if (effect.amount !== undefined) {
-                    const value = evaluateExpression(effect.amount, byte, player, locals);
+                    let value = evaluateExpression(effect.amount, byte, player, locals);
                     if (typeof value === 'number') {
-                        const currentAmount = calculated[key] || 0;
+                        const originalValue = value;
+                        let currentAmount = calculated[key] || 0;
+                        
+                        if (byte) {
+                            let currentVal = 0;
+                            if (byte.needs && byte.needs[key]) currentVal = byte.needs[key].value;
+                            else if (byte.pools && byte.pools[key]) currentVal = byte.pools[key].value;
+                            else if (byte.stats && byte.stats[key]) currentVal = byte.stats[key].baseValue;
+                            else if (byte.skills && byte.skills[key]) currentVal = byte.skills[key].investedValue;
+                            else if (key === 'energy' && player && player.energy) currentVal = player.energy.value;
+
+                            if (effect.maxLimit !== undefined) {
+                                const maxLimit = evaluateExpression(effect.maxLimit, byte, player, locals);
+                                if (value > 0 && currentVal + currentAmount + value > maxLimit) {
+                                    value = Math.max(0, maxLimit - (currentVal + currentAmount));
+                                }
+                            }
+                            if (effect.minLimit !== undefined) {
+                                const minLimit = evaluateExpression(effect.minLimit, byte, player, locals);
+                                if (value < 0 && currentVal + currentAmount + value < minLimit) {
+                                    value = Math.min(0, minLimit - (currentVal + currentAmount));
+                                }
+                            }
+                        }
+
+                        // If limits squashed the delta to 0 or reversed its intended sign, clamp it tightly
+                        if ((originalValue > 0 && value < 0) || (originalValue < 0 && value > 0)) {
+                            value = 0;
+                        }
+
                         calculated[key] = currentAmount + value;
                     } else {
                         calculated[key] = value;

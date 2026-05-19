@@ -1,5 +1,6 @@
 const { calculateEffects, applyEffects } = require('../util/effects');
 const { checkRequirements } = require('../util/requirements');
+const { getTimeContext } = require('../util/time');
 
 /**
  * Represents an action that a byte can perform, potentially consuming items or altering stats.
@@ -32,7 +33,17 @@ class Activity {
      * Checks if the byte and player meet all prerequisites to perform this activity.
      */
     canPerform(byte, player = null, itemManager = null) {
-        if (!checkRequirements(this.requirements, byte, player, itemManager)) {
+        const context = getTimeContext();
+
+        if (
+            !checkRequirements(
+                this.requirements,
+                byte,
+                player,
+                itemManager,
+                context,
+            )
+        ) {
             return false;
         }
 
@@ -76,8 +87,19 @@ class Activity {
         if (!this.canPerform(byte, player, itemManager) && !override)
             return false;
 
-        const calculatedEffects = calculateEffects(this.effects, byte, player);
-        const success = applyEffects(calculatedEffects, byte, player, itemManager);
+        const locals = getTimeContext();
+        const calculatedEffects = calculateEffects(
+            this.effects,
+            byte,
+            player,
+            locals,
+        );
+        const success = applyEffects(
+            calculatedEffects,
+            byte,
+            player,
+            itemManager,
+        );
         if (success) {
             byte.recordHistory(this.id);
 
@@ -85,7 +107,7 @@ class Activity {
             if (this.itemSelect && selectedItemId && itemManager && player) {
                 const item = itemManager.getItem(selectedItemId);
                 if (item && player.hasItem(selectedItemId, 1)) {
-                    item.use(byte, player);
+                    item.use(byte, player, itemManager);
                     // Only remove the item if it's consumable
                     if (item.type === 'consumable') {
                         player.removeItem(selectedItemId, 1);

@@ -97,6 +97,8 @@ async function executeMerge() {
         (b) => b.id === selectedBytesForMerge[1],
     );
 
+    if (!b1 || !b2) return alert('Please select two valid Bytes to merge.');
+
     document.getElementById('merge-instruction').style.display = 'none';
     document.getElementById('merge-selection').style.display = 'none';
     document.getElementById('merge-form').style.display = 'none';
@@ -124,7 +126,14 @@ async function executeMerge() {
             }),
         });
 
-        if (!res.ok) throw new Error((await res.json()).error);
+        if (!res.ok) {
+            let errorMsg = 'Merge failed';
+            try {
+                const errData = await res.json();
+                if (errData.error) errorMsg = errData.error;
+            } catch (jsonErr) {}
+            throw new Error(errorMsg);
+        }
         const newByte = await res.json();
 
         setTimeout(() => {
@@ -147,5 +156,7 @@ async function executeMerge() {
         document.getElementById('merge-selection').style.display = 'flex';
         document.getElementById('merge-form').style.display = 'block';
         document.getElementById('merge-animation').style.display = 'none';
+        document.getElementById('merge-parent-1').classList.remove('merge-slide-right');
+        document.getElementById('merge-parent-2').classList.remove('merge-slide-left');
     }
 }

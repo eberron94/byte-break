@@ -18,6 +18,14 @@ class MergeManager {
         newName,
         player = null,
     ) {
+        if (!newName || typeof newName !== 'string' || newName.trim().length === 0) {
+            throw new Error('A valid name must be provided for the new Byte.');
+        }
+        const sanitizedName = newName.trim().replace(/[^a-zA-Z0-9 ]/g, '');
+        if (sanitizedName.length === 0 || sanitizedName.length > 32) {
+            throw new Error('Byte name must be 1-32 characters and only contain letters/numbers.');
+        }
+
         const bytes = await gameManager.getBytes(userId);
         const b1 = bytes.find((b) => b.id === byte1Id && b.isAlive);
         const b2 = bytes.find((b) => b.id === byte2Id && b.isAlive);
@@ -39,13 +47,19 @@ class MergeManager {
         if (!player) {
             player = await gameManager.getPlayer(userId);
         }
+
+        const cost = this.getMergeCost(player);
+        if (player.energy.value < cost) {
+            throw new Error(`Not enough Energy. Requires ${cost} ε.`);
+        }
+
         const talentBonus = (player.talents['genetic_memory'] || 0) * 1;
 
         // Calculate inherited core stats
         const inheritedStats = {};
         for (const stat of Object.keys(b1.stats)) {
-            const val1 = b1.stats[stat].value || 0;
-            const val2 = b2.stats[stat].value || 0;
+            const val1 = b1.stats[stat].baseValue || 0;
+            const val2 = b2.stats[stat] ? b2.stats[stat].baseValue : 0;
             inheritedStats[stat] = Math.floor((val1 + val2) / 2) + talentBonus;
         }
 
@@ -68,6 +82,9 @@ class MergeManager {
         const overflowTalentBonus = (player.talents['overflow_bonus'] || 0) * 5;
         const bufferOverflow = minParentLevel * 10 + overflowTalentBonus;
 
+        // Deduct energy
+        player.energy.decrease(cost);
+
         // Retire the parents
         b1.isAlive = false;
         b2.isAlive = false;
@@ -84,7 +101,7 @@ class MergeManager {
 
         // Create new child byte
         const newId = `${userId}_${Date.now()}`;
-        const newByte = ByteBuilder.default(userId, newName)
+        const newByte = ByteBuilder.default(userId, sanitizedName)
             .withId(newId)
             .withStats(inheritedStats)
             .withGeneration(childGeneration)
@@ -93,6 +110,7 @@ class MergeManager {
             .build();
 
         await dbManager.insertByte(newByte.serialize());
+        await gameManager.savePlayer(player);
         gameManager.emit(GameEvents.BYTE_MERGED, userId, newByte);
 
         return newByte;

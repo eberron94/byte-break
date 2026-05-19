@@ -75,16 +75,18 @@ class Shop {
         return true;
     }
 
+    acceptsItem(item) {
+        if (!item) return false;
+        return this.categories.includes(item.type) || this.items.includes(item.id);
+    }
+
     // Finds all items valid for this shop and applies the price multiplier
     getAvailableItems(itemManager, player) {
         const allItems = itemManager.getAllItems();
         return allItems
             .filter((item) => {
                 if (item.cost === undefined) return false;
-                return (
-                    this.categories.includes(item.type) ||
-                    this.items.includes(item.id)
-                );
+                return this.acceptsItem(item);
             })
             .map((item) => {
                 let remainingStock = undefined;

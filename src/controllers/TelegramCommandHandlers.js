@@ -42,7 +42,7 @@ const TelegramCommandHandlers = {
     // Spawns a new byte and commits it to the database
     async handleSpawn(msg, match) {
         const chatId = msg.chat.id;
-        const byteName = match[1];
+        const rawByteName = match[1];
 
         const bytes = await this.game.getBytes(chatId);
         const player = await this.game.getPlayer(chatId);
@@ -57,7 +57,7 @@ const TelegramCommandHandlers = {
             return;
         }
 
-        if (!byteName) {
+        if (!rawByteName) {
             console.log(
                 `[Command] /spawn (prompting for name) from chat ${chatId}`,
             );
@@ -69,9 +69,18 @@ const TelegramCommandHandlers = {
             return;
         }
 
+        const byteName = rawByteName.trim().replace(/[^a-zA-Z0-9 ]/g, '');
+        if (byteName.length === 0 || byteName.length > 32) {
+            await this.bot.sendMessage(
+                chatId,
+                'Byte name must be 1-32 characters and only contain letters/numbers. Please try again with `/spawn [name]`.'
+            );
+            return;
+        }
+
         console.log(`[Command] /spawn ${byteName} from chat ${chatId}`);
-        this.userStates.set(chatId, { state: 'AWAITING_BYTE_CLASS', byteName: byteName.trim() });
-        const { text, options } = this.getClassSelectionDisplay(byteName.trim());
+        this.userStates.set(chatId, { state: 'AWAITING_BYTE_CLASS', byteName: byteName });
+        const { text, options } = this.getClassSelectionDisplay(byteName);
         await this.bot.sendMessage(chatId, text, options);
     },
 
@@ -154,7 +163,9 @@ const TelegramCommandHandlers = {
         if (!byte)
             return this.bot.sendMessage(chatId, "You don't have a byte!");
 
-        const { text, options } = this.getRoomsDisplay(byte, chatId, 0);
+        const player = await this.game.getPlayer(chatId);
+
+        const { text, options } = this.getRoomsDisplay(byte, player, chatId, 0);
         await this.sendOrUpdateUI(chatId, text, options, msg.message_id);
     },
 
@@ -169,13 +180,15 @@ const TelegramCommandHandlers = {
         const byte = await this.game.getByte(chatId);
         if (!byte)
             return this.bot.sendMessage(chatId, "You don't have a byte!");
+            
+        const player = await this.game.getPlayer(chatId);
 
         const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim());
         const isAdmin = adminIds.includes(chatId.toString());
 
         // If the user didn't specify a room, prompt them with the inline keyboard
         if (!newRoomId) {
-            const { text, options } = this.getRoomsDisplay(byte, chatId, 0);
+            const { text, options } = this.getRoomsDisplay(byte, player, chatId, 0);
             await this.sendOrUpdateUI(chatId, text, options, msg.message_id);
             return;
         }
@@ -185,6 +198,13 @@ const TelegramCommandHandlers = {
             return this.bot.sendMessage(
                 chatId,
                 `Room '${newRoomId}' does not exist. Use /rooms to see available rooms.`,
+            );
+        }
+
+        if (!room.canEnter(byte, player, this.itemManager)) {
+            return this.bot.sendMessage(
+                chatId,
+                `${byte.name} does not meet the requirements to enter the ${room.name}.`,
             );
         }
 

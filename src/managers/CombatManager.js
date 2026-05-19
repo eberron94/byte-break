@@ -169,7 +169,7 @@ class CombatManager {
         }
 
         // 5. Debuff / Utility Rolls
-        const activeFirewall = Math.max(
+        let activeFirewall = Math.max(
             0,
             defender.skills.firewall - defender.modifiers.firewallShred,
         );
@@ -184,13 +184,22 @@ class CombatManager {
                 Math.floor(attacker.skills.shred * 0.8),
             );
             defender.modifiers.firewallShred += shredAmount;
+
+            // Recalculate active firewall so subsequent hits this turn benefit from the shred
+            activeFirewall = Math.max(
+                0,
+                defender.skills.firewall - defender.modifiers.firewallShred,
+            );
+
             log.push({
                 actor: attacker.id,
                 action: 'shred',
                 amount: shredAmount,
                 message: `${attacker.name} shreds ${defender.name}'s Firewall by ${shredAmount}!`,
             });
-        } else if (
+        } 
+        
+        if (
             LuckManager.checkCombatCompression(attacker, activeFirewall)
         ) {
             defender.modifiers.stunned = true;

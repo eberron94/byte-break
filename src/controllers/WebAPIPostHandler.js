@@ -9,6 +9,9 @@ const GameEvents = require('../util/GameEvents');
 const TalentManager = require('../managers/TalentManager');
 const AchievementManager = require('../managers/AchievementManager');
 const { checkRequirements } = require('../util/requirements');
+const { getTimeContext } = require('../util/time');
+
+const activeTransactions = new Set();
 
 /**
  * @mixin WebAPIPostHandler
@@ -20,18 +23,15 @@ const { checkRequirements } = require('../util/requirements');
  */
 const WebAPIPostHandler = {
     async mergeBytes(req, res) {
+        const { userId, byte1Id, byte2Id, newName } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
         try {
-            const { userId, byte1Id, byte2Id, newName } = req.body;
             this.gameManager.recordPlayerActivity(userId).catch(console.error);
 
             const player = await this.gameManager.getPlayer(userId);
-            const cost = this.gameManager.getMergeCost(player);
-
-            if (player.energy.value < cost) {
-                return res
-                    .status(400)
-                    .json({ error: `Not enough Energy. Requires ${cost} ε.` });
-            }
 
             const newByte = await this.gameManager.mergeBytes(
                 userId,
@@ -41,13 +41,10 @@ const WebAPIPostHandler = {
                 player,
             );
 
-            player.energy.decrease(cost);
-            await this.gameManager.savePlayer(player);
-
             if (this.botController) {
                 await this.botController.bot.sendMessage(
                     userId,
-                    `🧬 Merge successful! Welcome **${newName}** to the world!`,
+                    `🧬 Merge successful! Welcome **${newByte.name}** to the world!`,
                     { parse_mode: 'Markdown' },
                 );
                 await this.botController.sendStatusUI(userId, newByte, player);
@@ -64,12 +61,18 @@ const WebAPIPostHandler = {
         } catch (error) {
             console.error('Merge API Error:', error);
             res.status(500).json({ error: error.message });
+        } finally {
+            activeTransactions.delete(userId);
         }
     },
 
     async upgradeByte(req, res) {
+        const { userId, upgradeKey } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
         try {
-            const { userId, upgradeKey } = req.body;
             this.gameManager.recordPlayerActivity(userId).catch(console.error);
             const playerByte = await this.gameManager.getByte(userId);
 
@@ -139,12 +142,18 @@ const WebAPIPostHandler = {
         } catch (error) {
             console.error('Upgrade API Error:', error);
             res.status(500).json({ error: 'Failed to upgrade byte.' });
+        } finally {
+            activeTransactions.delete(userId);
         }
     },
 
     async handleBuyItem(req, res) {
+        const { userId, shopId, itemId } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
         try {
-            const { userId, shopId, itemId } = req.body;
             this.gameManager.recordPlayerActivity(userId).catch(console.error);
             const byte = await this.gameManager.getByte(userId);
             const player = await this.gameManager.getPlayer(userId);
@@ -153,6 +162,15 @@ const WebAPIPostHandler = {
 
             if (!byte || !player || !item || !shop) {
                 return res.status(404).json({ error: 'Data not found' });
+            }
+
+            const timeContext = getTimeContext();
+            const context = { byte, player, ...timeContext };
+            if (!shop.canAppear(context)) {
+                return res.status(400).json({ error: 'Shop is currently closed' });
+            }
+            if (!shop.acceptsItem(item)) {
+                return res.status(400).json({ error: 'Shop does not trade this item' });
             }
 
             if (item.cost === undefined) {
@@ -172,6 +190,10 @@ const WebAPIPostHandler = {
                 if (bought >= shop.stock[itemId]) {
                     return res.status(400).json({ error: 'Item is sold out' });
                 }
+            }
+
+            if (item.maxCount !== undefined && (player.inventory[itemId] || 0) >= item.maxCount) {
+                return res.status(400).json({ error: 'Inventory full for this item' });
             }
 
             // Deduct cost and add item
@@ -208,12 +230,18 @@ const WebAPIPostHandler = {
         } catch (error) {
             console.error('Shop API Error:', error);
             res.status(500).json({ error: error.message });
+        } finally {
+            activeTransactions.delete(userId);
         }
     },
 
     async handleSellItem(req, res) {
+        const { userId, shopId, itemId } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
         try {
-            const { userId, shopId, itemId } = req.body;
             this.gameManager.recordPlayerActivity(userId).catch(console.error);
             const byte = await this.gameManager.getByte(userId);
             const player = await this.gameManager.getPlayer(userId);
@@ -222,6 +250,15 @@ const WebAPIPostHandler = {
 
             if (!byte || !player || !item || !shop) {
                 return res.status(404).json({ error: 'Data not found' });
+            }
+
+            const timeContext = getTimeContext();
+            const context = { byte, player, ...timeContext };
+            if (!shop.canAppear(context)) {
+                return res.status(400).json({ error: 'Shop is currently closed' });
+            }
+            if (!shop.acceptsItem(item)) {
+                return res.status(400).json({ error: 'Shop does not trade this item' });
             }
 
             if (!player.hasItem(itemId, 1)) {
@@ -251,17 +288,25 @@ const WebAPIPostHandler = {
         } catch (error) {
             console.error('Shop Sell API Error:', error);
             res.status(500).json({ error: error.message });
+        } finally {
+            activeTransactions.delete(userId);
         }
     },
 
     async simulateCombat(req, res) {
+        const { userId, activityId } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
         try {
-            const { userId, activityId } = req.body;
             this.gameManager.recordPlayerActivity(userId).catch(console.error);
             const playerByte = await this.gameManager.getByte(userId);
 
             if (!playerByte)
                 return res.status(404).json({ error: 'Byte not found' });
+            if (playerByte.pools.integrity.value <= 0)
+                return res.status(400).json({ error: 'Byte lacks sufficient Integrity to fight.' });
 
             const activity = this.gameManager.activityManager.getActivity(
                 activityId || 'combat_simulation',
@@ -298,7 +343,7 @@ const WebAPIPostHandler = {
                 ? Math.max(
                       1,
                       Math.floor(
-                          playerByte.pools.bandwidth.maxValue *
+                          (playerByte.pools.bandwidth?.maxValue || 100) *
                               (combatConfig.bandwidthMultiplier || 1),
                       ),
                   )
@@ -342,16 +387,17 @@ const WebAPIPostHandler = {
                 result.finalState.player.tf,
             );
 
+            let player = await this.gameManager.getPlayer(userId);
+
             // Reward Bits if won
             if (result.winner === 'player') {
-                const player = await this.gameManager.getPlayer(userId);
                 const calculatedWinEffects = calculateEffects(
                     result.winEffects,
                     playerByte,
                     player,
                 );
                 const grantedLoot =
-                    LootManager.processLoot(calculatedWinEffects);
+                    LootManager.processLoot(calculatedWinEffects, player, ItemManager);
                 applyEffects(
                     calculatedWinEffects,
                     playerByte,
@@ -383,9 +429,9 @@ const WebAPIPostHandler = {
             }
 
             await this.gameManager.saveByte(playerByte);
+            await this.gameManager.savePlayer(player);
 
             if (this.botController) {
-                const player = await this.gameManager.getPlayer(userId);
                 let combatMsg = 'Combat ended in a stalemate!';
                 if (result.winner === 'player')
                     combatMsg = `Combat Simulation: ${playerByte.name} was the victor!`;
@@ -401,6 +447,8 @@ const WebAPIPostHandler = {
         } catch (error) {
             console.error('Combat API Error:', error);
             res.status(500).json({ error: 'Failed to simulate combat.' });
+        } finally {
+            activeTransactions.delete(userId);
         }
     },
 
@@ -436,10 +484,15 @@ const WebAPIPostHandler = {
     },
 
     async buyTalent(req, res) {
+        const { userId, talentId } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
         try {
-            const { userId, talentId } = req.body;
             this.gameManager.recordPlayerActivity(userId).catch(console.error);
             const player = await this.gameManager.getPlayer(userId);
+            const byte = await this.gameManager.getByte(userId);
             const talent = TalentManager.getTalent(talentId);
             if (!player || !talent)
                 return res.status(404).json({ error: 'Not found' });
@@ -449,7 +502,10 @@ const WebAPIPostHandler = {
             if (player.achievementPoints.available < talent.cost)
                 return res.status(400).json({ error: 'Not enough α' });
 
-            if (!checkRequirements(talent.requirements, null, player)) {
+            const timeContext = getTimeContext();
+            const context = { byte, player, ...timeContext };
+
+            if (!checkRequirements(talent.requirements, byte, player, ItemManager, context)) {
                 return res.status(400).json({ error: 'Prerequisites not met' });
             }
 
@@ -462,12 +518,18 @@ const WebAPIPostHandler = {
             });
         } catch (error) {
             res.status(500).json({ error: error.message });
+        } finally {
+            activeTransactions.delete(userId);
         }
     },
 
     async useRebooter(req, res) {
+        const { userId } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
         try {
-            const { userId } = req.body;
             this.gameManager.recordPlayerActivity(userId).catch(console.error);
             const player = await this.gameManager.getPlayer(userId);
             const byte = await this.gameManager.getByte(userId);
@@ -513,12 +575,18 @@ const WebAPIPostHandler = {
         } catch (error) {
             console.error('Rebooter API Error:', error);
             res.status(500).json({ error: 'Failed to reboot byte.' });
+        } finally {
+            activeTransactions.delete(userId);
         }
     },
 
     async useMutator(req, res) {
+        const { userId } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
         try {
-            const { userId } = req.body;
             this.gameManager.recordPlayerActivity(userId).catch(console.error);
             const player = await this.gameManager.getPlayer(userId);
 
@@ -547,6 +615,8 @@ const WebAPIPostHandler = {
         } catch (error) {
             console.error('Mutator API Error:', error);
             res.status(500).json({ error: 'Failed to use mutator.' });
+        } finally {
+            activeTransactions.delete(userId);
         }
     },
 

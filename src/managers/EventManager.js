@@ -1,6 +1,7 @@
 const Event = require('../models/Event');
 const eventsData = require('../../data/events.json');
 const LuckManager = require('./LuckManager');
+const { evaluateExpression } = require('../util/effects');
 
 /**
  * Loads and manages random events from the JSON configuration file.
@@ -51,8 +52,25 @@ class EventManager {
     // Selects a valid random event by rolling against its configured probability
     getRandomEvent(context = {}) {
         const events = this.getAvailableEvents(context);
+
+        // Extract context variables for dynamic probability evaluation
+        const locals = { ...context, ...(context.locals || {}) };
+        delete locals.byte;
+        delete locals.player;
+        delete locals.itemManager;
+
         for (const event of events) {
-            if (LuckManager.checkEvent(event.probability, context)) {
+            const evaluatedProb =
+                typeof event.probability === 'string'
+                    ? evaluateExpression(
+                          event.probability,
+                          context.byte,
+                          context.player,
+                          locals,
+                      )
+                    : event.probability;
+
+            if (LuckManager.checkEvent(evaluatedProb, context)) {
                 return event;
             }
         }

@@ -4,6 +4,20 @@ const GameEvents = require('../util/GameEvents');
 
 class SpawnManager {
     static async spawnByte(gameManager, userId, byteName, byteClass = 'demo') {
+        if (
+            !byteName ||
+            typeof byteName !== 'string' ||
+            byteName.trim().length === 0
+        ) {
+            throw new Error('A valid name must be provided for the new Byte.');
+        }
+        const sanitizedName = byteName.trim().replace(/[^a-zA-Z0-9 ]/g, '');
+        if (sanitizedName.length === 0 || sanitizedName.length > 32) {
+            throw new Error(
+                'Byte name must be 1-32 characters and only contain letters/numbers.',
+            );
+        }
+
         const bytes = await gameManager.getBytes(userId);
         const player = await gameManager.getPlayer(userId);
         const livingBytes = bytes.filter((b) => b.isAlive);
@@ -24,7 +38,7 @@ class SpawnManager {
 
         // Use the builder to generate a default byte with starting stats
         const byteId = `${userId}_${Date.now()}`;
-        const byte = ByteBuilder.default(userId, byteName)
+        const byte = ByteBuilder.default(userId, sanitizedName)
             .withId(byteId)
             .withByteClass(byteClass)
             .build();

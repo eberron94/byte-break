@@ -17,12 +17,12 @@ async function handleCallbackQuery(query) {
     this.game.recordPlayerActivity(chatId).catch(console.error);
     console.log(`[Callback] Action '${action}' from chat ${chatId}`);
 
-    const byte = await this.game.getByte(chatId);
-    const player = await this.game.getPlayer(chatId);
     let alertMessage = '';
     let showAlert = false;
 
     try {
+        const byte = await this.game.getByte(chatId);
+        const player = await this.game.getPlayer(chatId);
         const isStasisAction =
             action.startsWith('wake_byte_') ||
             action === 'nav_status' ||
@@ -152,11 +152,11 @@ async function handleCallbackQuery(query) {
             const { text, options } = this.getInventoryDisplay(player, 0);
             await this.updateMessageDisplay(query, text, options);
         } else if (action === 'nav_rooms') {
-            const { text, options } = this.getRoomsDisplay(byte, chatId, 0);
+            const { text, options } = this.getRoomsDisplay(byte, player, chatId, 0);
             await this.updateMessageDisplay(query, text, options);
         } else if (action.startsWith('rooms_page_')) {
             const page = parseInt(action.replace('rooms_page_', ''), 10);
-            const { text, options } = this.getRoomsDisplay(byte, chatId, page);
+            const { text, options } = this.getRoomsDisplay(byte, player, chatId, page);
             await this.updateMessageDisplay(query, text, options);
         } else if (action.startsWith('nav_move_')) {
             const newRoomId = action.replace('nav_move_', '');
@@ -167,7 +167,9 @@ async function handleCallbackQuery(query) {
             const isAdmin = adminIds.includes(chatId.toString());
             let statusMessage = '';
             if (room && (room.id !== 'debug_room' || isAdmin)) {
-                if (byte.room !== newRoomId) {
+                if (!room.canEnter(byte, player, this.itemManager)) {
+                    alertMessage = "You do not meet the requirements to enter this room.";
+                } else if (byte.room !== newRoomId) {
                     byte.room = newRoomId;
                     await this.game.saveByte(byte);
                     statusMessage = `Moved to the ${room.name}! 🚶`;
@@ -297,7 +299,7 @@ async function handleCallbackQuery(query) {
             if (!item || !player.hasItem(itemId, 1)) {
                 alertMessage = "You don't have that item.";
             } else {
-                const success = item.use(byte, player);
+                const success = item.use(byte, player, this.itemManager);
                 if (success) {
                     player.removeItem(itemId, 1);
                     await this.game.saveByte(byte);
@@ -368,9 +370,15 @@ async function handleCallbackQuery(query) {
                         );
                     }
                 }
+            } else {
+                alertMessage = 'Minigame not found!';
             }
             return;
         }
+    } catch (error) {
+        console.error(`[TelegramCallbackHandler] Error processing action '${action}':`, error);
+        alertMessage = 'A critical error occurred while processing your request.';
+        showAlert = true;
     } finally {
         await this.bot.answerCallbackQuery(query.id, {
             text: alertMessage,

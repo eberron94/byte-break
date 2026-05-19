@@ -5,6 +5,7 @@ const EventEmitter = require('events');
 const GameEvents = require('../util/GameEvents');
 const MergeManager = require('./MergeManager');
 const SpawnManager = require('./SpawnManager');
+const { getTimeContext } = require('../util/time');
 
 class GameManager extends EventEmitter {
     constructor() {
@@ -12,26 +13,40 @@ class GameManager extends EventEmitter {
 
         // Centralize console logging for all GameEvents
         Object.values(GameEvents).forEach((eventName) => {
-            this.on(eventName, (...args) => {
-                const parsedArgs = args.map((arg) => {
-                    if (arg && typeof arg === 'object') {
-                        if (arg.name) return `'${arg.name}'`;
-                        if (arg.id) return `'${arg.id}'`;
-                        return JSON.stringify(arg);
-                    }
-                    return arg;
+            if (typeof eventName === 'string') {
+                this.on(eventName, (...args) => {
+                    const parsedArgs = args.map((arg) => {
+                        if (arg && typeof arg === 'object') {
+                            if (arg.name) return `'${arg.name}'`;
+                            if (arg.id) return `'${arg.id}'`;
+                            try {
+                                return JSON.stringify(arg);
+                            } catch (err) {
+                                return '[Complex Object]';
+                            }
+                        }
+                        return arg;
+                    });
+                    console.log(
+                        `[GameEvent] ${eventName} -> ${parsedArgs.join(' | ')}`,
+                    );
                 });
-                console.log(
-                    `[GameEvent] ${eventName} -> ${parsedArgs.join(' | ')}`,
-                );
-            });
+            }
         });
     }
 
     // Factory method to initialize the database before creating the manager
     static async create() {
-        await dbManager.init();
-        return new GameManager();
+        try {
+            await dbManager.init();
+            return new GameManager();
+        } catch (error) {
+            console.error(
+                '[GameManager] Failed to initialize database:',
+                error,
+            );
+            throw error;
+        }
     }
 
     // Returns the dynamic energy cost for merging bytes
@@ -58,8 +73,16 @@ class GameManager extends EventEmitter {
 
     // Returns all bytes a user currently owns
     async getBytes(userId) {
-        const parsedDataArray = await dbManager.getBytesByOwner(userId);
-        return parsedDataArray.map((data) => new Byte(data));
+        try {
+            const parsedDataArray = await dbManager.getBytesByOwner(userId);
+            return (parsedDataArray || []).map((data) => new Byte(data));
+        } catch (error) {
+            console.error(
+                `[GameManager] Failed to fetch bytes for user ${userId}:`,
+                error,
+            );
+            throw error;
+        }
     }
 
     // Returns the player's currently active (awake) byte, or null if all are in stasis
@@ -71,61 +94,120 @@ class GameManager extends EventEmitter {
 
     // Serializes and updates an existing byte in the database
     async saveByte(byte) {
-        const s = byte.serialize();
-        await dbManager.updateByte(s);
+        try {
+            const s = byte.serialize();
+            await dbManager.updateByte(s);
+        } catch (error) {
+            console.error(
+                `[GameManager] Failed to save byte ${byte.id}:`,
+                error,
+            );
+            throw error;
+        }
     }
 
     // Deletes a byte permanently from the database
     async deleteByte(userId, byteId) {
-        const bytes = await this.getBytes(userId);
-        const byteToDelete = bytes.find((b) => b.id === byteId);
-        if (!byteToDelete) throw new Error('Byte not found.');
+        try {
+            const bytes = await this.getBytes(userId);
+            const byteToDelete = bytes.find((b) => b.id === byteId);
+            if (!byteToDelete) throw new Error('Byte not found.');
 
-        await dbManager.deleteByte(byteId);
-        this.emit(GameEvents.BYTE_DELETED, userId, byteToDelete);
+            await dbManager.deleteByte(byteId);
+            this.emit(GameEvents.BYTE_DELETED, userId, byteToDelete);
+        } catch (error) {
+            console.error(
+                `[GameManager] Failed to delete byte ${byteId}:`,
+                error,
+            );
+            throw error;
+        }
     }
 
     // Retrieves a player's inventory or creates a new empty player record
     async getPlayer(userId) {
-        const data = await dbManager.getPlayer(userId);
-        if (!data) {
-            return new Player({
-                id: userId.toString(),
-                inventory: {},
-                energy: 100,
-            });
+        try {
+            const data = await dbManager.getPlayer(userId);
+            if (!data) {
+                return new Player({
+                    id: userId.toString(),
+                    inventory: {},
+                    energy: 100,
+                });
+            }
+            return new Player(data);
+        } catch (error) {
+            console.error(
+                `[GameManager] Failed to fetch player ${userId}:`,
+                error,
+            );
+            throw error;
         }
-        return new Player(data);
     }
 
     // Saves a player's inventory back to the database, inserting if it doesn't exist
     async savePlayer(player) {
-        const s = player.serialize();
-        await dbManager.savePlayer(s);
+        try {
+            const s = player.serialize();
+            await dbManager.savePlayer(s);
+        } catch (error) {
+            console.error(
+                `[GameManager] Failed to save player ${player.id}:`,
+                error,
+            );
+            throw error;
+        }
     }
 
     // Records an active action taken by the player
     async recordPlayerActivity(userId) {
-        await dbManager.updatePlayerActivity(userId);
+        try {
+            await dbManager.updatePlayerActivity(userId);
+        } catch (error) {
+            console.error(
+                `[GameManager] Failed to record activity for user ${userId}:`,
+                error,
+            );
+            throw error;
+        }
     }
 
     // Checks for players active in the last hour and rewards them with energy
     async rewardActivePlayers() {
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-        const activePlayerData = await dbManager.getActivePlayers(oneHourAgo);
+        let activePlayerData;
+        try {
+            activePlayerData = await dbManager.getActivePlayers(oneHourAgo);
+        } catch (error) {
+            console.error(
+                '[GameManager] Failed to fetch active players for rewards:',
+                error,
+            );
+            return;
+        }
+
+        if (!activePlayerData || !Array.isArray(activePlayerData)) return;
         const activePlayersCount = activePlayerData.length;
         if (activePlayersCount === 0) return;
 
         const energyReward = Math.min(Math.ceil(100 / activePlayersCount), 20);
 
         for (const data of activePlayerData) {
-            const player = new Player(data);
-            const initialEnergy = player.energy.value;
-            player.energy.increase(energyReward);
-            const actualGain = player.energy.value - initialEnergy;
-            await this.savePlayer(player);
-            if (actualGain > 0) {
-                this.emit(GameEvents.ENERGY_REWARD, player.id, actualGain);
+            try {
+                // Fetch the latest player state to avoid overwriting recent activity with an old snapshot
+                const player = await this.getPlayer(data.id);
+                const initialEnergy = player.energy.value;
+                player.energy.increase(energyReward);
+                const actualGain = player.energy.value - initialEnergy;
+                await this.savePlayer(player);
+                if (actualGain > 0) {
+                    this.emit(GameEvents.ENERGY_REWARD, player.id, actualGain);
+                }
+            } catch (err) {
+                console.error(
+                    `[GameManager] Error rewarding player ${data.id}:`,
+                    err,
+                );
             }
         }
     }
@@ -140,54 +222,77 @@ class GameManager extends EventEmitter {
         const tickedPlayers = new Set();
 
         // Retrieve all currently living bytes
-        const aliveBytesData = await dbManager.getAliveBytes();
+        let aliveBytesData;
+        try {
+            aliveBytesData = await dbManager.getAliveBytes();
+        } catch (error) {
+            console.error(
+                '[GameManager] Failed to fetch alive bytes for tick:',
+                error,
+            );
+            return;
+        }
+
+        if (!aliveBytesData || !Array.isArray(aliveBytesData)) return;
+
         for (const parsedData of aliveBytesData) {
-            const byte = new Byte(parsedData);
-            const player = await this.getPlayer(byte.ownerId);
+            try {
+                // Use Promise.all to fetch the most up-to-date state immediately before mutation.
+                // This eliminates the wide race condition gap caused by processing stale data
+                // from the initial bulk getAliveBytes() snapshot.
+                const [player, bytes] = await Promise.all([
+                    this.getPlayer(parsedData.ownerId),
+                    this.getBytes(parsedData.ownerId),
+                ]);
 
-            if (byte.isAsleep) {
-                if (this.tickCounter % 10 === 0) {
-                    byte.tick(player, itemManager);
+                const byte = bytes.find((b) => b.id === parsedData.id);
+                if (!byte) continue; // Byte might have been deleted or merged during the tick gap
+
+                if (byte.isAsleep) {
+                    if (this.tickCounter % 10 === 0) {
+                        byte.tick(player, itemManager, this.tickCounter);
+                    }
+                } else {
+                    byte.tick(player, itemManager, this.tickCounter);
                 }
-            } else {
-                byte.tick(player, itemManager);
-            }
 
-            if (!tickedPlayers.has(player.id)) {
-                player.tick(byte);
-                tickedPlayers.add(player.id);
-            }
+                if (!tickedPlayers.has(player.id)) {
+                    player.tick(byte);
+                    tickedPlayers.add(player.id);
+                }
 
-            if (eventManager && !byte.isAsleep) {
-                // Determine time of day based on current server time
-                const now = new Date();
-                const hour = now.getHours();
-                let timePhase = 'night';
-                if (hour >= 6 && hour < 18) timePhase = 'day';
-                else if (hour >= 18 && hour < 21) timePhase = 'evening';
+                if (eventManager && !byte.isAsleep) {
+                    const timeContext = getTimeContext();
 
-                // Build the context for event generation
-                const context = {
-                    byte,
-                    player,
-                    timePhase,
-                    dayOfWeek: now.getDay(),
-                    itemManager,
-                };
+                    // Build the context for event generation
+                    const context = {
+                        byte,
+                        player,
+                        ...timeContext,
+                        itemManager,
+                    };
 
-                // Attempt to trigger a random event
-                const event = eventManager.getRandomEvent(context);
-                if (event) {
-                    const success = event.occur(context);
-                    if (success) {
-                        this.emit(GameEvents.RANDOM_EVENT, byte, event);
+                    // Attempt to trigger a random event
+                    const event = eventManager.getRandomEvent(context);
+                    if (event) {
+                        const success = event.occur(context);
+                        if (success) {
+                            this.emit(GameEvents.RANDOM_EVENT, byte, event);
+                        }
                     }
                 }
-            }
 
-            // Save the mutated state
-            await this.saveByte(byte);
-            await this.savePlayer(player);
+                // Save the mutated state concurrently to minimize write-gap
+                await Promise.all([
+                    this.saveByte(byte),
+                    this.savePlayer(player),
+                ]);
+            } catch (err) {
+                console.error(
+                    `[GameManager] Error processing tick for byte ${parsedData.id}:`,
+                    err,
+                );
+            }
         }
     }
 
@@ -198,7 +303,14 @@ class GameManager extends EventEmitter {
         itemManager = null,
     ) {
         setInterval(async () => {
-            await this.processTick(eventManager, itemManager);
+            try {
+                await this.processTick(eventManager, itemManager);
+            } catch (error) {
+                console.error(
+                    '[GameManager] Fatal error during global tick:',
+                    error,
+                );
+            }
         }, tickIntervalMs);
     }
 }

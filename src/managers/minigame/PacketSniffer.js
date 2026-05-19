@@ -266,30 +266,33 @@ class PacketSniffer {
                     const isWin = ack === guessLength;
                     const isLoss = state.history.length >= maxGuesses && !isWin;
 
-                    if (isWin || isLoss) {
-                        const guessesRemaining = maxGuesses - state.history.length;
-                        const resultStr = isWin ? 'win' : 'loss';
-                        gameManager.emit(
-                            GameEvents.MINIGAME_END,
-                            chatId,
-                            this.id,
-                            { result: resultStr, guessesRemaining, difficulty: level },
-                        );
-                    }
-
                     if (isWin && activity && activity.winEffects) {
                         const calculatedWinEffects = calculateEffects(activity.winEffects, byte, player);
-                        state.grantedLoot = LootManager.processLoot(calculatedWinEffects);
+                            state.grantedLoot = LootManager.processLoot(calculatedWinEffects, player, itemManager);
                         applyEffects(calculatedWinEffects, byte, player, itemManager);
                     } else if (isLoss && activity && activity.loseEffects) {
                         const calculatedLoseEffects = calculateEffects(activity.loseEffects, byte, player);
-                        state.grantedLoot = LootManager.processLoot(calculatedLoseEffects);
+                            state.grantedLoot = LootManager.processLoot(calculatedLoseEffects, player, itemManager);
                         applyEffects(calculatedLoseEffects, byte, player, itemManager);
                     }
 
                     if (isWin || isLoss) {
-                        await gameManager.saveByte(byte);
-                        await gameManager.savePlayer(player);
+                            try {
+                                await gameManager.saveByte(byte);
+                                await gameManager.savePlayer(player);
+                                
+                                const guessesRemaining = maxGuesses - state.history.length;
+                                const resultStr = isWin ? 'win' : 'loss';
+                                gameManager.emit(
+                                    GameEvents.MINIGAME_END,
+                                    chatId,
+                                    this.id,
+                                    { result: resultStr, guessesRemaining, difficulty: level },
+                                );
+                            } catch (err) {
+                                console.error('[PacketSniffer] Error saving results:', err);
+                                return { alert: 'Database error saving results!' };
+                            }
                     }
                 }
                 return this.render(state, itemManager);

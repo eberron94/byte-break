@@ -1,7 +1,8 @@
 const Pagination = require('./Pagination');
-const { calculateEffects } = require('../util/effects');
+const { calculateEffects, evaluateExpression } = require('../util/effects');
 const ShopManager = require('../managers/ShopManager');
 const classesData = require('../../data/classes.json');
+const { getTimeContext } = require('../util/time');
 
 /**
  * @mixin TelegramUIBuilders
@@ -68,31 +69,60 @@ const TelegramUIBuilders = {
         }
 
         if (room && room.tickEffects) {
-            const evaluatedEffects = calculateEffects(
-                room.tickEffects,
-                byte,
-                player,
-            );
-            const effectsStr = Object.entries(evaluatedEffects)
-                .map(
-                    ([key, val]) =>
-                        `${val > 0 ? '+' : ''}${val} ${key.charAt(0).toUpperCase() + key.slice(1)}/min`,
-                )
-                .join(', ');
-            text += `⏱️ **Passive Effects:** ${effectsStr}\n`;
+            const timeContext = getTimeContext();
+            const effectStrings = [];
+
+            const effectsByTicks = {};
+            room.tickEffects.forEach((eff) => {
+                const tpt =
+                    eff.ticksPerTrigger !== undefined
+                        ? evaluateExpression(
+                              eff.ticksPerTrigger,
+                              byte,
+                              player,
+                              timeContext,
+                          )
+                        : 1;
+                if (!effectsByTicks[tpt]) effectsByTicks[tpt] = [];
+                effectsByTicks[tpt].push(eff);
+            });
+
+            for (const [tptStr, effs] of Object.entries(effectsByTicks)) {
+                const tpt = parseInt(tptStr, 10);
+                const evaluatedEffects = calculateEffects(
+                    effs,
+                    byte,
+                    player,
+                    timeContext,
+                );
+                const str = Object.entries(evaluatedEffects)
+                    .filter(
+                        ([key]) =>
+                            key !== 'inventory' &&
+                            key !== 'loot' &&
+                            key !== 'hediffs',
+                    )
+                    .map(([key, val]) => {
+                        const suffix = tpt === 1 ? '/min' : `/${tpt}min`;
+                        return `${val > 0 ? '+' : ''}${val} ${key.charAt(0).toUpperCase() + key.slice(1)}${suffix}`;
+                    })
+                    .join(', ');
+                if (str.length > 0) {
+                    effectStrings.push(str);
+                }
+            }
+
+            if (effectStrings.length > 0) {
+                text += `⏱️ **Passive Effects:** ${effectStrings.join(', ')}\n`;
+            }
         }
 
         if (room && room.id === 'market') {
-            const now = new Date();
-            const hour = now.getHours();
-            let timePhase = 'night';
-            if (hour >= 6 && hour < 18) timePhase = 'day';
-            else if (hour >= 18 && hour < 21) timePhase = 'evening';
+            const timeContext = getTimeContext();
             const context = {
                 byte,
                 player,
-                timePhase,
-                dayOfWeek: now.getDay(),
+                ...timeContext,
             };
 
             const allShops = ShopManager.getAllShops();
@@ -262,7 +292,7 @@ const TelegramUIBuilders = {
         return { text, options };
     },
 
-    getRoomsDisplay(byte, chatId, page = 0) {
+    getRoomsDisplay(byte, player, chatId, page = 0) {
         const rooms = this.roomManager.getAllRooms();
         const buttons = [];
         const adminIds = (process.env.ADMIN_USER_IDS || '').split(',').map((id) => id.trim());
@@ -270,6 +300,7 @@ const TelegramUIBuilders = {
 
         rooms.forEach((room) => {
             if (room.id === 'debug_room' && !isAdmin) return;
+            if (!room.canEnter(byte, player, this.itemManager)) return;
             buttons.push({ text: room.name, callback_data: `nav_move_${room.id}` });
         });
 

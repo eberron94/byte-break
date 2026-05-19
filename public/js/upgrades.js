@@ -98,6 +98,10 @@ function renderUpgrades(lastUpgradedKey = null) {
 
 async function purchaseUpgrade(key) {
     const previousLevel = window.currentByte.level;
+
+    const buttons = document.querySelectorAll('.upgrade-btn');
+    buttons.forEach(btn => btn.disabled = true);
+
     try {
         const response = await fetch('/api/byte/upgrade', {
             method: 'POST',
@@ -106,8 +110,12 @@ async function purchaseUpgrade(key) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Upgrade failed');
+            let errorMsg = 'Upgrade failed';
+            try {
+                const errorData = await response.json();
+                if (errorData.error) errorMsg = errorData.error;
+            } catch (err) {}
+            throw new Error(errorMsg);
         }
 
         const updatedByte = await response.json();
@@ -139,6 +147,7 @@ async function purchaseUpgrade(key) {
     } catch (err) {
         console.error('Upgrade failed:', err);
         alert('Upgrade failed: ' + err.message);
+        renderUpgrades(key);
     }
 }
 
@@ -149,6 +158,9 @@ async function useRebooter() {
         )
     )
         return;
+        
+    const buttons = document.querySelectorAll('.btn, .upgrade-btn');
+    buttons.forEach(btn => btn.disabled = true);
 
     try {
         const response = await fetch('/api/special/reboot', {
@@ -158,8 +170,12 @@ async function useRebooter() {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Reboot failed');
+            let errorMsg = 'Reboot failed';
+            try {
+                const errorData = await response.json();
+                if (errorData.error) errorMsg = errorData.error;
+            } catch (err) {}
+            throw new Error(errorMsg);
         }
 
         const updatedByte = await response.json();
@@ -181,5 +197,6 @@ async function useRebooter() {
     } catch (err) {
         console.error('Reboot failed:', err);
         alert('Reboot failed: ' + err.message);
+        renderUpgrades();
     }
 }

@@ -17,7 +17,12 @@ const Bits = require('./pools/Bits');
 
 const RoomManager = require('../managers/RoomManager');
 const HediffManager = require('../managers/HediffManager');
-const { calculateEffects, applyEffects, evaluateExpression } = require('../util/effects');
+const {
+    calculateEffects,
+    applyEffects,
+    evaluateExpression,
+} = require('../util/effects');
+const { getTimeContext } = require('../util/time');
 
 /**
  * Represents a digital monster (byte), managing its nested stats, skills, needs, and pools.
@@ -28,7 +33,7 @@ class Byte {
         this.ownerId = data.ownerId;
         this.name = data.name;
         this.byteClass = data.byteClass || 'demo';
-        
+
         this.hediffs = data.hediffs || {};
 
         // Needs automatically decay over time
@@ -128,17 +133,18 @@ class Byte {
                     }
                 }
             } else if (this.stats[key]) {
-                this.stats[key].baseValue += value;
+                this.stats[key].baseValue = Math.max(0, this.stats[key].baseValue + value);
             } else if (this.skills[key]) {
-                this.skills[key].investedValue += value;
+                this.skills[key].investedValue = Math.max(0, this.skills[key].investedValue + value);
             } else if (key.startsWith('upgrade_')) {
                 const target = key.replace('upgrade_', '');
                 if (this.skills[target]) {
-                    this.skills[target].investedValue += value;
+                    this.skills[target].investedValue = Math.max(0, this.skills[target].investedValue + value);
                 } else if (this.pools[target]) {
                     this.pools[target].investedValue =
-                        (this.pools[target].investedValue || 0) + value;
-                    this.pools[target].increase(value);
+                        Math.max(0, (this.pools[target].investedValue || 0) + value);
+                    if (value > 0) this.pools[target].increase(value);
+                    else this.pools[target].decrease(Math.abs(value));
                 }
             } else if (key === 'isAsleep') {
                 this.isAsleep = value;
@@ -148,10 +154,14 @@ class Byte {
                     if (!hDef) continue;
 
                     if (h.action === 'escalate') {
-                        if (!this.hediffs[h.id]) this.hediffs[h.id] = { stacks: 1 };
+                        if (!this.hediffs[h.id])
+                            this.hediffs[h.id] = { stacks: 1 };
                         else this.hediffs[h.id].stacks += 1;
 
-                        if (hDef.maxStacks && this.hediffs[h.id].stacks > hDef.maxStacks) {
+                        if (
+                            hDef.maxStacks &&
+                            this.hediffs[h.id].stacks > hDef.maxStacks
+                        ) {
                             if (hDef.nextTier) {
                                 delete this.hediffs[h.id];
                                 this.hediffs[hDef.nextTier] = { stacks: 1 };
@@ -165,9 +175,14 @@ class Byte {
                             if (this.hediffs[h.id].stacks <= 0) {
                                 delete this.hediffs[h.id];
                                 if (hDef.prevTier) {
-                                    const prevDef = HediffManager.getHediff(hDef.prevTier);
+                                    const prevDef = HediffManager.getHediff(
+                                        hDef.prevTier,
+                                    );
                                     this.hediffs[hDef.prevTier] = {
-                                        stacks: prevDef && prevDef.maxStacks ? prevDef.maxStacks : 1,
+                                        stacks:
+                                            prevDef && prevDef.maxStacks
+                                                ? prevDef.maxStacks
+                                                : 1,
                                     };
                                 }
                             }
@@ -194,7 +209,7 @@ class Byte {
     /**
      * Global clock cycle action for the byte. Drives need decay over time.
      */
-    tick(player = null, itemManager = null) {
+    tick(player = null, itemManager = null, tickCounter = 1) {
         if (!this.isAlive) return;
 
         // Trigger natural decay across all loaded needs
@@ -204,22 +219,47 @@ class Byte {
             return;
         }
 
+        // Offline/Asleep Bytes do not trigger active room environments or hediff ticks
+        if (this.isAsleep) {
+            return;
+        }
+
+        const locals = { ...getTimeContext(), tickCounter };
+
         const currentRoom = RoomManager.getRoom(this.room);
         if (currentRoom && currentRoom.tickEffects) {
-            const calculatedEffects = calculateEffects(
-                currentRoom.tickEffects,
-                this,
-                player,
-            );
-            applyEffects(calculatedEffects, this, player, itemManager);
+            const activeTickEffects = currentRoom.tickEffects.filter(effect => {
+                const tpt = effect.ticksPerTrigger !== undefined ? evaluateExpression(effect.ticksPerTrigger, this, player, locals) : 1;
+                return tpt <= 1 || (locals.tickCounter % tpt === 0);
+            });
+            if (activeTickEffects.length > 0) {
+                const calculatedEffects = calculateEffects(
+                    activeTickEffects,
+                    this,
+                    player,
+                    locals,
+                );
+                applyEffects(calculatedEffects, this, player, itemManager);
+            }
         }
 
         // Process Passive Hediffs
         for (const [hId, hData] of Object.entries(this.hediffs)) {
             const hDef = HediffManager.getHediff(hId);
             if (hDef && hDef.tickEffects) {
-                const calculatedEffects = calculateEffects(hDef.tickEffects, this, player, { stacks: hData.stacks });
-                applyEffects(calculatedEffects, this, player, itemManager);
+                const activeTickEffects = hDef.tickEffects.filter(effect => {
+                    const tpt = effect.ticksPerTrigger !== undefined ? evaluateExpression(effect.ticksPerTrigger, this, player, { ...locals, stacks: hData.stacks }) : 1;
+                    return tpt <= 1 || (locals.tickCounter % tpt === 0);
+                });
+                if (activeTickEffects.length > 0) {
+                    const calculatedEffects = calculateEffects(
+                        activeTickEffects,
+                        this,
+                        player,
+                        { ...locals, stacks: hData.stacks },
+                    );
+                    applyEffects(calculatedEffects, this, player, itemManager);
+                }
             }
         }
     }
@@ -259,7 +299,9 @@ class Byte {
             if (hDef && hDef.modifiers) {
                 for (const mod of hDef.modifiers) {
                     if (mod.type === type && mod.key === key) {
-                        modifier += evaluateExpression(mod.amount, this, null, { stacks: hData.stacks });
+                        modifier += evaluateExpression(mod.amount, this, null, {
+                            stacks: hData.stacks,
+                        });
                     }
                 }
             }
