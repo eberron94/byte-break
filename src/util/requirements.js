@@ -138,7 +138,7 @@ function checkRequirements(
                 const progress = player.achievementPoints.progress[req.id] || 0;
                 let currentRank = 0;
                 for (let i = 0; i < ach.tiers.length; i++) {
-                    if (progress >= ach.tiers[i]) currentRank = i + 1;
+                    if (progress >= ach.tiers[i].requirement) currentRank = i + 1;
                 }
                 const aRank =
                     req.rank !== undefined

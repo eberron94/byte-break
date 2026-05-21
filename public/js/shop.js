@@ -63,12 +63,14 @@ async function renderShop() {
                 ? 'SOLD OUT'
                 : `🛒 ${item.calculatedCost} β`;
 
+            const effectsHtml = item.formattedEffects ? `<div style="margin-top: 8px; font-size: 11px; color: #ccc;">✨ <strong>Effects:</strong><br>• ${item.formattedEffects.replace(/\n/g, '<br>')}</div>` : '';
+
             html += `
             <div class="upgrade-item">
                 <div class="upgrade-header">
                     <span class="upgrade-name" title="${item.name}">${item.shortname || item.name}${stockText}</span>
                 </div>
-                <div class="shop-item-desc">${item.description}</div>
+                <div class="shop-item-desc">${item.description}${effectsHtml}</div>
                 <button class="upgrade-btn" onclick="purchaseItem('${activeShop.id}', '${item.id}')" style="background: ${btnBg};" ${isDisabled ? 'disabled' : ''}>
                     ${btnText}
                 </button>
@@ -88,12 +90,14 @@ async function renderShop() {
                     item.cost * activeShop.sellMultiplier,
                 );
 
+                const effectsHtml = item.formattedEffects ? `<div style="margin-top: 8px; font-size: 11px; color: #ccc;">✨ <strong>Effects:</strong><br>• ${item.formattedEffects.replace(/\n/g, '<br>')}</div>` : '';
+
                 html += `
                 <div class="upgrade-item">
                     <div class="upgrade-header">
                         <span class="upgrade-name" title="${item.name}">${item.shortname || item.name} (x${item.amount})</span>
                     </div>
-                    <div class="shop-item-desc">${item.description}</div>
+                    <div class="shop-item-desc">${item.description}${effectsHtml}</div>
                     <button class="upgrade-btn" onclick="sellItem('${activeShop.id}', '${item.id}')" style="background: #f44336;">
                         💰 ${sellPrice} β
                     </button>

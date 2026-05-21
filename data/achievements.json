@@ -1,58 +1,178 @@
 [
     {
-        "id": "dojo_wins",
-        "name": "Dojo Champion",
-        "description": "Emerge victorious from combat simulations.",
-        "tiers": [1, 10, 100],
-        "rewards": [1, 5, 20]
+        "id": "level_ups",
+        "name": "Rapid Growth",
+        "description": "Level up your Bytes to unlock new potentials.",
+        "tiers": [
+            {
+                "requirement": 5,
+                "reward": 1,
+                "description": "Reach 5 total level ups.",
+                "effects": [
+                    { "type": "bits", "amount": 250 }
+                ]
+            },
+            {
+                "requirement": 25,
+                "reward": 2,
+                "description": "Reach 25 total level ups."
+            },
+            {
+                "requirement": 50,
+                "reward": 3,
+                "description": "Reach 50 total level ups."
+            },
+            {
+                "requirement": 100,
+                "reward": 5,
+                "description": "Reach 100 total level ups."
+            }
+        ]
     },
     {
-        "id": "level_ups",
-        "name": "Power Overwhelming",
-        "description": "Upgrade a Byte's capabilities.",
-        "tiers": [1, 10, 50],
-        "rewards": [1, 5, 10]
+        "id": "dojo_wins",
+        "name": "Gladiator",
+        "description": "Win combat simulations in the Dojo.",
+        "tiers": [
+            {
+                "requirement": 1,
+                "reward": 1,
+                "description": "Win your first combat simulation."
+            },
+            {
+                "requirement": 10,
+                "reward": 2,
+                "description": "Win 10 combat simulations."
+            },
+            {
+                "requirement": 50,
+                "reward": 3,
+                "description": "Win 50 combat simulations."
+            },
+            {
+                "requirement": 100,
+                "reward": 5,
+                "description": "Win 100 combat simulations."
+            }
+        ]
     },
     {
         "id": "shop_purchases",
-        "name": "Consumerism",
-        "description": "Purchase items from the Market.",
-        "tiers": [1, 10, 50],
-        "rewards": [1, 5, 10]
+        "name": "Big Spender",
+        "description": "Purchase items from the market.",
+        "tiers": [
+            {
+                "requirement": 1,
+                "reward": 1,
+                "description": "Make your first purchase."
+            },
+            {
+                "requirement": 25,
+                "reward": 2,
+                "description": "Purchase 25 items."
+            },
+            {
+                "requirement": 100,
+                "reward": 3,
+                "description": "Purchase 100 items."
+            }
+        ]
     },
     {
         "id": "bytes_spawned",
-        "name": "Hello World",
-        "description": "Spawn a new Byte.",
-        "tiers": [1, 5],
-        "rewards": [1, 5]
+        "name": "Creator",
+        "description": "Spawn new Bytes.",
+        "tiers": [
+            {
+                "requirement": 1,
+                "reward": 1,
+                "description": "Spawn your first Byte."
+            },
+            { "requirement": 5, "reward": 2, "description": "Spawn 5 Bytes." },
+            { "requirement": 20, "reward": 3, "description": "Spawn 20 Bytes." }
+        ]
     },
     {
         "id": "bytes_merged",
         "name": "Evolution",
-        "description": "Successfully merge Bytes into a new generation.",
-        "tiers": [1, 5, 20],
-        "rewards": [1, 5, 20]
+        "description": "Merge Bytes to create stronger generations.",
+        "tiers": [
+            {
+                "requirement": 1,
+                "reward": 1,
+                "description": "Perform your first merge."
+            },
+            {
+                "requirement": 5,
+                "reward": 3,
+                "description": "Perform 5 merges."
+            },
+            {
+                "requirement": 25,
+                "reward": 5,
+                "description": "Perform 25 merges."
+            }
+        ]
     },
     {
         "id": "combat_losses",
-        "name": "Learning Experience",
-        "description": "Suffer defeat in the Dojo.",
-        "tiers": [1, 10],
-        "rewards": [1, 2]
+        "name": "Hard Lessons",
+        "description": "Experience defeat in combat.",
+        "tiers": [
+            {
+                "requirement": 1,
+                "reward": 1,
+                "description": "Lose your first combat simulation."
+            },
+            {
+                "requirement": 10,
+                "reward": 2,
+                "description": "Lose 10 combat simulations."
+            },
+            {
+                "requirement": 50,
+                "reward": 3,
+                "description": "Lose 50 combat simulations."
+            }
+        ]
     },
     {
         "id": "packet_sniffer_easy_wins",
         "name": "Script Kiddie",
-        "description": "Successfully decrypt 5 Easy packets.",
-        "tiers": [5],
-        "rewards": [5]
+        "description": "Successfully crack the Packet Sniffer on Easy difficulty.",
+        "tiers": [
+            {
+                "requirement": 1,
+                "reward": 1,
+                "description": "Crack your first packet on Easy."
+            },
+            {
+                "requirement": 10,
+                "reward": 2,
+                "description": "Crack 10 packets on Easy."
+            },
+            {
+                "requirement": 50,
+                "reward": 3,
+                "description": "Crack 50 packets on Easy."
+            }
+        ]
     },
     {
         "id": "packet_sniffer_normal_wins",
-        "name": "Black Hat",
-        "description": "Successfully decrypt 5 Normal packets.",
-        "tiers": [5],
-        "rewards": [10]
+        "name": "Elite Hacker",
+        "description": "Successfully crack the Packet Sniffer on Normal difficulty.",
+        "tiers": [
+            {
+                "requirement": 1,
+                "reward": 2,
+                "description": "Crack your first packet on Normal."
+            },
+            {
+                "requirement": 10,
+                "reward": 5,
+                "description": "Crack 10 packets on Normal."
+            }
+        ]
     }
 ]

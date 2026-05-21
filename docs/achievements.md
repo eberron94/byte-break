@@ -11,8 +11,7 @@ The file should contain a single JSON array composed of Achievement objects.
 | `id`          | String           | **Required** | The unique identifier for the achievement. The `AchievementManager` explicitly listens for Game Events and increments progress based on these exact IDs (e.g., `"level_ups"`). |
 | `name`        | String           | **Required** | The display title of the achievement in the Web App UI.                                                                                                                        |
 | `description` | String           | `""`         | The flavor text describing what action the player needs to perform to progress this achievement.                                                                               |
-| `tiers`       | Array of Numbers | `[]`         | The progressive milestones/thresholds required to unlock each tier of the achievement. Must correspond 1-to-1 with the `rewards` array.                                        |
-| `rewards`     | Array of Numbers | `[]`         | The amount of Achievement Points (α) granted upon reaching the corresponding threshold in the `tiers` array.                                                                   |
+| `tiers`       | Array of Objects | `[]`         | The progressive milestones required to unlock each tier of the achievement. Each object contains properties for that tier.                                                     |
 
 ---
 
@@ -20,10 +19,10 @@ The file should contain a single JSON array composed of Achievement objects.
 
 Achievements in Tele-grow are progressive. Rather than having a separate achievement for "Win 10 Battles" and "Win 50 Battles", a single achievement contains multiple tiers.
 
-- **`tiers`**: Determines the cumulative progress required. `[10, 50, 100]` means Tier 1 unlocks at 10 progress, Tier 2 unlocks at 50, and Tier 3 unlocks at 100.
-- **`rewards`**: Determines the payout at those exact milestones. `[1, 3, 5]` means Tier 1 gives 1 α, Tier 2 gives 3 α, and Tier 3 gives 5 α.
-
-_Note: The `tiers` and `rewards` arrays must always have the exact same number of elements!_
+- **`requirement`**: The cumulative progress required to complete this tier (e.g., `10`).
+- **`reward`**: The payout in Achievement Points (α) upon reaching this milestone (e.g., `1`).
+- **`description`**: *(Optional)* A custom description that overrides the base achievement description for this specific tier.
+- **`effects`**: *(Optional)* An array of effect objects applied to the Byte and Player when this tier is reached. See Effects Configuration.
 
 ---
 
@@ -37,9 +36,13 @@ An achievement that tracks how many times the player's Bytes have leveled up. It
 {
     "id": "level_ups",
     "name": "Rapid Growth",
-    "description": "Level up your Bytes.",
-    "tiers": [5, 25, 50, 100],
-    "rewards": [1, 2, 3, 5]
+    "description": "Level up your Bytes to unlock new potentials.",
+    "tiers": [
+        { "requirement": 5, "reward": 1, "description": "Reach level 5." },
+        { "requirement": 25, "reward": 2, "description": "Reach level 25." },
+        { "requirement": 50, "reward": 3, "description": "Reach level 50." },
+        { "requirement": 100, "reward": 5, "description": "Reach level 100." }
+    ]
 }
 ```
 

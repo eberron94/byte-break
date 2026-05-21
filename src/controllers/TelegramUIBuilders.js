@@ -1,5 +1,6 @@
 const Pagination = require('./Pagination');
 const { calculateEffects, evaluateExpression } = require('../util/effects');
+const GameObjectManager = require('../managers/GameObjectManager');
 const ShopManager = require('../managers/ShopManager');
 const classesData = require('../../data/classes.json');
 const { getTimeContext } = require('../util/time');
@@ -287,6 +288,11 @@ const TelegramUIBuilders = {
         const item = this.itemManager.getItem(itemId);
         const amount = player.inventory[itemId] || 0;
         let text = `🎒 **Item Details** 🎒\n\n**${item.name}** (x${amount})\n_${item.description}_\n`;
+        
+        if (item.effects && item.effects.length > 0) {
+            text += `\n✨ **Effects:**\n• ${GameObjectManager.formatEffectsList(item.effects)}\n`;
+        }
+
         const inline_keyboard = [];
         if ((item.type === 'consumable' || item.type === 'key') && amount > 0) {
             const icon = item.type === 'key' ? '🔑' : '💊';

@@ -127,14 +127,15 @@ function renderDebugAchievements() {
         const progress = debugData.player.achievements[ach.id] || 0;
         let tiersHtml = '';
         for (let i = 0; i < ach.tiers.length; i++) {
-            const req = ach.tiers[i];
+            const tierData = ach.tiers[i];
+            const req = tierData.requirement;
             const isCompleted = progress >= req;
             const newProgress = isCompleted
                 ? i > 0
-                    ? ach.tiers[i - 1]
+                    ? ach.tiers[i - 1].requirement
                     : 0
                 : req;
-            tiersHtml += `<button class="btn" style="width: auto; padding: 5px; margin: 2px; background: ${isCompleted ? '#4caf50' : '#4d4d73'}; font-size: 12px;" onclick="setDebugAchievement('${ach.id}', ${newProgress})">Tier ${i + 1} (+${ach.rewards[i]} α)</button>`;
+            tiersHtml += `<button class="btn" style="width: auto; padding: 5px; margin: 2px; background: ${isCompleted ? '#4caf50' : '#4d4d73'}; font-size: 12px;" onclick="setDebugAchievement('${ach.id}', ${newProgress})">Tier ${i + 1} (+${tierData.reward} α)</button>`;
         }
         html += `
         <div class="upgrade-item" style="border: 1px solid #4d4d73; padding: 10px;">

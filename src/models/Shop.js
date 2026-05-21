@@ -1,4 +1,5 @@
 const { checkRequirements } = require('../util/requirements');
+const GameObjectManager = require('../managers/GameObjectManager');
 
 class Shop {
     constructor(data) {
@@ -77,6 +78,7 @@ class Shop {
                     ...item,
                     calculatedCost: Math.ceil(item.cost * this.priceMultiplier),
                     remainingStock: remainingStock,
+                    formattedEffects: item.effects && item.effects.length > 0 ? GameObjectManager.formatEffectsList(item.effects) : null,
                 };
             });
     }

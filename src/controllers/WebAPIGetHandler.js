@@ -5,6 +5,7 @@ const TalentManager = require('../managers/TalentManager');
 const AchievementManager = require('../managers/AchievementManager');
 const { checkRequirements } = require('../util/requirements');
 const { getTimeContext } = require('../util/time');
+const GameObjectManager = require('../managers/GameObjectManager');
 
 /**
  * @mixin WebAPIGetHandler
@@ -133,7 +134,8 @@ const WebAPIGetHandler = {
                 if (amount > 0) {
                     const item = ItemManager.getItem(itemId);
                     if (item) {
-                        inventory.push({ ...item, amount });
+                        const formattedEffects = item.effects && item.effects.length > 0 ? GameObjectManager.formatEffectsList(item.effects) : null;
+                        inventory.push({ ...item, amount, formattedEffects });
                     }
                 }
             }
@@ -268,17 +270,18 @@ const WebAPIGetHandler = {
                 let completedTiers = 0;
 
                 const processedTiers = ach.tiers.map((tierReq, i) => {
-                    const isCompleted = progress >= tierReq;
+                    const isCompleted = progress >= tierReq.requirement;
                     if (isCompleted) completedTiers++;
                     return {
-                        req: tierReq,
-                        reward: ach.rewards[i],
+                        req: tierReq.requirement,
+                        reward: tierReq.reward,
+                        description: tierReq.description || ach.description,
                         checkColor: isCompleted ? '#4caf50' : '#4d4d73',
                     };
                 });
 
                 const allCompleted =
-                    progress >= ach.tiers[ach.tiers.length - 1];
+                    progress >= ach.tiers[ach.tiers.length - 1].requirement;
 
                 return {
                     id: ach.id,

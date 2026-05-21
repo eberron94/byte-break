@@ -681,19 +681,38 @@ const WebAPIPostHandler = {
             player.achievementPoints.progress[achId] = progress;
             if (progress === 0) delete player.achievementPoints.progress[achId];
 
+            let byte = null;
+            let byteModified = false;
+
             const ach = AchievementManager.getAchievement(achId);
             if (ach) {
                 if (progress > oldProgress) {
                     for (let i = 0; i < ach.tiers.length; i++) {
-                        const tierReq = ach.tiers[i];
+                        const tierData = ach.tiers[i];
+                        const tierReq = tierData.requirement;
                         if (oldProgress < tierReq && progress >= tierReq) {
-                            const reward = ach.rewards[i];
+                            const reward = tierData.reward;
+
+                            if (tierData.effects && tierData.effects.length > 0) {
+                                if (!byte) byte = await this.gameManager.getByte(userId);
+                                const timeContext = getTimeContext();
+                                const context = { byte, player, ...timeContext };
+                                const calculatedEffects = calculateEffects(
+                                    tierData.effects,
+                                    byte,
+                                    player,
+                                    context
+                                );
+                                const success = applyEffects(calculatedEffects, byte, player, ItemManager);
+                                if (success && byte) byteModified = true;
+                            }
+
                             this.gameManager.emit(
                                 GameEvents.ACHIEVEMENT_UNLOCKED,
                                 userId,
                                 {
                                     name: ach.name,
-                                    description: ach.description,
+                                    description: tierData.description || ach.description,
                                     reward: reward,
                                     tier: i + 1,
                                     totalTiers: ach.tiers.length,
@@ -706,6 +725,9 @@ const WebAPIPostHandler = {
             }
 
             await this.gameManager.savePlayer(player);
+            if (byteModified && byte) {
+                await this.gameManager.saveByte(byte);
+            }
             this.gameManager.emit(
                 GameEvents.DEBUG_ACTION,
                 userId,

@@ -1,5 +1,8 @@
 const GameEvents = require('../util/GameEvents');
 const achievementsData = require('../../data/achievements.json');
+const { calculateEffects, applyEffects } = require('../util/effects');
+const ItemManager = require('./ItemManager');
+const { getTimeContext } = require('../util/time');
 
 class AchievementManager {
     constructor() {
@@ -30,13 +33,32 @@ class AchievementManager {
             const newProgress = currentProgress + amount;
             player.achievementPoints.progress[achId] = newProgress;
 
+            let byte = null;
+            let byteModified = false;
+
             for (let i = 0; i < ach.tiers.length; i++) {
-                const tierReq = ach.tiers[i];
+                const tierData = ach.tiers[i];
+                const tierReq = tierData.requirement;
                 if (currentProgress < tierReq && newProgress >= tierReq) {
-                    const reward = ach.rewards[i];
+                    const reward = tierData.reward;
+
+                    if (tierData.effects && tierData.effects.length > 0) {
+                        if (!byte) byte = await gameManager.getByte(userId);
+                        const timeContext = getTimeContext();
+                        const context = { byte, player, ...timeContext };
+                        const calculatedEffects = calculateEffects(
+                            tierData.effects,
+                            byte,
+                            player,
+                            context
+                        );
+                        const success = applyEffects(calculatedEffects, byte, player, ItemManager);
+                        if (success && byte) byteModified = true;
+                    }
+
                     gameManager.emit(GameEvents.ACHIEVEMENT_UNLOCKED, userId, {
                         name: ach.name,
-                        description: ach.description,
+                        description: tierData.description || ach.description,
                         reward: reward,
                         tier: i + 1,
                         totalTiers: ach.tiers.length,
@@ -46,6 +68,9 @@ class AchievementManager {
             }
 
             await gameManager.savePlayer(player);
+            if (byteModified && byte) {
+                await gameManager.saveByte(byte);
+            }
         } catch (e) {
             console.error(`Achievement error (${achId}):`, e);
         }

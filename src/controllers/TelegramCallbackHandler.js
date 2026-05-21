@@ -1,5 +1,6 @@
 const GameEvents = require('../util/GameEvents');
 const minigameManager = require('../managers/minigame/MinigameManager');
+const GameObjectManager = require('../managers/GameObjectManager');
 
 /**
  * Handles all inline keyboard callback queries from Telegram.
@@ -178,8 +179,9 @@ async function handleCallbackQuery(query) {
             let statusMessage = '';
             if (room && (room.id !== 'debug_room' || isAdmin)) {
                 if (!room.canEnter(byte, player, this.itemManager)) {
-                    alertMessage =
-                        'You do not meet the requirements to enter this room.';
+                    alertMessage = `Cannot enter ${room.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(room.requirements);
+                    if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
+                    showAlert = true;
                 } else if (byte.room !== newRoomId) {
                     byte.room = newRoomId;
                     await this.game.saveByte(byte);
@@ -215,7 +217,9 @@ async function handleCallbackQuery(query) {
             if (!activity) {
                 alertMessage = 'Activity not found!';
             } else if (!activity.canPerform(byte, player, this.itemManager)) {
-                alertMessage = `${byte.name} isn't able to do that right now.`;
+                alertMessage = `Cannot perform ${activity.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(activity.requirements);
+                if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
+                showAlert = true;
             } else {
                 const item = this.itemManager.getItem(itemId);
                 if (!item || !player.hasItem(itemId, 1)) {
@@ -243,7 +247,9 @@ async function handleCallbackQuery(query) {
                 } else if (
                     !activity.canPerform(byte, player, this.itemManager)
                 ) {
-                    alertMessage = `${byte.name} isn't able to do that right now.`;
+                    alertMessage = `Cannot perform ${activity.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(activity.requirements);
+                    if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
+                    showAlert = true;
                 } else if (activity.itemSelect) {
                     const { text, options } = this.getActivityItemSelectDisplay(
                         player,
