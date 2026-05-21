@@ -3,6 +3,8 @@ const { calculateEffects, evaluateExpression } = require('../util/effects');
 const GameObjectManager = require('../managers/GameObjectManager');
 const ShopManager = require('../managers/ShopManager');
 const ItemManager = require('../managers/ItemManager');
+const RoomManager = require('../managers/RoomManager');
+const ActivityManager = require('../managers/ActivityManager');
 const classesData = require('../../data/classes.json');
 const { getTimeContext } = require('../util/time');
 
@@ -53,7 +55,7 @@ const TelegramUIBuilders = {
             };
         }
 
-        const room = this.roomManager.getRoom(status.room);
+        const room = RoomManager.getRoom(status.room);
         const roomName = room ? room.name : status.room.replace(/_/g, '\\_');
 
         const invEntries = Object.entries(player.inventory).map(([id, amt]) => {
@@ -186,14 +188,12 @@ const TelegramUIBuilders = {
 
         if (room && room.allowedActivities) {
             const buttons = [];
-            const webAppUrl = process.env.WEB_APP_URL;
             for (const actId of room.allowedActivities) {
-                const activity = this.activityManager.getActivity(actId);
+                const activity = ActivityManager.getActivity(actId);
                 if (activity) {
                     buttons.push(
-                        this.activityManager.getActivityButton(
+                        ActivityManager.getActivityButton(
                             activity,
-                            webAppUrl,
                             byte,
                             player,
                         ),
@@ -325,7 +325,7 @@ const TelegramUIBuilders = {
     },
 
     getRoomsDisplay(byte, player, chatId, page = 0) {
-        const rooms = this.roomManager.getAllRooms();
+        const rooms = RoomManager.getAllRooms();
         const buttons = [];
         const adminIds = (process.env.ADMIN_USER_IDS || '')
             .split(',')

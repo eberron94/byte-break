@@ -6,6 +6,7 @@ const GameEvents = require('../util/GameEvents');
 const MergeManager = require('./MergeManager');
 const SpawnManager = require('./SpawnManager');
 const { getTimeContext } = require('../util/time');
+const EventManager = require('./EventManager');
 
 class GameManager extends EventEmitter {
     constructor() {
@@ -213,7 +214,7 @@ class GameManager extends EventEmitter {
     }
 
     // Processes a single global tick for all active bytes
-    async processTick(eventManager = null) {
+    async processTick() {
         this.tickCounter = (this.tickCounter || 0) + 1;
         if (this.tickCounter % 10 === 0) {
             await this.rewardActivePlayers();
@@ -261,7 +262,7 @@ class GameManager extends EventEmitter {
                     tickedPlayers.add(player.id);
                 }
 
-                if (eventManager && !byte.isAsleep) {
+                if (EventManager && !byte.isAsleep) {
                     const timeContext = getTimeContext();
 
                     // Build the context for event generation
@@ -273,7 +274,7 @@ class GameManager extends EventEmitter {
                     };
 
                     // Attempt to trigger a random event
-                    const event = eventManager.getRandomEvent(context);
+                    const event = EventManager.getRandomEvent(context);
                     if (event) {
                         const success = event.occur(context);
                         if (success) {
@@ -299,11 +300,10 @@ class GameManager extends EventEmitter {
     // Starts the continuous global game loop that drives time and events
     startGameLoop(
         tickIntervalMs = 60000,
-        eventManager = null,
     ) {
         setInterval(async () => {
             try {
-                await this.processTick(eventManager);
+                await this.processTick();
             } catch (error) {
                 console.error(
                     '[GameManager] Fatal error during global tick:',

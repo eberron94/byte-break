@@ -2,6 +2,8 @@ const GameEvents = require('../util/GameEvents');
 const minigameManager = require('../managers/minigame/MinigameManager');
 const GameObjectManager = require('../managers/GameObjectManager');
 const ItemManager = require('../managers/ItemManager');
+const RoomManager = require('../managers/RoomManager');
+const ActivityManager = require('../managers/ActivityManager');
 
 /**
  * Handles all inline keyboard callback queries from Telegram.
@@ -172,7 +174,7 @@ async function handleCallbackQuery(query) {
             await this.updateMessageDisplay(query, text, options);
         } else if (action.startsWith('nav_move_')) {
             const newRoomId = action.replace('nav_move_', '');
-            const room = this.roomManager.getRoom(newRoomId);
+            const room = RoomManager.getRoom(newRoomId);
             const adminIds = (process.env.ADMIN_USER_IDS || '')
                 .split(',')
                 .map((id) => id.trim());
@@ -202,7 +204,7 @@ async function handleCallbackQuery(query) {
             const lastUnderscore = payload.lastIndexOf('_');
             const actId = payload.slice(0, lastUnderscore);
             const page = parseInt(payload.slice(lastUnderscore + 1), 10);
-            const activity = this.activityManager.getActivity(actId);
+            const activity = ActivityManager.getActivity(actId);
             if (activity) {
                 const { text, options } = this.getActivityItemSelectDisplay(
                     player,
@@ -213,7 +215,7 @@ async function handleCallbackQuery(query) {
             }
         } else if (action.startsWith('act_ex|')) {
             const [actId, itemId] = action.replace('act_ex|', '').split('|');
-            const activity = this.activityManager.getActivity(actId);
+            const activity = ActivityManager.getActivity(actId);
             let statusMessage = '';
             if (!activity) {
                 alertMessage = 'Activity not found!';
@@ -237,12 +239,12 @@ async function handleCallbackQuery(query) {
             await this.sendStatusUI(chatId, byte, player, statusMessage);
         } else if (action.startsWith('act_')) {
             const actId = action.replace('act_', '');
-            const room = this.roomManager.getRoom(byte.room);
+            const room = RoomManager.getRoom(byte.room);
             let statusMessage = '';
             if (!room || !room.allowedActivities.includes(actId)) {
                 alertMessage = 'You must be in the correct room to do that!';
             } else {
-                const activity = this.activityManager.getActivity(actId);
+                const activity = ActivityManager.getActivity(actId);
                 if (!activity) {
                     alertMessage = 'Activity not found!';
                 } else if (

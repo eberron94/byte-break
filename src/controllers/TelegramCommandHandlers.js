@@ -1,6 +1,7 @@
 const sharp = require('sharp');
 const { generateClassBasedAvatar } = require('../util/avatar');
 const GameEvents = require('../util/GameEvents');
+const RoomManager = require('../managers/RoomManager');
 
 /**
  * @mixin TelegramCommandHandlers
@@ -193,7 +194,7 @@ const TelegramCommandHandlers = {
             return;
         }
 
-        const room = this.roomManager.getRoom(newRoomId);
+        const room = RoomManager.getRoom(newRoomId);
         if (!room || (room.id === 'debug_room' && !isAdmin)) {
             return this.bot.sendMessage(
                 chatId,
@@ -241,11 +242,8 @@ const TelegramCommandHandlers = {
         const ticks = match[1] ? parseInt(match[1], 10) : 1;
         console.log(`[Command] /tick ${ticks} from chat ${chatId}`);
 
-        // Fetch the singleton EventManager dynamically here since it wasn't natively injected
-        const eventManager = require('../managers/EventManager');
-
         for (let i = 0; i < ticks; i++) {
-            await this.game.processTick(eventManager);
+            await this.game.processTick();
         }
 
         const byte = await this.game.getByte(chatId);

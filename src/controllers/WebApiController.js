@@ -8,10 +8,9 @@ const WebAPIPostHandler = require('./WebAPIPostHandler');
  * heavy lifting is delegated to the specialized handler files.
  */
 class WebApiController {
-    constructor(app, gameManager, byteClassManager, botController = null) {
+    constructor(app, gameManager, botController = null) {
         this.app = app;
         this.gameManager = gameManager;
-        this.byteClassManager = byteClassManager;
         this.botController = botController;
 
         // --- Mixin Pattern ---

@@ -63,7 +63,8 @@ class ActivityManager {
     }
 
     // Formats the inline keyboard button for an activity, appending web parameters if needed
-    getActivityButton(activity, webAppUrl, byte = null, player = null) {
+    getActivityButton(activity, byte = null, player = null) {
+        const webAppUrl = process.env.WEB_APP_URL;
         let energyCostStr = '';
         if (activity.effects && activity.effects.energy) {
             const locals = getTimeContext();

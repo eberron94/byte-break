@@ -10,6 +10,7 @@ const TalentManager = require('../managers/TalentManager');
 const AchievementManager = require('../managers/AchievementManager');
 const { checkRequirements } = require('../util/requirements');
 const { getTimeContext } = require('../util/time');
+const ByteClassManager = require('../managers/ByteClassManager');
 
 const activeTransactions = new Set();
 
@@ -82,7 +83,7 @@ const WebAPIPostHandler = {
 
             if (!playerByte)
                 return res.status(404).json({ error: 'Byte not found' });
-            const byteClass = this.byteClassManager.getClass(
+            const byteClass = ByteClassManager.getClass(
                 playerByte.byteClass,
             );
             if (!byteClass)
@@ -588,11 +589,11 @@ const WebAPIPostHandler = {
                     .json({ error: 'You do not have a Byte Rebooter.' });
             }
 
-            const byteClass = this.byteClassManager.getClass(byte.byteClass);
+            const byteClass = ByteClassManager.getClass(byte.byteClass);
             if (!byteClass)
                 return res.status(400).json({ error: 'Invalid byte class' });
 
-            const refundedBits = byte.refundBits(byteClass);
+            const refundedBits = byte.refundBits();
 
             if (refundedBits > 0) {
                 player.removeItem('byte_rebooter', 1);

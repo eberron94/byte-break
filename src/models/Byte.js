@@ -17,6 +17,7 @@ const Bits = require('./pools/Bits');
 
 const RoomManager = require('../managers/RoomManager');
 const HediffManager = require('../managers/HediffManager');
+const ByteClassManager = require('../managers/ByteClassManager');
 const {
     calculateEffects,
     applyEffects,
@@ -301,10 +302,11 @@ class Byte {
 
     /**
      * Refunds all invested bits back into the buffer overflow.
-     * @param {Object} byteClass The canonical class definition for this byte
      * @returns {number} The total bits refunded.
      */
-    refundBits(byteClass) {
+    refundBits() {
+        const byteClass = ByteClassManager.getClass(this.byteClass);
+        if (!byteClass) return 0;
         const refundedBits = this.investedBits;
 
         for (const [key, cost] of Object.entries(byteClass.investmentRates)) {

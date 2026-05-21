@@ -6,6 +6,7 @@ const AchievementManager = require('../managers/AchievementManager');
 const { checkRequirements } = require('../util/requirements');
 const { getTimeContext } = require('../util/time');
 const GameObjectManager = require('../managers/GameObjectManager');
+const ByteClassManager = require('../managers/ByteClassManager');
 
 /**
  * @mixin WebAPIGetHandler
@@ -49,7 +50,7 @@ const WebAPIGetHandler = {
                         status.byteClass,
                         status.generation,
                     );
-                    const bClass = this.byteClassManager.getClass(
+                    const bClass = ByteClassManager.getClass(
                         status.byteClass,
                     );
                     status.enhanceStat = bClass
@@ -112,7 +113,7 @@ const WebAPIGetHandler = {
     },
 
     async getClass(req, res) {
-        const byteClass = this.byteClassManager.getClass(req.params.id);
+        const byteClass = ByteClassManager.getClass(req.params.id);
         if (byteClass) {
             res.json(byteClass);
         } else {
