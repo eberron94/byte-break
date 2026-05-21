@@ -70,8 +70,8 @@ class Byte {
 
         this.room = data.room || 'charging_station';
         this.isAlive = data.isAlive === 1;
-        this.birthDate = new Date(data.birthDate);
-        this.lastInteraction = new Date(data.lastInteraction);
+        this.birthDate = data.birthDate ? new Date(data.birthDate) : new Date();
+        this.lastInteraction = data.lastInteraction ? new Date(data.lastInteraction) : new Date();
 
         this.history = data.history || {};
 
@@ -353,7 +353,6 @@ class Byte {
                 {
                     baseValue: pool.baseValue,
                     value: pool.value,
-                    maxValue: pool.maxValue,
                     investedValue: pool.investedValue,
                 },
             ]),

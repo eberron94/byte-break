@@ -8,7 +8,11 @@ class Player {
     constructor(data) {
         this.id = data.id.toString();
         this.inventory = data.inventory || {};
-        this.energy = new Energy(data.energy !== undefined ? data.energy : 100);
+        const energyData = typeof data.energy === 'object' && data.energy !== null ? data.energy : { value: data.energy !== undefined ? data.energy : 100, maxValue: 100 };
+        this.energy = new Energy(energyData.value, energyData.maxValue);
+        
+        this.joinDate = data.joinDate ? new Date(data.joinDate) : new Date();
+        
         this.history = data.history || {};
         this.maxBytes = data.maxBytes || 2;
         this.lastAction = data.lastAction
@@ -105,7 +109,8 @@ class Player {
         return {
             id: this.id,
             inventory: this.inventory,
-            energy: this.energy.value,
+            energy: { value: this.energy.value, maxValue: this.energy.maxValue },
+            joinDate: this.joinDate.toISOString(),
             history: this.history,
             maxBytes: this.maxBytes,
             lastAction: this.lastAction.toISOString(),
