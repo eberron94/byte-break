@@ -1,6 +1,7 @@
 const GameEvents = require('../util/GameEvents');
 const minigameManager = require('../managers/minigame/MinigameManager');
 const GameObjectManager = require('../managers/GameObjectManager');
+const ItemManager = require('../managers/ItemManager');
 
 /**
  * Handles all inline keyboard callback queries from Telegram.
@@ -178,7 +179,7 @@ async function handleCallbackQuery(query) {
             const isAdmin = adminIds.includes(chatId.toString());
             let statusMessage = '';
             if (room && (room.id !== 'debug_room' || isAdmin)) {
-                if (!room.canEnter(byte, player, this.itemManager)) {
+                if (!room.canEnter(byte, player)) {
                     alertMessage = `Cannot enter ${room.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(room.requirements);
                     if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
                     showAlert = true;
@@ -216,18 +217,18 @@ async function handleCallbackQuery(query) {
             let statusMessage = '';
             if (!activity) {
                 alertMessage = 'Activity not found!';
-            } else if (!activity.canPerform(byte, player, this.itemManager)) {
+            } else if (!activity.canPerform(byte, player)) {
                 alertMessage = `Cannot perform ${activity.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(activity.requirements);
                 if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
                 showAlert = true;
             } else {
-                const item = this.itemManager.getItem(itemId);
+                const item = ItemManager.getItem(itemId);
                 if (!item || !player.hasItem(itemId, 1)) {
                     alertMessage = "You don't have that item.";
                 } else if (item.isOnCooldown(player)) {
                     alertMessage = `Item is on cooldown. Wait ${item.getCooldownRemaining(player)} minute(s).`;
                 } else {
-                    activity.perform(byte, player, this.itemManager, itemId);
+                    activity.perform(byte, player, itemId);
                     await this.game.saveByte(byte);
                     await this.game.savePlayer(player);
                     statusMessage = `Performed ${activity.name} with ${item.shortname}!`;
@@ -245,7 +246,7 @@ async function handleCallbackQuery(query) {
                 if (!activity) {
                     alertMessage = 'Activity not found!';
                 } else if (
-                    !activity.canPerform(byte, player, this.itemManager)
+                !activity.canPerform(byte, player)
                 ) {
                     alertMessage = `Cannot perform ${activity.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(activity.requirements);
                     if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
@@ -266,7 +267,6 @@ async function handleCallbackQuery(query) {
                             this.game,
                             byte,
                             player,
-                            this.itemManager,
                             activity,
                         );
                         if (result.error) {
@@ -284,7 +284,7 @@ async function handleCallbackQuery(query) {
                     }
                     return;
                 } else {
-                    activity.perform(byte, player, this.itemManager);
+                activity.perform(byte, player);
                     await this.game.saveByte(byte);
                     await this.game.savePlayer(player);
                     statusMessage = `Performed ${activity.name}!`;
@@ -302,7 +302,7 @@ async function handleCallbackQuery(query) {
             await this.updateMessageDisplay(query, text, options);
         } else if (action.startsWith('item_info_')) {
             const itemId = action.replace('item_info_', '');
-            const item = this.itemManager.getItem(itemId);
+            const item = ItemManager.getItem(itemId);
             if (item) {
                 const { text, options } = this.getItemDetailDisplay(
                     player,
@@ -314,12 +314,12 @@ async function handleCallbackQuery(query) {
             }
         } else if (action.startsWith('use_item_')) {
             const itemId = action.replace('use_item_', '');
-            const item = this.itemManager.getItem(itemId);
+            const item = ItemManager.getItem(itemId);
             if (!item || !player.hasItem(itemId, 1)) {
                 alertMessage = "You don't have that item.";
             } else {
                 try {
-                    const success = item.use(byte, player, this.itemManager);
+                    const success = item.use(byte, player);
                     if (success) {
                         if (item.isConsumed) {
                             player.removeItem(itemId, 1);
@@ -381,7 +381,6 @@ async function handleCallbackQuery(query) {
                     chatId,
                     byte,
                     player,
-                    this.itemManager,
                 );
                 if (display) {
                     if (display.alert) {

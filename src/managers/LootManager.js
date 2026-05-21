@@ -1,4 +1,5 @@
 const lootData = require('../../data/loot.json');
+const ItemManager = require('./ItemManager');
 
 class LootManager {
     constructor() {
@@ -36,7 +37,7 @@ class LootManager {
         return result;
     }
 
-    processLoot(effectsObj, player = null, itemManager = null) {
+    processLoot(effectsObj, player = null) {
         const result = {
             bits: effectsObj.bits || 0,
             items: []
@@ -45,8 +46,8 @@ class LootManager {
         // Helper to check the inventory maximum constraint
         const getActualAmount = (id, amount) => {
             let actual = amount;
-            if (player && itemManager) {
-                const itemDef = itemManager.getItem(id);
+            if (player) {
+                const itemDef = ItemManager.getItem(id);
                 if (itemDef && itemDef.maxCount !== undefined) {
                     const currentCount = player.inventory[id] || 0;
                     const pendingCount = result.items.find(i => i.id === id)?.amount || 0;

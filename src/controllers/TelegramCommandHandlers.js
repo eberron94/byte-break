@@ -201,7 +201,7 @@ const TelegramCommandHandlers = {
             );
         }
 
-        if (!room.canEnter(byte, player, this.itemManager)) {
+        if (!room.canEnter(byte, player)) {
             return this.bot.sendMessage(
                 chatId,
                 `${byte.name} does not meet the requirements to enter the ${room.name}.`,
@@ -245,7 +245,7 @@ const TelegramCommandHandlers = {
         const eventManager = require('../managers/EventManager');
 
         for (let i = 0; i < ticks; i++) {
-            await this.game.processTick(eventManager, this.itemManager);
+            await this.game.processTick(eventManager);
         }
 
         const byte = await this.game.getByte(chatId);

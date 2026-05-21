@@ -199,7 +199,6 @@ const WebAPIGetHandler = {
                     talent.requirements,
                     byte,
                     player,
-                    ItemManager,
                     context
                 );
                 if (meetsPrereq) visibleTalents.add(talent.id);

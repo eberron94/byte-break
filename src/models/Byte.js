@@ -71,7 +71,9 @@ class Byte {
         this.room = data.room || 'charging_station';
         this.isAlive = data.isAlive === 1;
         this.birthDate = data.birthDate ? new Date(data.birthDate) : new Date();
-        this.lastInteraction = data.lastInteraction ? new Date(data.lastInteraction) : new Date();
+        this.lastInteraction = data.lastInteraction
+            ? new Date(data.lastInteraction)
+            : new Date();
 
         this.history = data.history || {};
 
@@ -133,16 +135,27 @@ class Byte {
                     }
                 }
             } else if (this.stats[key]) {
-                this.stats[key].baseValue = Math.max(0, this.stats[key].baseValue + value);
+                this.stats[key].baseValue = Math.max(
+                    0,
+                    this.stats[key].baseValue + value,
+                );
             } else if (this.skills[key]) {
-                this.skills[key].investedValue = Math.max(0, this.skills[key].investedValue + value);
+                this.skills[key].investedValue = Math.max(
+                    0,
+                    this.skills[key].investedValue + value,
+                );
             } else if (key.startsWith('upgrade_')) {
                 const target = key.replace('upgrade_', '');
                 if (this.skills[target]) {
-                    this.skills[target].investedValue = Math.max(0, this.skills[target].investedValue + value);
+                    this.skills[target].investedValue = Math.max(
+                        0,
+                        this.skills[target].investedValue + value,
+                    );
                 } else if (this.pools[target]) {
-                    this.pools[target].investedValue =
-                        Math.max(0, (this.pools[target].investedValue || 0) + value);
+                    this.pools[target].investedValue = Math.max(
+                        0,
+                        (this.pools[target].investedValue || 0) + value,
+                    );
                     if (value > 0) this.pools[target].increase(value);
                     else this.pools[target].decrease(Math.abs(value));
                 }
@@ -209,7 +222,7 @@ class Byte {
     /**
      * Global clock cycle action for the byte. Drives need decay over time.
      */
-    tick(player = null, itemManager = null, tickCounter = 1) {
+    tick(player = null, tickCounter = 1) {
         if (!this.isAlive) return;
 
         // Trigger natural decay across all loaded needs
@@ -228,10 +241,20 @@ class Byte {
 
         const currentRoom = RoomManager.getRoom(this.room);
         if (currentRoom && currentRoom.tickEffects) {
-            const activeTickEffects = currentRoom.tickEffects.filter(effect => {
-                const tpt = effect.ticksPerTrigger !== undefined ? evaluateExpression(effect.ticksPerTrigger, this, player, locals) : 1;
-                return tpt <= 1 || (locals.tickCounter % tpt === 0);
-            });
+            const activeTickEffects = currentRoom.tickEffects.filter(
+                (effect) => {
+                    const tpt =
+                        effect.ticksPerTrigger !== undefined
+                            ? evaluateExpression(
+                                  effect.ticksPerTrigger,
+                                  this,
+                                  player,
+                                  locals,
+                              )
+                            : 1;
+                    return tpt <= 1 || locals.tickCounter % tpt === 0;
+                },
+            );
             if (activeTickEffects.length > 0) {
                 const calculatedEffects = calculateEffects(
                     activeTickEffects,
@@ -239,7 +262,7 @@ class Byte {
                     player,
                     locals,
                 );
-                applyEffects(calculatedEffects, this, player, itemManager);
+                applyEffects(calculatedEffects, this, player);
             }
         }
 
@@ -247,9 +270,17 @@ class Byte {
         for (const [hId, hData] of Object.entries(this.hediffs)) {
             const hDef = HediffManager.getHediff(hId);
             if (hDef && hDef.tickEffects) {
-                const activeTickEffects = hDef.tickEffects.filter(effect => {
-                    const tpt = effect.ticksPerTrigger !== undefined ? evaluateExpression(effect.ticksPerTrigger, this, player, { ...locals, stacks: hData.stacks }) : 1;
-                    return tpt <= 1 || (locals.tickCounter % tpt === 0);
+                const activeTickEffects = hDef.tickEffects.filter((effect) => {
+                    const tpt =
+                        effect.ticksPerTrigger !== undefined
+                            ? evaluateExpression(
+                                  effect.ticksPerTrigger,
+                                  this,
+                                  player,
+                                  { ...locals, stacks: hData.stacks },
+                              )
+                            : 1;
+                    return tpt <= 1 || locals.tickCounter % tpt === 0;
                 });
                 if (activeTickEffects.length > 0) {
                     const calculatedEffects = calculateEffects(
@@ -258,7 +289,7 @@ class Byte {
                         player,
                         { ...locals, stacks: hData.stacks },
                     );
-                    applyEffects(calculatedEffects, this, player, itemManager);
+                    applyEffects(calculatedEffects, this, player);
                 }
             }
         }

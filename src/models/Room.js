@@ -11,9 +11,9 @@ class Room {
         this.requirements = data.requirements || [];
     }
 
-    canEnter(byte, player = null, itemManager = null) {
+    canEnter(byte, player = null) {
         const context = getTimeContext();
-        return checkRequirements(this.requirements, byte, player, itemManager, context);
+        return checkRequirements(this.requirements, byte, player, context);
     }
 }
 

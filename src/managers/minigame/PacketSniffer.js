@@ -1,5 +1,6 @@
 const LootManager = require('../LootManager');
 const GameEvents = require('../../util/GameEvents');
+const ItemManager = require('../ItemManager');
 const { calculateEffects, applyEffects, evaluateExpression } = require('../../util/effects');
 
 class PacketSniffer {
@@ -23,7 +24,6 @@ class PacketSniffer {
         gameManager,
         byte,
         player,
-        itemManager,
         activity = null,
     ) {
         let energyCost = 0;
@@ -76,10 +76,10 @@ class PacketSniffer {
             currentGuess: [],
             activityId: activity ? activity.id : null
         };
-        return { state, display: this.render(state, itemManager) };
+        return { state, display: this.render(state) };
     }
 
-    render(state, itemManager) {
+    render(state) {
         const { target, history, currentGuess, pool, config } = state;
         const { guessLength, maxGuesses } = config;
 
@@ -119,9 +119,7 @@ class PacketSniffer {
                     text += `+ ${state.grantedLoot.bits} Bits\n`;
                 if (state.grantedLoot.items) {
                     state.grantedLoot.items.forEach((itemLoot) => {
-                        const itemObj = itemManager
-                            ? itemManager.getItem(itemLoot.id)
-                            : null;
+                        const itemObj = ItemManager.getItem(itemLoot.id);
                         const itemName = itemObj ? itemObj.name : itemLoot.id;
                         text += `+ [Item] ${itemName} (x${itemLoot.amount})\n`;
                     });
@@ -220,7 +218,6 @@ class PacketSniffer {
         chatId,
         byte,
         player,
-        itemManager,
     ) {
         const { target, pool, config, activityId } = state;
         const activity = gameManager.activityManager.getActivity(activityId);
@@ -232,7 +229,7 @@ class PacketSniffer {
             };
         } else if (cmd === 'clear') {
             state.currentGuess = [];
-            return this.render(state, itemManager);
+            return this.render(state);
         } else if (pool.includes(cmd)) {
             if (
                 state.currentGuess.length < guessLength &&
@@ -268,12 +265,12 @@ class PacketSniffer {
 
                     if (isWin && activity && activity.winEffects) {
                         const calculatedWinEffects = calculateEffects(activity.winEffects, byte, player);
-                            state.grantedLoot = LootManager.processLoot(calculatedWinEffects, player, itemManager);
-                        applyEffects(calculatedWinEffects, byte, player, itemManager);
+                            state.grantedLoot = LootManager.processLoot(calculatedWinEffects, player);
+                        applyEffects(calculatedWinEffects, byte, player);
                     } else if (isLoss && activity && activity.loseEffects) {
                         const calculatedLoseEffects = calculateEffects(activity.loseEffects, byte, player);
-                            state.grantedLoot = LootManager.processLoot(calculatedLoseEffects, player, itemManager);
-                        applyEffects(calculatedLoseEffects, byte, player, itemManager);
+                            state.grantedLoot = LootManager.processLoot(calculatedLoseEffects, player);
+                        applyEffects(calculatedLoseEffects, byte, player);
                     }
 
                     if (isWin || isLoss) {
@@ -295,7 +292,7 @@ class PacketSniffer {
                             }
                     }
                 }
-                return this.render(state, itemManager);
+                return this.render(state);
             }
         }
         return null;

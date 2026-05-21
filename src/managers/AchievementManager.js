@@ -52,7 +52,7 @@ class AchievementManager {
                             player,
                             context
                         );
-                        const success = applyEffects(calculatedEffects, byte, player, ItemManager);
+                        const success = applyEffects(calculatedEffects, byte, player);
                         if (success && byte) byteModified = true;
                     }
 

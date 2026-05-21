@@ -2,6 +2,7 @@ const Pagination = require('./Pagination');
 const { calculateEffects, evaluateExpression } = require('../util/effects');
 const GameObjectManager = require('../managers/GameObjectManager');
 const ShopManager = require('../managers/ShopManager');
+const ItemManager = require('../managers/ItemManager');
 const classesData = require('../../data/classes.json');
 const { getTimeContext } = require('../util/time');
 
@@ -56,7 +57,7 @@ const TelegramUIBuilders = {
         const roomName = room ? room.name : status.room.replace(/_/g, '\\_');
 
         const invEntries = Object.entries(player.inventory).map(([id, amt]) => {
-            const item = this.itemManager.getItem(id);
+            const item = ItemManager.getItem(id);
             const name = item ? item.shortname : id.replace(/_/g, '\\_');
             return `${name}: ${amt}`;
         });
@@ -256,7 +257,7 @@ const TelegramUIBuilders = {
         const inventory = player.inventory;
         const buttons = [];
         for (const [itemId, amount] of Object.entries(inventory)) {
-            const item = this.itemManager.getItem(itemId);
+            const item = ItemManager.getItem(itemId);
             const name = item ? item.shortname : itemId;
             buttons.push({
                 text: `${name} (x${amount})`,
@@ -285,7 +286,7 @@ const TelegramUIBuilders = {
     },
 
     getItemDetailDisplay(player, itemId) {
-        const item = this.itemManager.getItem(itemId);
+        const item = ItemManager.getItem(itemId);
         const amount = player.inventory[itemId] || 0;
         let text = `🎒 **Item Details** 🎒\n\n**${item.name}** (x${amount})\n_${item.description}_\n`;
         
@@ -333,7 +334,7 @@ const TelegramUIBuilders = {
 
         rooms.forEach((room) => {
             if (room.id === 'debug_room' && !isAdmin) return;
-            if (!room.canEnter(byte, player, this.itemManager)) return;
+            if (!room.canEnter(byte, player)) return;
             buttons.push({
                 text: room.name,
                 callback_data: `nav_move_${room.id}`,
@@ -362,7 +363,7 @@ const TelegramUIBuilders = {
         const buttons = [];
         for (const [itemId, amount] of Object.entries(inventory)) {
             if (amount <= 0) continue;
-            const item = this.itemManager.getItem(itemId);
+            const item = ItemManager.getItem(itemId);
             if (!item) continue;
 
             let isValid = false;

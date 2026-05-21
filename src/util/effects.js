@@ -16,7 +16,7 @@ function evaluateExpression(expr, byte, player, locals = {}) {
                 func = new Function(...args, `return ${expr};`);
                 exprCache.set(cacheKey, func);
             }
-            const localValues = localKeys.map(k => locals[k]);
+            const localValues = localKeys.map((k) => locals[k]);
             const result = func(byte, player, ...localValues);
             if (typeof result === 'number')
                 return isNaN(result) ? 0 : Math.floor(result);
@@ -47,7 +47,12 @@ function calculateEffects(effects, byte, player, locals = {}) {
         let shouldApply = true;
 
         if (effect.die !== undefined) {
-            const dieSize = evaluateExpression(effect.die, byte, player, locals);
+            const dieSize = evaluateExpression(
+                effect.die,
+                byte,
+                player,
+                locals,
+            );
             if (dieSize < 1 || Math.floor(Math.random() * dieSize) + 1 !== 1) {
                 shouldApply = false;
             }
@@ -68,38 +73,82 @@ function calculateEffects(effects, byte, player, locals = {}) {
                 }
             } else if (key === 'hediff') {
                 if (!calculated.hediffs) calculated.hediffs = [];
-                calculated.hediffs.push({ id: effect.id, action: effect.action || 'escalate' });
+                calculated.hediffs.push({
+                    id: effect.id,
+                    action: effect.action || 'escalate',
+                });
             } else {
                 if (effect.amount !== undefined) {
-                    let value = evaluateExpression(effect.amount, byte, player, locals);
+                    let value = evaluateExpression(
+                        effect.amount,
+                        byte,
+                        player,
+                        locals,
+                    );
                     if (typeof value === 'number') {
                         const originalValue = value;
                         let currentAmount = calculated[key] || 0;
-                        
+
                         if (byte) {
                             let currentVal = 0;
-                            if (byte.needs && byte.needs[key]) currentVal = byte.needs[key].value;
-                            else if (byte.pools && byte.pools[key]) currentVal = byte.pools[key].value;
-                            else if (byte.stats && byte.stats[key]) currentVal = byte.stats[key].baseValue;
-                            else if (byte.skills && byte.skills[key]) currentVal = byte.skills[key].investedValue;
-                            else if (key === 'energy' && player && player.energy) currentVal = player.energy.value;
+                            if (byte.needs && byte.needs[key])
+                                currentVal = byte.needs[key].value;
+                            else if (byte.pools && byte.pools[key])
+                                currentVal = byte.pools[key].value;
+                            else if (byte.stats && byte.stats[key])
+                                currentVal = byte.stats[key].baseValue;
+                            else if (byte.skills && byte.skills[key])
+                                currentVal = byte.skills[key].investedValue;
+                            else if (
+                                key === 'energy' &&
+                                player &&
+                                player.energy
+                            )
+                                currentVal = player.energy.value;
 
                             if (effect.maxLimit !== undefined) {
-                                const maxLimit = evaluateExpression(effect.maxLimit, byte, player, locals);
-                                if (value > 0 && currentVal + currentAmount + value > maxLimit) {
-                                    value = Math.max(0, maxLimit - (currentVal + currentAmount));
+                                const maxLimit = evaluateExpression(
+                                    effect.maxLimit,
+                                    byte,
+                                    player,
+                                    locals,
+                                );
+                                if (
+                                    value > 0 &&
+                                    currentVal + currentAmount + value >
+                                        maxLimit
+                                ) {
+                                    value = Math.max(
+                                        0,
+                                        maxLimit - (currentVal + currentAmount),
+                                    );
                                 }
                             }
                             if (effect.minLimit !== undefined) {
-                                const minLimit = evaluateExpression(effect.minLimit, byte, player, locals);
-                                if (value < 0 && currentVal + currentAmount + value < minLimit) {
-                                    value = Math.min(0, minLimit - (currentVal + currentAmount));
+                                const minLimit = evaluateExpression(
+                                    effect.minLimit,
+                                    byte,
+                                    player,
+                                    locals,
+                                );
+                                if (
+                                    value < 0 &&
+                                    currentVal + currentAmount + value <
+                                        minLimit
+                                ) {
+                                    value = Math.min(
+                                        0,
+                                        minLimit - (currentVal + currentAmount),
+                                    );
                                 }
                             }
                         }
 
                         // If limits squashed the delta to 0 or reversed its intended sign, clamp it tightly
-                        if ((originalValue > 0 && value < 0) || (originalValue < 0 && value > 0)) {
+                        if (
+                            (originalValue > 0 && value < 0) ||
+                            (originalValue < 0 && value > 0)
+                        ) {
                             value = 0;
                         }
 
@@ -117,12 +166,7 @@ function calculateEffects(effects, byte, player, locals = {}) {
 /**
  * Safely routes and applies calculated effect deltas to the respective objects.
  */
-function applyEffects(
-    calculatedEffects,
-    byte,
-    player = null,
-    itemManager = null,
-) {
+function applyEffects(calculatedEffects, byte, player = null) {
     let success = true;
     if (byte) {
         success = byte.applyEffects(calculatedEffects);
@@ -140,7 +184,7 @@ function applyEffects(
                 calculatedEffects.inventory,
             )) {
                 if (amount > 0) {
-                    player.addItem(itemId, amount, itemManager);
+                    player.addItem(itemId, amount);
                 } else if (amount < 0) {
                     player.removeItem(itemId, Math.abs(amount));
                 }
@@ -148,15 +192,19 @@ function applyEffects(
         }
     }
 
-    if (success && calculatedEffects.loot && Array.isArray(calculatedEffects.loot)) {
+    if (
+        success &&
+        calculatedEffects.loot &&
+        Array.isArray(calculatedEffects.loot)
+    ) {
         for (const tableId of calculatedEffects.loot) {
             const lootResults = LootManager.rollLoot(tableId);
             if (lootResults.bits && byte) {
                 byte.pools.bits.increase(lootResults.bits);
             }
-            if (lootResults.items && player && itemManager) {
+            if (lootResults.items && player) {
                 lootResults.items.forEach((itemLoot) => {
-                    player.addItem(itemLoot.id, itemLoot.amount, itemManager);
+                    player.addItem(itemLoot.id, itemLoot.amount);
                 });
             }
         }

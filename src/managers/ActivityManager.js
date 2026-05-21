@@ -45,7 +45,6 @@ class ActivityManager {
     getPerformableActivities(
         byte,
         player,
-        itemManager,
         allowedActivityIds = null,
     ) {
         let activities = this.getAllActivities();
@@ -59,7 +58,7 @@ class ActivityManager {
 
         // Final check to see if the game state meets prerequisites
         return activities.filter((activity) =>
-            activity.canPerform(byte, player, itemManager),
+            activity.canPerform(byte, player),
         );
     }
 

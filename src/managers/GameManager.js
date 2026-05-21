@@ -213,7 +213,7 @@ class GameManager extends EventEmitter {
     }
 
     // Processes a single global tick for all active bytes
-    async processTick(eventManager = null, itemManager = null) {
+    async processTick(eventManager = null) {
         this.tickCounter = (this.tickCounter || 0) + 1;
         if (this.tickCounter % 10 === 0) {
             await this.rewardActivePlayers();
@@ -250,10 +250,10 @@ class GameManager extends EventEmitter {
 
                 if (byte.isAsleep) {
                     if (this.tickCounter % 10 === 0) {
-                        byte.tick(player, itemManager, this.tickCounter);
+                        byte.tick(player, this.tickCounter);
                     }
                 } else {
-                    byte.tick(player, itemManager, this.tickCounter);
+                    byte.tick(player, this.tickCounter);
                 }
 
                 if (!tickedPlayers.has(player.id)) {
@@ -269,7 +269,6 @@ class GameManager extends EventEmitter {
                         byte,
                         player,
                         ...timeContext,
-                        itemManager,
                         tickCounter: this.tickCounter,
                     };
 
@@ -301,11 +300,10 @@ class GameManager extends EventEmitter {
     startGameLoop(
         tickIntervalMs = 60000,
         eventManager = null,
-        itemManager = null,
     ) {
         setInterval(async () => {
             try {
-                await this.processTick(eventManager, itemManager);
+                await this.processTick(eventManager);
             } catch (error) {
                 console.error(
                     '[GameManager] Fatal error during global tick:',

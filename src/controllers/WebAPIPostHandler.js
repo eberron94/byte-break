@@ -432,13 +432,11 @@ const WebAPIPostHandler = {
                 const grantedLoot = LootManager.processLoot(
                     calculatedWinEffects,
                     player,
-                    ItemManager,
                 );
                 applyEffects(
                     calculatedWinEffects,
                     playerByte,
                     player,
-                    ItemManager,
                 );
 
                 const rewardParts = [];
@@ -548,7 +546,6 @@ const WebAPIPostHandler = {
                     talent.requirements,
                     byte,
                     player,
-                    ItemManager,
                     context,
                 )
             ) {
@@ -703,7 +700,7 @@ const WebAPIPostHandler = {
                                     player,
                                     context
                                 );
-                                const success = applyEffects(calculatedEffects, byte, player, ItemManager);
+                                const success = applyEffects(calculatedEffects, byte, player);
                                 if (success && byte) byteModified = true;
                             }
 
@@ -747,7 +744,7 @@ const WebAPIPostHandler = {
                 return res.status(404).json({ error: 'Player not found' });
 
             if (amount > 0) {
-                player.addItem(itemId, amount, ItemManager);
+                player.addItem(itemId, amount);
             } else if (amount < 0) {
                 player.removeItem(itemId, Math.abs(amount));
             }

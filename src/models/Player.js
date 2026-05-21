@@ -1,5 +1,6 @@
 const Energy = require('./Energy');
 const AchievementPoints = require('./pools/AchievementPoints');
+const ItemManager = require('../managers/ItemManager');
 
 /**
  * Represents a Telegram user, tracking their id and personal inventory.
@@ -50,20 +51,18 @@ class Player {
     }
 
     // Safely increments an item's quantity in the inventory, abiding by max count limits
-    addItem(itemId, amount = 1, itemManager = null) {
+    addItem(itemId, amount = 1) {
         if (!this.inventory[itemId]) {
             this.inventory[itemId] = 0;
         }
         this.inventory[itemId] += amount;
 
-        if (itemManager) {
-            const item = itemManager.getItem(itemId);
-            if (item && item.maxCount !== undefined) {
-                this.inventory[itemId] = Math.min(
-                    this.inventory[itemId],
-                    item.maxCount,
-                );
-            }
+        const item = ItemManager.getItem(itemId);
+        if (item && item.maxCount !== undefined) {
+            this.inventory[itemId] = Math.min(
+                this.inventory[itemId],
+                item.maxCount,
+            );
         }
     }
 

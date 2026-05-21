@@ -45,13 +45,13 @@ class Item {
     }
 
     // Applies the item's configured effects to the byte and player
-    use(byte, player = null, itemManager = null) {
+    use(byte, player = null) {
         if (this.isOnCooldown(player)) {
             throw new Error(`Item is on cooldown. Wait ${this.getCooldownRemaining(player)} minute(s).`);
         }
         const locals = getTimeContext();
         const calculatedEffects = calculateEffects(this.effects, byte, player, locals);
-        const success = applyEffects(calculatedEffects, byte, player, itemManager);
+        const success = applyEffects(calculatedEffects, byte, player);
 
         if (success && this.cooldown > 0 && player) {
             player.history[`item_used_${this.id}`] = new Date().toISOString();

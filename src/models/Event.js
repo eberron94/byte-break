@@ -24,7 +24,6 @@ class Event {
             this.requirements,
             context.byte,
             context.player,
-            context.itemManager,
             context,
         );
     }
@@ -36,14 +35,13 @@ class Event {
     occur(context = {}) {
         if (!this.canOccur(context)) return false;
 
-        const { byte, player, itemManager } = context;
+        const { byte, player } = context;
         if (!byte) return false;
 
         // Safely extract environment variables for effect evaluation
         const locals = { ...context, ...(context.locals || {}) };
         delete locals.byte;
         delete locals.player;
-        delete locals.itemManager;
 
         const calculatedEffects = calculateEffects(
             this.effects,
@@ -51,12 +49,7 @@ class Event {
             player,
             locals,
         );
-        const success = applyEffects(
-            calculatedEffects,
-            byte,
-            player,
-            itemManager,
-        );
+        const success = applyEffects(calculatedEffects, byte, player);
         if (success) {
             // Log successful event occurrence
             byte.recordHistory(this.id);

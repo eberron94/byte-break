@@ -5,7 +5,6 @@ function checkRequirements(
     requirements,
     byte = null,
     player = null,
-    itemManager = null,
     context = {},
 ) {
     if (

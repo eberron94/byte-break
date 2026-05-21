@@ -18,12 +18,11 @@ const TelegramUIOperators = require('./TelegramUIOperators');
  * to maintain a clean and manageable codebase.
  */
 class TelegramBotController {
-    constructor(bot, gameManager, roomManager, activityManager, itemManager) {
+    constructor(bot, gameManager, roomManager, activityManager) {
         this.bot = bot;
         this.game = gameManager;
         this.roomManager = roomManager;
         this.activityManager = activityManager;
-        this.itemManager = itemManager;
 
         // Simple state machine to track multi-step interactions per user
         this.userStates = new Map();

@@ -57,7 +57,6 @@ class EventManager {
         const locals = { ...context, ...(context.locals || {}) };
         delete locals.byte;
         delete locals.player;
-        delete locals.itemManager;
 
         for (const event of events) {
             if (event.ticksPerCheck && context.tickCounter) {
