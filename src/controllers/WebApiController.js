@@ -1,5 +1,6 @@
 const WebAPIGetHandler = require('./WebAPIGetHandler');
 const WebAPIPostHandler = require('./WebAPIPostHandler');
+const crypto = require('crypto');
 
 /**
  * The main router for all Express-based API endpoints. This class acts as a
@@ -22,7 +23,57 @@ class WebApiController {
         Object.assign(this, WebAPIPostHandler);
     }
 
+    authenticateWebAppRequest(req, res, next) {
+        const initDataString = req.headers['x-telegram-init-data'];
+        const botToken = process.env.TELEGRAM_BOT_TOKEN;
+
+        // Extract the ID the client is trying to read/modify
+        let requestedId = req.body.userId || req.query.userId;
+        if (!requestedId) {
+            // Attempt to manually parse the ID from common GET routes like /api/byte/:id
+            const parts = req.path.split('/');
+            const potentialId = parts[parts.length - 1];
+            if (/^\d+$/.test(potentialId)) requestedId = potentialId;
+        }
+
+        // Only enforce strict validation on routes dealing with specific user data
+        if (botToken && requestedId) {
+            if (!initDataString) {
+                return res.status(403).json({ error: 'Unauthorized. Missing Telegram signature.' });
+            }
+
+            try {
+                const urlParams = new URLSearchParams(initDataString);
+                const hash = urlParams.get('hash');
+                urlParams.delete('hash');
+
+                const dataToCheck = [...urlParams.entries()]
+                    .map(([key, val]) => `${key}=${val}`)
+                    .sort()
+                    .join('\n');
+
+                const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
+                const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataToCheck).digest('hex');
+
+                if (calculatedHash !== hash) {
+                    return res.status(403).json({ error: 'Unauthorized. Data signature mismatch.' });
+                }
+
+                const validUser = JSON.parse(urlParams.get('user'));
+                if (requestedId.toString() !== validUser.id.toString()) {
+                    return res.status(403).json({ error: 'Unauthorized. User identity mismatch.' });
+                }
+            } catch (err) {
+                return res.status(403).json({ error: 'Unauthorized. Invalid auth payload.' });
+            }
+        }
+        next();
+    }
+
     init() {
+        // Apply authentication middleware to all API routes
+        this.app.use('/api', this.authenticateWebAppRequest.bind(this));
+
         this.app.get('/api/byte/:id', this.getByte.bind(this));
         this.app.get('/api/bytes/:id', this.getBytes.bind(this));
         this.app.get('/api/player/:id', this.getPlayer.bind(this));

@@ -223,11 +223,11 @@ class Byte {
     /**
      * Global clock cycle action for the byte. Drives need decay over time.
      */
-    tick(player = null, tickCounter = 1) {
+    tick(context) {
         if (!this.isAlive) return;
 
         // Trigger natural decay across all loaded needs
-        Object.values(this.needs).forEach((need) => need.tick(this, player));
+        Object.values(this.needs).forEach((need) => need.tick(this, context.player));
 
         if (this.isDormant) {
             return;
@@ -237,8 +237,6 @@ class Byte {
         if (this.isAsleep) {
             return;
         }
-
-        const context = new GameContext(this, player, { tickCounter });
 
         const currentRoom = RoomManager.getRoom(this.room);
         if (currentRoom && currentRoom.tickEffects) {
@@ -261,7 +259,10 @@ class Byte {
         for (const [hId, hData] of Object.entries(this.hediffs)) {
             const hDef = HediffManager.getHediff(hId);
             if (hDef && hDef.tickEffects) {
-                const hediffContext = new GameContext(this, player, { tickCounter, stacks: hData.stacks });
+                const hediffContext = new GameContext(this, context.player, {
+                    ...context.locals,
+                    stacks: hData.stacks,
+                });
                 const activeTickEffects = hDef.tickEffects.filter((effect) => {
                     const tpt =
                         effect.ticksPerTrigger !== undefined

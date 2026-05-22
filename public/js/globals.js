@@ -10,6 +10,13 @@ const originalFetch = window.fetch;
 window.fetch = async function (resource, config = {}) {
     const headers = new Headers(config.headers || {});
     headers.set('ngrok-skip-browser-warning', 'true');
+    if (
+        window.Telegram &&
+        window.Telegram.WebApp &&
+        window.Telegram.WebApp.initData
+    ) {
+        headers.set('x-telegram-init-data', window.Telegram.WebApp.initData);
+    }
     config.headers = headers;
     return originalFetch(resource, config);
 };

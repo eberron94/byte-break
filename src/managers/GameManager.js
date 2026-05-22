@@ -251,24 +251,24 @@ class GameManager extends EventEmitter {
                 let playerTicked = false;
 
                 for (const byte of aliveBytes) {
+                    const context = new GameContext(byte, player, {
+                        tickCounter: this.tickCounter,
+                    });
+
                     if (byte.isAsleep) {
                         if (this.tickCounter % 10 === 0) {
-                            byte.tick(player, this.tickCounter);
+                            byte.tick(context);
                         }
                     } else {
-                        byte.tick(player, this.tickCounter);
+                        byte.tick(context);
                     }
 
                     if (!playerTicked) {
-                        player.tick(byte);
+                        player.tick(context);
                         playerTicked = true;
                     }
 
                     if (EventManager && !byte.isAsleep) {
-                        const context = new GameContext(byte, player, {
-                            tickCounter: this.tickCounter,
-                        });
-
                         // Attempt to trigger a random event
                         const event = EventManager.getRandomEvent(context);
                         if (event) {
