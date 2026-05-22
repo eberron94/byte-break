@@ -17,8 +17,8 @@ class Shop {
         this.stock = data.stock || {};
     }
 
-    canAppear(context = {}) {
-        const { byte, player, timePhase, dayOfWeek } = context;
+    canAppear(context) {
+        const { timePhase, dayOfWeek } = context.locals;
 
         // Check time availability
         if (
@@ -33,14 +33,7 @@ class Shop {
             return false;
 
         // Check prerequisites
-        if (
-            !checkRequirements(
-                this.requirements,
-                byte,
-                player,
-                context,
-            )
-        ) {
+        if (!checkRequirements(this.requirements, context)) {
             return false;
         }
 
@@ -77,7 +70,10 @@ class Shop {
                     ...item,
                     calculatedCost: Math.ceil(item.cost * this.priceMultiplier),
                     remainingStock: remainingStock,
-                    formattedEffects: item.effects && item.effects.length > 0 ? GameObjectManager.formatEffectsList(item.effects) : null,
+                    formattedEffects:
+                        item.effects && item.effects.length > 0
+                            ? GameObjectManager.formatEffectsList(item.effects)
+                            : null,
                 };
             });
     }

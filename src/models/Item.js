@@ -1,5 +1,5 @@
 const { calculateEffects, applyEffects } = require('../util/effects');
-const { getTimeContext } = require('../util/time');
+const GameContext = require('./GameContext');
 const LootManager = require('../managers/LootManager');
 
 /**
@@ -49,19 +49,13 @@ class Item {
     }
 
     // Applies the item's configured effects to the byte and player
-    use(byte, player = null) {
-        if (this.isOnCooldown(player)) {
+    use(context) {
+        if (this.isOnCooldown(context.player)) {
             throw new Error(
-                `Item is on cooldown. Wait ${this.getCooldownRemaining(player)} minute(s).`,
+                `Item is on cooldown. Wait ${this.getCooldownRemaining(context.player)} minute(s).`,
             );
         }
-        const locals = getTimeContext();
-        const calculatedEffects = calculateEffects(
-            this.effects,
-            byte,
-            player,
-            locals,
-        );
+        const calculatedEffects = calculateEffects(this.effects, context);
 
         // Pre-process any loot so it can be extracted and reported to the UI
         let grantedLoot = null;
@@ -71,13 +65,17 @@ class Item {
             (calculatedEffects.inventory &&
                 Object.keys(calculatedEffects.inventory).length > 0)
         ) {
-            grantedLoot = LootManager.processLoot(calculatedEffects, player);
+            grantedLoot = LootManager.processLoot(
+                calculatedEffects,
+                context.player,
+            );
         }
 
-        const success = applyEffects(calculatedEffects, byte, player);
+        const success = applyEffects(calculatedEffects, context);
 
-        if (success && this.cooldown > 0 && player) {
-            player.history[`item_used_${this.id}`] = new Date().toISOString();
+        if (success && this.cooldown > 0 && context.player) {
+            context.player.history[`item_used_${this.id}`] =
+                new Date().toISOString();
         }
 
         return { success, grantedLoot };

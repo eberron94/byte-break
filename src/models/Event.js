@@ -20,36 +20,22 @@ class Event {
      * Evaluates the current state (byte stats, player inventory, time of day)
      * against the event's configured requirements.
      */
-    canOccur(context = {}) {
-        return checkRequirements(
-            this.requirements,
-            context.byte,
-            context.player,
-            context,
-        );
+    canOccur(context) {
+        return checkRequirements(this.requirements, context);
     }
 
     /**
      * Triggers the event if prerequisites are met, applying its effects to the byte
      * and potentially giving/taking items from the player's inventory.
      */
-    occur(context = {}) {
-        if (!this.canOccur(context)) return false;
+    occur(context) {
+        if (!this.canOccur(context))
+            return { success: false, grantedLoot: null };
 
         const { byte, player } = context;
-        if (!byte) return false;
+        if (!byte) return { success: false, grantedLoot: null };
 
-        // Safely extract environment variables for effect evaluation
-        const locals = { ...context, ...(context.locals || {}) };
-        delete locals.byte;
-        delete locals.player;
-
-        const calculatedEffects = calculateEffects(
-            this.effects,
-            byte,
-            player,
-            locals,
-        );
+        const calculatedEffects = calculateEffects(this.effects, context);
 
         let grantedLoot = null;
         if (
@@ -58,10 +44,13 @@ class Event {
             (calculatedEffects.inventory &&
                 Object.keys(calculatedEffects.inventory).length > 0)
         ) {
-            grantedLoot = LootManager.processLoot(calculatedEffects, player);
+            grantedLoot = LootManager.processLoot(
+                calculatedEffects,
+                context.player,
+            );
         }
 
-        const success = applyEffects(calculatedEffects, byte, player);
+        const success = applyEffects(calculatedEffects, context);
         if (success) {
             // Log successful event occurrence
             byte.recordHistory(this.id);

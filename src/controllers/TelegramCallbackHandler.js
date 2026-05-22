@@ -1,5 +1,6 @@
 const GameEvents = require('../util/GameEvents');
 const minigameManager = require('../managers/minigame/MinigameManager');
+const GameContext = require('../models/GameContext');
 const GameObjectManager = require('../managers/GameObjectManager');
 const ItemManager = require('../managers/ItemManager');
 const RoomManager = require('../managers/RoomManager');
@@ -181,7 +182,7 @@ async function handleCallbackQuery(query) {
             const isAdmin = adminIds.includes(chatId.toString());
             let statusMessage = '';
             if (room && (room.id !== 'debug_room' || isAdmin)) {
-                if (!room.canEnter(byte, player)) {
+                if (!room.canEnter(new GameContext(byte, player))) {
                     alertMessage = `Cannot enter ${room.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(room.requirements);
                     if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
                     showAlert = true;
@@ -219,7 +220,7 @@ async function handleCallbackQuery(query) {
             let statusMessage = '';
             if (!activity) {
                 alertMessage = 'Activity not found!';
-            } else if (!activity.canPerform(byte, player)) {
+            } else if (!activity.canPerform(new GameContext(byte, player))) {
                 alertMessage = `Cannot perform ${activity.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(activity.requirements);
                 if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
                 showAlert = true;
@@ -230,7 +231,8 @@ async function handleCallbackQuery(query) {
                 } else if (item.isOnCooldown(player)) {
                     alertMessage = `Item is on cooldown. Wait ${item.getCooldownRemaining(player)} minute(s).`;
                 } else {
-                    const result = activity.perform(byte, player, itemId);
+                    const context = new GameContext(byte, player);
+                    const result = activity.perform(context, itemId);
                     if (result && result.success) {
                         await this.game.saveByte(byte);
                         await this.game.savePlayer(player);
@@ -254,9 +256,7 @@ async function handleCallbackQuery(query) {
                 const activity = ActivityManager.getActivity(actId);
                 if (!activity) {
                     alertMessage = 'Activity not found!';
-                } else if (
-                !activity.canPerform(byte, player)
-                ) {
+                } else if (!activity.canPerform(new GameContext(byte, player))) {
                     alertMessage = `Cannot perform ${activity.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(activity.requirements);
                     if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
                     showAlert = true;
@@ -272,11 +272,7 @@ async function handleCallbackQuery(query) {
                     const minigame = minigameManager.getMinigame(actId);
                     if (minigame) {
                         const result = await minigame.start(
-                            chatId,
-                            this.game,
-                            byte,
-                            player,
-                            activity,
+                            chatId, this.game, new GameContext(byte, player), activity
                         );
                         if (result.error) {
                             alertMessage = result.error;
@@ -293,7 +289,8 @@ async function handleCallbackQuery(query) {
                     }
                     return;
                 } else {
-                const result = activity.perform(byte, player);
+                const context = new GameContext(byte, player);
+                const result = activity.perform(context);
                 if (result && result.success) {
                     await this.game.saveByte(byte);
                     await this.game.savePlayer(player);
@@ -336,7 +333,7 @@ async function handleCallbackQuery(query) {
                 alertMessage = "You don't have that item.";
             } else {
                 try {
-                    const result = item.use(byte, player);
+                    const result = item.use(new GameContext(byte, player));
                     if (result && result.success) {
                         if (item.isConsumed) {
                             player.removeItem(itemId, 1);
@@ -398,11 +395,7 @@ async function handleCallbackQuery(query) {
             if (minigame) {
                 const display = await minigame.handleInput(
                     cmd,
-                    userState,
-                    this.game,
-                    chatId,
-                    byte,
-                    player,
+                    userState, this.game, chatId, new GameContext(byte, player)
                 );
                 if (display) {
                     if (display.alert) {

@@ -4,7 +4,7 @@ const ShopManager = require('../managers/ShopManager');
 const TalentManager = require('../managers/TalentManager');
 const AchievementManager = require('../managers/AchievementManager');
 const { checkRequirements } = require('../util/requirements');
-const { getTimeContext } = require('../util/time');
+const GameContext = require('../models/GameContext');
 const GameObjectManager = require('../managers/GameObjectManager');
 const ByteClassManager = require('../managers/ByteClassManager');
 
@@ -156,14 +156,7 @@ const WebAPIGetHandler = {
             const byte = await this.gameManager.getByte(userId);
             const player = await this.gameManager.getPlayer(userId);
 
-            const timeContext = getTimeContext();
-
-            const context = {
-                byte,
-                player,
-                ...timeContext,
-            };
-
+            const context = new GameContext(byte, player);
             const availableShops = ShopManager.getAvailableShops(context);
             const shopsData = availableShops.map((shop) => ({
                 id: shop.id,
@@ -195,16 +188,10 @@ const WebAPIGetHandler = {
             const hiddenTalents = new Set();
             const hintTalents = new Set();
 
-            const timeContext = getTimeContext();
-            const context = { byte, player, ...timeContext };
+            const context = new GameContext(byte, player);
 
             for (const talent of allTalents) {
-                const meetsPrereq = checkRequirements(
-                    talent.requirements,
-                    byte,
-                    player,
-                    context,
-                );
+                const meetsPrereq = checkRequirements(talent.requirements, context);
                 if (meetsPrereq) visibleTalents.add(talent.id);
                 else hiddenTalents.add(talent);
             }

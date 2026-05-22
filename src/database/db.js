@@ -66,6 +66,12 @@ class DatabaseManager {
             type TEXT
         )
         `);
+
+        await this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_bytes_ownerId ON bytes(ownerId);
+        CREATE INDEX IF NOT EXISTS idx_bytes_alive_only ON bytes(ownerId) WHERE isAlive = 1;
+        CREATE INDEX IF NOT EXISTS idx_players_lastAction ON players(lastAction);
+        `);
     }
 
     // --- HELPERS ---

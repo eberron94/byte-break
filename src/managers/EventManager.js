@@ -45,29 +45,19 @@ class EventManager {
      * Filters down the events to only those that can currently occur
      * based on the context's time of day, pet status, and player inventory.
      */
-    getAvailableEvents(context = {}) {
+    getAvailableEvents(context) {
         return this.getAllEvents().filter((event) => event.canOccur(context));
     }
 
     // Selects a valid random event by rolling against its configured probability
-    getRandomEvent(context = {}) {
+    getRandomEvent(context) {
         const events = this.getAvailableEvents(context);
 
-        // Extract context variables for dynamic probability evaluation
-        const locals = { ...context, ...(context.locals || {}) };
-        delete locals.byte;
-        delete locals.player;
-
         for (const event of events) {
-            if (event.ticksPerCheck && context.tickCounter) {
-                const tpc = evaluateExpression(
-                    event.ticksPerCheck,
-                    context.byte,
-                    context.player,
-                    locals,
-                );
+            if (event.ticksPerCheck && context.locals.tickCounter) {
+                const tpc = evaluateExpression(event.ticksPerCheck, context);
                 // If tpc is greater than 1, only check on the appropriate tick interval
-                if (tpc > 1 && context.tickCounter % tpc !== 0) {
+                if (tpc > 1 && context.locals.tickCounter % tpc !== 0) {
                     continue;
                 }
             }
@@ -75,10 +65,7 @@ class EventManager {
             const evaluatedProb =
                 typeof event.probability === 'string'
                     ? evaluateExpression(
-                          event.probability,
-                          context.byte,
-                          context.player,
-                          locals,
+                          event.probability, context
                       )
                     : event.probability;
 

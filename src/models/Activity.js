@@ -1,6 +1,6 @@
 const { calculateEffects, applyEffects } = require('../util/effects');
 const { checkRequirements } = require('../util/requirements');
-const { getTimeContext } = require('../util/time');
+const GameContext = require('./GameContext');
 const ItemManager = require('../managers/ItemManager');
 const LootManager = require('../managers/LootManager');
 
@@ -34,20 +34,18 @@ class Activity {
     /**
      * Checks if the byte and player meet all prerequisites to perform this activity.
      */
-    canPerform(byte, player = null) {
-        const context = getTimeContext();
-
-        if (!checkRequirements(this.requirements, byte, player, context)) {
+    canPerform(context) {
+        if (!checkRequirements(this.requirements, context)) {
             return false;
         }
 
         // 6. If the activity requires an item selection, verify they have at least one valid item
-        if (this.itemSelect && player) {
+        if (this.itemSelect && context.player) {
             let hasValidItem = false;
-            for (const [itemId, amount] of Object.entries(player.inventory)) {
+            for (const [itemId, amount] of Object.entries(context.player.inventory)) {
                 if (amount > 0) {
                     const item = ItemManager.getItem(itemId);
-                    if (item && !item.isOnCooldown(player)) {
+                    if (item && !item.isOnCooldown(context.player)) {
                         if (
                             this.itemSelect.type &&
                             item.type === this.itemSelect.type
@@ -70,18 +68,12 @@ class Activity {
     /**
      * Executes the activity, applies its effects, logs history, and consumes items.
      */
-    perform(byte, player = null, selectedItemId = null, override = false) {
+    perform(context, selectedItemId = null, override = false) {
         // Enforce prerequisites unless override is true
-        if (!this.canPerform(byte, player) && !override)
+        if (!this.canPerform(context) && !override)
             return { success: false, grantedLoot: null };
 
-        const locals = getTimeContext();
-        const calculatedEffects = calculateEffects(
-            this.effects,
-            byte,
-            player,
-            locals,
-        );
+        const calculatedEffects = calculateEffects(this.effects, context);
 
         let grantedLoot = null;
         if (
@@ -90,22 +82,22 @@ class Activity {
             (calculatedEffects.inventory &&
                 Object.keys(calculatedEffects.inventory).length > 0)
         ) {
-            grantedLoot = LootManager.processLoot(calculatedEffects, player);
+            grantedLoot = LootManager.processLoot(calculatedEffects, context.player);
         }
 
-        const success = applyEffects(calculatedEffects, byte, player);
+        const success = applyEffects(calculatedEffects, context);
         if (success) {
-            byte.recordHistory(this.id);
+            context.byte.recordHistory(this.id);
 
             // Handle consumption of a user-selected item
-            if (this.itemSelect && selectedItemId && player) {
+            if (this.itemSelect && selectedItemId && context.player) {
                 const item = ItemManager.getItem(selectedItemId);
-                if (item && player.hasItem(selectedItemId, 1)) {
+                if (item && context.player.hasItem(selectedItemId, 1)) {
                     try {
-                        const result = item.use(byte, player);
+                        const result = item.use(context);
                         // Only remove the item if it's consumed
                         if (result && result.success && item.isConsumed) {
-                            player.removeItem(selectedItemId, 1);
+                            context.player.removeItem(selectedItemId, 1);
                         }
                     } catch (err) {
                         console.error(

@@ -2,6 +2,7 @@ const sharp = require('sharp');
 const { generateClassBasedAvatar } = require('../util/avatar');
 const GameEvents = require('../util/GameEvents');
 const RoomManager = require('../managers/RoomManager');
+const GameContext = require('../models/GameContext');
 const GameObjectManager = require('../managers/GameObjectManager');
 
 /**
@@ -203,7 +204,7 @@ const TelegramCommandHandlers = {
             );
         }
 
-        if (!room.canEnter(byte, player)) {
+        if (!room.canEnter(new GameContext(byte, player))) {
             const reqStr = GameObjectManager.formatRequirementsList(room.requirements);
             return this.bot.sendMessage(
                 chatId,

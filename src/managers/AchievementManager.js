@@ -2,7 +2,7 @@ const GameEvents = require('../util/GameEvents');
 const achievementsData = require('../../data/achievements.json');
 const { calculateEffects, applyEffects } = require('../util/effects');
 const ItemManager = require('./ItemManager');
-const { getTimeContext } = require('../util/time');
+const GameContext = require('../models/GameContext');
 
 class AchievementManager {
     constructor() {
@@ -44,15 +44,9 @@ class AchievementManager {
 
                     if (tierData.effects && tierData.effects.length > 0) {
                         if (!byte) byte = await gameManager.getByte(userId);
-                        const timeContext = getTimeContext();
-                        const context = { byte, player, ...timeContext };
-                        const calculatedEffects = calculateEffects(
-                            tierData.effects,
-                            byte,
-                            player,
-                            context
-                        );
-                        const success = applyEffects(calculatedEffects, byte, player);
+                        const context = new GameContext(byte, player);
+                        const calculatedEffects = calculateEffects(tierData.effects, context);
+                        const success = applyEffects(calculatedEffects, context);
                         if (success && byte) byteModified = true;
                     }
 

@@ -7,10 +7,10 @@ const { calculateEffects, applyEffects } = require('../util/effects');
 const ShopManager = require('../managers/ShopManager');
 const GameObjectManager = require('../managers/GameObjectManager');
 const GameEvents = require('../util/GameEvents');
+const GameContext = require('../models/GameContext');
 const TalentManager = require('../managers/TalentManager');
 const AchievementManager = require('../managers/AchievementManager');
 const { checkRequirements } = require('../util/requirements');
-const { getTimeContext } = require('../util/time');
 const ByteClassManager = require('../managers/ByteClassManager');
 
 const activeTransactions = new Set();
@@ -170,8 +170,7 @@ const WebAPIPostHandler = {
                 return res.status(404).json({ error: 'Data not found' });
             }
 
-            const timeContext = getTimeContext();
-            const context = { byte, player, ...timeContext };
+            const context = new GameContext(byte, player);
             if (!shop.canAppear(context)) {
                 return res
                     .status(400)
@@ -275,8 +274,7 @@ const WebAPIPostHandler = {
                 return res.status(404).json({ error: 'Data not found' });
             }
 
-            const timeContext = getTimeContext();
-            const context = { byte, player, ...timeContext };
+            const context = new GameContext(byte, player);
             if (!shop.canAppear(context)) {
                 return res
                     .status(400)
@@ -422,16 +420,13 @@ const WebAPIPostHandler = {
 
             // Reward Bits if won
             if (result.winner === 'player') {
-                const calculatedWinEffects = calculateEffects(
-                    result.winEffects,
-                    playerByte,
-                    player,
-                );
+                const context = new GameContext(playerByte, player);
+                const calculatedWinEffects = calculateEffects(result.winEffects, context);
                 const grantedLoot = LootManager.processLoot(
                     calculatedWinEffects,
                     player,
                 );
-                applyEffects(calculatedWinEffects, playerByte, player);
+                applyEffects(calculatedWinEffects, context);
 
                 const lootStr = GameObjectManager.formatLootString(grantedLoot);
                 const rewardMsg =
@@ -521,12 +516,9 @@ const WebAPIPostHandler = {
             if (player.achievementPoints.available < talent.cost)
                 return res.status(400).json({ error: 'Not enough α' });
 
-            const timeContext = getTimeContext();
-            const context = { byte, player, ...timeContext };
+            const context = new GameContext(byte, player);
 
-            if (
-                !checkRequirements(talent.requirements, byte, player, context)
-            ) {
+            if (!checkRequirements(talent.requirements, context)) {
                 const reqStr = GameObjectManager.formatRequirementsList(talent.requirements);
                 return res.status(400).json({ error: `Prerequisites not met.\nRequires:\n• ${reqStr}` });
             }
@@ -676,23 +668,11 @@ const WebAPIPostHandler = {
                                 if (!byte)
                                     byte =
                                         await this.gameManager.getByte(userId);
-                                const timeContext = getTimeContext();
-                                const context = {
-                                    byte,
-                                    player,
-                                    ...timeContext,
-                                };
+                                const context = new GameContext(byte, player);
                                 const calculatedEffects = calculateEffects(
-                                    tierData.effects,
-                                    byte,
-                                    player,
-                                    context,
+                                    tierData.effects, context
                                 );
-                                const success = applyEffects(
-                                    calculatedEffects,
-                                    byte,
-                                    player,
-                                );
+                                const success = applyEffects(calculatedEffects, context);
                                 if (success && byte) byteModified = true;
                             }
 

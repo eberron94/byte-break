@@ -4,11 +4,11 @@ const exprCache = new Map();
 /**
  * Evaluates a mathematical expression string using byte and player data.
  */
-function evaluateExpression(expr, byte, player, locals = {}) {
+function evaluateExpression(expr, context) {
     if (typeof expr === 'number' || typeof expr === 'boolean') return expr;
     if (typeof expr === 'string') {
         try {
-            const localKeys = Object.keys(locals).sort();
+            const localKeys = Object.keys(context.locals).sort();
             const cacheKey = expr + '|' + localKeys.join(',');
             let func = exprCache.get(cacheKey);
             if (!func) {
@@ -16,8 +16,8 @@ function evaluateExpression(expr, byte, player, locals = {}) {
                 func = new Function(...args, `return ${expr};`);
                 exprCache.set(cacheKey, func);
             }
-            const localValues = localKeys.map((k) => locals[k]);
-            const result = func(byte, player, ...localValues);
+            const localValues = localKeys.map((k) => context.locals[k]);
+            const result = func(context.byte, context.player, ...localValues);
             if (typeof result === 'number')
                 return isNaN(result) ? 0 : Math.floor(result);
             return result;
@@ -32,12 +32,13 @@ function evaluateExpression(expr, byte, player, locals = {}) {
 /**
  * Calculates the effects based on an array of effect objects.
  */
-function calculateEffects(effects, byte, player, locals = {}) {
+function calculateEffects(effects, context) {
     if (!Array.isArray(effects)) {
         console.warn('`effects` is not an array. Please update JSON format.');
         return {};
     }
 
+    const { byte, player } = context;
     const calculated = { inventory: {} };
 
     for (const effect of effects) {
@@ -47,12 +48,7 @@ function calculateEffects(effects, byte, player, locals = {}) {
         let shouldApply = true;
 
         if (effect.die !== undefined) {
-            const dieSize = evaluateExpression(
-                effect.die,
-                byte,
-                player,
-                locals,
-            );
+            const dieSize = evaluateExpression(effect.die, context);
             if (dieSize < 1 || Math.floor(Math.random() * dieSize) + 1 !== 1) {
                 shouldApply = false;
             }
@@ -63,8 +59,7 @@ function calculateEffects(effects, byte, player, locals = {}) {
                 if (effect.id && effect.amount !== undefined) {
                     const currentAmount = calculated.inventory[effect.id] || 0;
                     calculated.inventory[effect.id] =
-                        currentAmount +
-                        evaluateExpression(effect.amount, byte, player, locals);
+                        currentAmount + evaluateExpression(effect.amount, context);
                 }
             } else if (key === 'loot') {
                 if (effect.table) {
@@ -79,12 +74,7 @@ function calculateEffects(effects, byte, player, locals = {}) {
                 });
             } else {
                 if (effect.amount !== undefined) {
-                    let value = evaluateExpression(
-                        effect.amount,
-                        byte,
-                        player,
-                        locals,
-                    );
+                    let value = evaluateExpression(effect.amount, context);
                     if (typeof value === 'number') {
                         const originalValue = value;
                         let currentAmount = calculated[key] || 0;
@@ -108,10 +98,7 @@ function calculateEffects(effects, byte, player, locals = {}) {
 
                             if (effect.maxLimit !== undefined) {
                                 const maxLimit = evaluateExpression(
-                                    effect.maxLimit,
-                                    byte,
-                                    player,
-                                    locals,
+                                    effect.maxLimit, context,
                                 );
                                 if (
                                     value > 0 &&
@@ -126,10 +113,7 @@ function calculateEffects(effects, byte, player, locals = {}) {
                             }
                             if (effect.minLimit !== undefined) {
                                 const minLimit = evaluateExpression(
-                                    effect.minLimit,
-                                    byte,
-                                    player,
-                                    locals,
+                                    effect.minLimit, context,
                                 );
                                 if (
                                     value < 0 &&
@@ -166,7 +150,8 @@ function calculateEffects(effects, byte, player, locals = {}) {
 /**
  * Safely routes and applies calculated effect deltas to the respective objects.
  */
-function applyEffects(calculatedEffects, byte, player = null) {
+function applyEffects(calculatedEffects, context) {
+    const { byte, player } = context;
     let success = true;
     if (byte) {
         success = byte.applyEffects(calculatedEffects);

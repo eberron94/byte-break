@@ -10,6 +10,7 @@ const handleCallbackQuery = require('./TelegramCallbackHandler');
 const TelegramCommandHandlers = require('./TelegramCommandHandlers');
 const handleMessage = require('./TelegramMessageHandlers');
 const TelegramUIOperators = require('./TelegramUIOperators');
+const GameContext = require('../models/GameContext');
 const GameObjectManager = require('../managers/GameObjectManager');
 
 /**
@@ -135,7 +136,7 @@ class TelegramBotController {
 
                 let msg = `🔔 **Random Event:** ${e.name}\n_${e.description}_`;
 
-                const lootStr = GameObjectManager.formatLootString(grantedLoot);
+                const lootStr = GameObjectManager.formatLootString(grantedLoot, new GameContext(b, player));
                 if (lootStr) msg += `\n\n🎁 **Rewards:** ${lootStr}`;
 
                 await this.bot.sendMessage(b.ownerId, msg, {

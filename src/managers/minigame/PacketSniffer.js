@@ -1,5 +1,6 @@
 const LootManager = require('../LootManager');
 const GameEvents = require('../../util/GameEvents');
+const GameContext = require('../../models/GameContext');
 const GameObjectManager = require('../GameObjectManager');
 const {
     calculateEffects,
@@ -26,10 +27,11 @@ class PacketSniffer {
         return pool.sort();
     }
 
-    async start(chatId, gameManager, byte, player, activity = null) {
+    async start(chatId, gameManager, context, activity = null) {
+        const { byte, player } = context;
         let energyCost = 0;
         if (activity && activity.effects && activity.effects.length > 0) {
-            const effects = calculateEffects(activity.effects, byte, player);
+            const effects = calculateEffects(activity.effects, context);
             if (effects.energy && effects.energy < 0) {
                 energyCost = Math.abs(effects.energy);
             }
@@ -50,21 +52,9 @@ class PacketSniffer {
 
         const config = {
             level: rawConfig.level || 'normal',
-            guessLength: evaluateExpression(
-                rawConfig.guessLength !== undefined ? rawConfig.guessLength : 4,
-                byte,
-                player,
-            ),
-            poolSize: evaluateExpression(
-                rawConfig.poolSize !== undefined ? rawConfig.poolSize : 8,
-                byte,
-                player,
-            ),
-            maxGuesses: evaluateExpression(
-                rawConfig.maxGuesses !== undefined ? rawConfig.maxGuesses : 6,
-                byte,
-                player,
-            ),
+            guessLength: evaluateExpression(rawConfig.guessLength !== undefined ? rawConfig.guessLength : 4, context),
+            poolSize: evaluateExpression(rawConfig.poolSize !== undefined ? rawConfig.poolSize : 8, context),
+            maxGuesses: evaluateExpression(rawConfig.maxGuesses !== undefined ? rawConfig.maxGuesses : 6, context),
         };
 
         const pool = this.generatePool(config.poolSize);
@@ -222,8 +212,9 @@ class PacketSniffer {
         };
     }
 
-    async handleInput(cmd, state, gameManager, chatId, byte, player) {
+    async handleInput(cmd, state, gameManager, chatId, context) {
         const { target, pool, config, activityId } = state;
+        const { byte, player } = context;
         const activity = gameManager.activityManager.getActivity(activityId);
         const { guessLength, maxGuesses, level } = config;
 
@@ -269,26 +260,22 @@ class PacketSniffer {
 
                     if (isWin && activity && activity.winEffects) {
                         const calculatedWinEffects = calculateEffects(
-                            activity.winEffects,
-                            byte,
-                            player,
+                            activity.winEffects, context
                         );
                         state.grantedLoot = LootManager.processLoot(
                             calculatedWinEffects,
                             player,
                         );
-                        applyEffects(calculatedWinEffects, byte, player);
+                        applyEffects(calculatedWinEffects, context);
                     } else if (isLoss && activity && activity.loseEffects) {
                         const calculatedLoseEffects = calculateEffects(
-                            activity.loseEffects,
-                            byte,
-                            player,
+                            activity.loseEffects, context
                         );
                         state.grantedLoot = LootManager.processLoot(
                             calculatedLoseEffects,
                             player,
                         );
-                        applyEffects(calculatedLoseEffects, byte, player);
+                        applyEffects(calculatedLoseEffects, context);
                     }
 
                     if (isWin || isLoss) {

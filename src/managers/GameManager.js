@@ -5,7 +5,7 @@ const EventEmitter = require('events');
 const GameEvents = require('../util/GameEvents');
 const MergeManager = require('./MergeManager');
 const SpawnManager = require('./SpawnManager');
-const { getTimeContext } = require('../util/time');
+const GameContext = require('../models/GameContext');
 const EventManager = require('./EventManager');
 
 class GameManager extends EventEmitter {
@@ -220,8 +220,6 @@ class GameManager extends EventEmitter {
             await this.rewardActivePlayers();
         }
 
-        const tickedPlayers = new Set();
-
         // Retrieve all currently living bytes
         let aliveBytesData;
         try {
@@ -236,61 +234,64 @@ class GameManager extends EventEmitter {
 
         if (!aliveBytesData || !Array.isArray(aliveBytesData)) return;
 
-        for (const parsedData of aliveBytesData) {
+        // Group processing by player to prevent redundant DB reads/writes for multi-byte owners
+        const uniqueOwnerIds = new Set(aliveBytesData.map((b) => b.ownerId));
+
+        for (const ownerId of uniqueOwnerIds) {
             try {
                 // Use Promise.all to fetch the most up-to-date state immediately before mutation.
-                // This eliminates the wide race condition gap caused by processing stale data
-                // from the initial bulk getAliveBytes() snapshot.
                 const [player, bytes] = await Promise.all([
-                    this.getPlayer(parsedData.ownerId),
-                    this.getBytes(parsedData.ownerId),
+                    this.getPlayer(ownerId),
+                    this.getBytes(ownerId),
                 ]);
 
-                const byte = bytes.find((b) => b.id === parsedData.id);
-                if (!byte) continue; // Byte might have been deleted or merged during the tick gap
+                const aliveBytes = bytes.filter((b) => b.isAlive);
+                if (aliveBytes.length === 0) continue;
 
-                if (byte.isAsleep) {
-                    if (this.tickCounter % 10 === 0) {
+                let playerTicked = false;
+
+                for (const byte of aliveBytes) {
+                    if (byte.isAsleep) {
+                        if (this.tickCounter % 10 === 0) {
+                            byte.tick(player, this.tickCounter);
+                        }
+                    } else {
                         byte.tick(player, this.tickCounter);
                     }
-                } else {
-                    byte.tick(player, this.tickCounter);
-                }
 
-                if (!tickedPlayers.has(player.id)) {
-                    player.tick(byte);
-                    tickedPlayers.add(player.id);
-                }
+                    if (!playerTicked) {
+                        player.tick(byte);
+                        playerTicked = true;
+                    }
 
-                if (EventManager && !byte.isAsleep) {
-                    const timeContext = getTimeContext();
+                    if (EventManager && !byte.isAsleep) {
+                        const context = new GameContext(byte, player, {
+                            tickCounter: this.tickCounter,
+                        });
 
-                    // Build the context for event generation
-                    const context = {
-                        byte,
-                        player,
-                        ...timeContext,
-                        tickCounter: this.tickCounter,
-                    };
-
-                    // Attempt to trigger a random event
-                    const event = EventManager.getRandomEvent(context);
-                    if (event) {
-                        const result = event.occur(context);
-                        if (result && result.success) {
-                            this.emit(GameEvents.RANDOM_EVENT, byte, event, result.grantedLoot);
+                        // Attempt to trigger a random event
+                        const event = EventManager.getRandomEvent(context);
+                        if (event) {
+                            const result = event.occur(context);
+                            if (result && result.success) {
+                                this.emit(
+                                    GameEvents.RANDOM_EVENT,
+                                    byte,
+                                    event,
+                                    result.grantedLoot,
+                                );
+                            }
                         }
                     }
                 }
 
-                // Save the mutated state concurrently to minimize write-gap
-                await Promise.all([
-                    this.saveByte(byte),
-                    this.savePlayer(player),
-                ]);
+                // Save the mutated state concurrently
+                const savePromises = aliveBytes.map((b) => this.saveByte(b));
+                savePromises.push(this.savePlayer(player));
+                await Promise.all(savePromises);
             } catch (err) {
                 console.error(
-                    `[GameManager] Error processing tick for byte ${parsedData.id}:`,
+                    `[GameManager] Error processing tick for player ${ownerId}:`,
                     err,
                 );
             }
@@ -298,9 +299,7 @@ class GameManager extends EventEmitter {
     }
 
     // Starts the continuous global game loop that drives time and events
-    startGameLoop(
-        tickIntervalMs = 60000,
-    ) {
+    startGameLoop(tickIntervalMs = 60000) {
         setInterval(async () => {
             try {
                 await this.processTick();

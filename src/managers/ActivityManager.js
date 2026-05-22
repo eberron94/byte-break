@@ -1,7 +1,6 @@
 const Activity = require('../models/Activity');
 const activitiesData = require('../../data/activities.json');
 const { calculateEffects } = require('../util/effects');
-const { getTimeContext } = require('../util/time');
 
 /**
  * Loads and manages all activities available in the game from JSON configuration.
@@ -42,11 +41,7 @@ class ActivityManager {
     }
 
     // Returns a filtered list of activities that the given byte and player can currently perform
-    getPerformableActivities(
-        byte,
-        player,
-        allowedActivityIds = null,
-    ) {
+    getPerformableActivities(context, allowedActivityIds = null) {
         let activities = this.getAllActivities();
 
         // Filter by explicitly allowed IDs (e.g., restricted by current room)
@@ -58,22 +53,16 @@ class ActivityManager {
 
         // Final check to see if the game state meets prerequisites
         return activities.filter((activity) =>
-            activity.canPerform(byte, player),
+            activity.canPerform(context),
         );
     }
 
     // Formats the inline keyboard button for an activity, appending web parameters if needed
-    getActivityButton(activity, byte = null, player = null) {
+    getActivityButton(activity, context = null) {
         const webAppUrl = process.env.WEB_APP_URL;
         let energyCostStr = '';
-        if (activity.effects && activity.effects.energy) {
-            const locals = getTimeContext();
-            const effects = calculateEffects(
-                activity.effects,
-                byte,
-                player,
-                locals,
-            );
+        if (context && activity.effects && activity.effects.energy) {
+            const effects = calculateEffects(activity.effects, context);
             if (effects.energy < 0) {
                 energyCostStr = ` (-${Math.abs(effects.energy)} ε)`;
             } else if (effects.energy > 0) {

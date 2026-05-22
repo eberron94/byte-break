@@ -1,5 +1,4 @@
 const { checkRequirements } = require('../util/requirements');
-const { getTimeContext } = require('../util/time');
 
 class Room {
     constructor(data) {
@@ -11,9 +10,8 @@ class Room {
         this.requirements = data.requirements || [];
     }
 
-    canEnter(byte, player = null) {
-        const context = getTimeContext();
-        return checkRequirements(this.requirements, byte, player, context);
+    canEnter(context) {
+        return checkRequirements(this.requirements, context);
     }
 }
 

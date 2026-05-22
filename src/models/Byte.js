@@ -23,7 +23,7 @@ const {
     applyEffects,
     evaluateExpression,
 } = require('../util/effects');
-const { getTimeContext } = require('../util/time');
+const GameContext = require('./GameContext');
 
 /**
  * Represents a digital monster (byte), managing its nested stats, skills, needs, and pools.
@@ -238,7 +238,7 @@ class Byte {
             return;
         }
 
-        const locals = { ...getTimeContext(), tickCounter };
+        const context = new GameContext(this, player, { tickCounter });
 
         const currentRoom = RoomManager.getRoom(this.room);
         if (currentRoom && currentRoom.tickEffects) {
@@ -246,24 +246,14 @@ class Byte {
                 (effect) => {
                     const tpt =
                         effect.ticksPerTrigger !== undefined
-                            ? evaluateExpression(
-                                  effect.ticksPerTrigger,
-                                  this,
-                                  player,
-                                  locals,
-                              )
+                            ? evaluateExpression(effect.ticksPerTrigger, context)
                             : 1;
-                    return tpt <= 1 || locals.tickCounter % tpt === 0;
+                    return tpt <= 1 || context.locals.tickCounter % tpt === 0;
                 },
             );
             if (activeTickEffects.length > 0) {
-                const calculatedEffects = calculateEffects(
-                    activeTickEffects,
-                    this,
-                    player,
-                    locals,
-                );
-                applyEffects(calculatedEffects, this, player);
+                const calculatedEffects = calculateEffects(activeTickEffects, context);
+                applyEffects(calculatedEffects, context);
             }
         }
 
@@ -271,26 +261,17 @@ class Byte {
         for (const [hId, hData] of Object.entries(this.hediffs)) {
             const hDef = HediffManager.getHediff(hId);
             if (hDef && hDef.tickEffects) {
+                const hediffContext = new GameContext(this, player, { tickCounter, stacks: hData.stacks });
                 const activeTickEffects = hDef.tickEffects.filter((effect) => {
                     const tpt =
                         effect.ticksPerTrigger !== undefined
-                            ? evaluateExpression(
-                                  effect.ticksPerTrigger,
-                                  this,
-                                  player,
-                                  { ...locals, stacks: hData.stacks },
-                              )
+                            ? evaluateExpression(effect.ticksPerTrigger, hediffContext)
                             : 1;
-                    return tpt <= 1 || locals.tickCounter % tpt === 0;
+                    return tpt <= 1 || hediffContext.locals.tickCounter % tpt === 0;
                 });
                 if (activeTickEffects.length > 0) {
-                    const calculatedEffects = calculateEffects(
-                        activeTickEffects,
-                        this,
-                        player,
-                        { ...locals, stacks: hData.stacks },
-                    );
-                    applyEffects(calculatedEffects, this, player);
+                    const calculatedEffects = calculateEffects(activeTickEffects, hediffContext);
+                    applyEffects(calculatedEffects, hediffContext);
                 }
             }
         }
@@ -330,11 +311,11 @@ class Byte {
         for (const [hId, hData] of Object.entries(this.hediffs)) {
             const hDef = HediffManager.getHediff(hId);
             if (hDef && hDef.modifiers) {
-                for (const mod of hDef.modifiers) {
-                    if (mod.type === type && mod.key === key) {
-                        modifier += evaluateExpression(mod.amount, this, null, {
-                            stacks: hData.stacks,
-                        });
+                const relevantMods = hDef.modifiers.filter(m => m.type === type && m.key === key);
+                if (relevantMods.length > 0) {
+                    const context = new GameContext(this, null, { stacks: hData.stacks });
+                    for (const mod of relevantMods) {
+                        modifier += evaluateExpression(mod.amount, context);
                     }
                 }
             }

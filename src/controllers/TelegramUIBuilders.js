@@ -1,5 +1,6 @@
 const Pagination = require('./Pagination');
 const { calculateEffects, evaluateExpression } = require('../util/effects');
+const GameContext = require('../models/GameContext');
 const GameObjectManager = require('../managers/GameObjectManager');
 const ShopManager = require('../managers/ShopManager');
 const ItemManager = require('../managers/ItemManager');
@@ -73,19 +74,14 @@ const TelegramUIBuilders = {
         }
 
         if (room && room.tickEffects) {
-            const timeContext = getTimeContext();
+            const context = new GameContext(byte, player);
             const effectStrings = [];
 
             const effectsByTicks = {};
             room.tickEffects.forEach((eff) => {
                 const tpt =
                     eff.ticksPerTrigger !== undefined
-                        ? evaluateExpression(
-                              eff.ticksPerTrigger,
-                              byte,
-                              player,
-                              timeContext,
-                          )
+                        ? evaluateExpression(eff.ticksPerTrigger, context)
                         : 1;
                 if (!effectsByTicks[tpt]) effectsByTicks[tpt] = [];
                 effectsByTicks[tpt].push(eff);
@@ -93,12 +89,7 @@ const TelegramUIBuilders = {
 
             for (const [tptStr, effs] of Object.entries(effectsByTicks)) {
                 const tpt = parseInt(tptStr, 10);
-                const evaluatedEffects = calculateEffects(
-                    effs,
-                    byte,
-                    player,
-                    timeContext,
-                );
+                const evaluatedEffects = calculateEffects(effs, context);
                 const str = Object.entries(evaluatedEffects)
                     .filter(
                         ([key]) =>
@@ -122,12 +113,7 @@ const TelegramUIBuilders = {
         }
 
         if (room && room.id === 'market') {
-            const timeContext = getTimeContext();
-            const context = {
-                byte,
-                player,
-                ...timeContext,
-            };
+            const context = new GameContext(byte, player);
 
             const allShops = ShopManager.getAllShops();
             if (allShops.length > 0) {
@@ -191,13 +177,8 @@ const TelegramUIBuilders = {
             for (const actId of room.allowedActivities) {
                 const activity = ActivityManager.getActivity(actId);
                 if (activity) {
-                    buttons.push(
-                        ActivityManager.getActivityButton(
-                            activity,
-                            byte,
-                            player,
-                        ),
-                    );
+                    const context = new GameContext(byte, player);
+                    buttons.push(ActivityManager.getActivityButton(activity, context));
                 }
             }
             for (let i = 0; i < buttons.length; i += 2) {
@@ -334,7 +315,7 @@ const TelegramUIBuilders = {
 
         rooms.forEach((room) => {
             if (room.id === 'debug_room' && !isAdmin) return;
-            if (!room.canEnter(byte, player)) return;
+            if (!room.canEnter(new GameContext(byte, player))) return;
             buttons.push({
                 text: room.name,
                 callback_data: `nav_move_${room.id}`,
