@@ -2,6 +2,7 @@ const { calculateEffects, applyEffects } = require('../util/effects');
 const { checkRequirements } = require('../util/requirements');
 const { getTimeContext } = require('../util/time');
 const ItemManager = require('../managers/ItemManager');
+const LootManager = require('../managers/LootManager');
 
 /**
  * Represents an action that a byte can perform, potentially consuming items or altering stats.
@@ -12,7 +13,7 @@ class Activity {
         this.name = data.name;
         this.description = data.description;
         this.requirements = data.requirements || [];
-        this.effects = data.effects || {};
+        this.effects = data.effects || [];
         this.itemSelect = data.itemSelect || null;
         this.isWebView = data.isWebView || false;
         this.isMinigame = data.isMinigame || false;
@@ -71,7 +72,8 @@ class Activity {
      */
     perform(byte, player = null, selectedItemId = null, override = false) {
         // Enforce prerequisites unless override is true
-        if (!this.canPerform(byte, player) && !override) return false;
+        if (!this.canPerform(byte, player) && !override)
+            return { success: false, grantedLoot: null };
 
         const locals = getTimeContext();
         const calculatedEffects = calculateEffects(
@@ -80,6 +82,17 @@ class Activity {
             player,
             locals,
         );
+
+        let grantedLoot = null;
+        if (
+            calculatedEffects.loot ||
+            calculatedEffects.bits ||
+            (calculatedEffects.inventory &&
+                Object.keys(calculatedEffects.inventory).length > 0)
+        ) {
+            grantedLoot = LootManager.processLoot(calculatedEffects, player);
+        }
+
         const success = applyEffects(calculatedEffects, byte, player);
         if (success) {
             byte.recordHistory(this.id);
@@ -89,9 +102,9 @@ class Activity {
                 const item = ItemManager.getItem(selectedItemId);
                 if (item && player.hasItem(selectedItemId, 1)) {
                     try {
-                        item.use(byte, player);
+                        const result = item.use(byte, player);
                         // Only remove the item if it's consumed
-                        if (item.isConsumed) {
+                        if (result && result.success && item.isConsumed) {
                             player.removeItem(selectedItemId, 1);
                         }
                     } catch (err) {
@@ -103,7 +116,7 @@ class Activity {
                 }
             }
         }
-        return success;
+        return { success, grantedLoot };
     }
 }
 

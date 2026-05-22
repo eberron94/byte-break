@@ -230,10 +230,17 @@ async function handleCallbackQuery(query) {
                 } else if (item.isOnCooldown(player)) {
                     alertMessage = `Item is on cooldown. Wait ${item.getCooldownRemaining(player)} minute(s).`;
                 } else {
-                    activity.perform(byte, player, itemId);
-                    await this.game.saveByte(byte);
-                    await this.game.savePlayer(player);
-                    statusMessage = `Performed ${activity.name} with ${item.shortname}!`;
+                    const result = activity.perform(byte, player, itemId);
+                    if (result && result.success) {
+                        await this.game.saveByte(byte);
+                        await this.game.savePlayer(player);
+                        statusMessage = `Performed ${activity.name} with ${item.shortname}!`;
+
+                        const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
+                        if (lootStr) statusMessage += ` Found: ${lootStr}`;
+                    } else {
+                        alertMessage = `Failed to perform ${activity.name}.`;
+                    }
                 }
             }
             await this.sendStatusUI(chatId, byte, player, statusMessage);
@@ -286,15 +293,23 @@ async function handleCallbackQuery(query) {
                     }
                     return;
                 } else {
-                activity.perform(byte, player);
+                const result = activity.perform(byte, player);
+                if (result && result.success) {
                     await this.game.saveByte(byte);
                     await this.game.savePlayer(player);
                     statusMessage = `Performed ${activity.name}!`;
+
+                    const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
+                    if (lootStr) statusMessage += ` Found: ${lootStr}`;
+
                     if (byte.isAsleep) {
                         const bytes = await this.game.getBytes(chatId);
                         await this.sendStasisUI(chatId, bytes, player);
                         return;
                     }
+                } else {
+                    alertMessage = `Failed to perform ${activity.name}.`;
+                }
                 }
             }
             await this.sendStatusUI(chatId, byte, player, statusMessage);
@@ -321,18 +336,23 @@ async function handleCallbackQuery(query) {
                 alertMessage = "You don't have that item.";
             } else {
                 try {
-                    const success = item.use(byte, player);
-                    if (success) {
+                    const result = item.use(byte, player);
+                    if (result && result.success) {
                         if (item.isConsumed) {
                             player.removeItem(itemId, 1);
                         }
                         await this.game.saveByte(byte);
                         await this.game.savePlayer(player);
+
+                        let msg = `Used ${item.name}!`;
+                        const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
+                        if (lootStr) msg += ` Found: ${lootStr}`;
+
                         await this.sendStatusUI(
                             chatId,
                             byte,
                             player,
-                            `Used ${item.name}!`,
+                            msg,
                         );
                         return;
                     } else {

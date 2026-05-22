@@ -5,6 +5,7 @@ const ItemManager = require('../managers/ItemManager');
 const LootManager = require('../managers/LootManager');
 const { calculateEffects, applyEffects } = require('../util/effects');
 const ShopManager = require('../managers/ShopManager');
+const GameObjectManager = require('../managers/GameObjectManager');
 const GameEvents = require('../util/GameEvents');
 const TalentManager = require('../managers/TalentManager');
 const AchievementManager = require('../managers/AchievementManager');
@@ -83,9 +84,7 @@ const WebAPIPostHandler = {
 
             if (!playerByte)
                 return res.status(404).json({ error: 'Byte not found' });
-            const byteClass = ByteClassManager.getClass(
-                playerByte.byteClass,
-            );
+            const byteClass = ByteClassManager.getClass(playerByte.byteClass);
             if (!byteClass)
                 return res.status(400).json({ error: 'Invalid byte class' });
 
@@ -336,11 +335,9 @@ const WebAPIPostHandler = {
             if (!playerByte)
                 return res.status(404).json({ error: 'Byte not found' });
             if (playerByte.pools.integrity.value <= 0)
-                return res
-                    .status(400)
-                    .json({
-                        error: 'Byte lacks sufficient Integrity to fight.',
-                    });
+                return res.status(400).json({
+                    error: 'Byte lacks sufficient Integrity to fight.',
+                });
 
             const activity = this.gameManager.activityManager.getActivity(
                 activityId || 'combat_simulation',
@@ -434,27 +431,12 @@ const WebAPIPostHandler = {
                     calculatedWinEffects,
                     player,
                 );
-                applyEffects(
-                    calculatedWinEffects,
-                    playerByte,
-                    player,
-                );
+                applyEffects(calculatedWinEffects, playerByte, player);
 
-                const rewardParts = [];
-                if (grantedLoot.bits > 0) {
-                    rewardParts.push(`${grantedLoot.bits} β`);
-                }
-                if (grantedLoot.items.length > 0) {
-                    const itemStrings = grantedLoot.items.map((i) => {
-                        const item = ItemManager.getItem(i.id);
-                        return `${item ? item.name : i.id} (x${i.amount})`;
-                    });
-                    rewardParts.push(...itemStrings);
-                }
-
+                const lootStr = GameObjectManager.formatLootString(grantedLoot);
                 const rewardMsg =
-                    rewardParts.length > 0
-                        ? `Simulation complete! Rewards extracted: ${rewardParts.join(', ')}.`
+                    lootStr.length > 0
+                        ? `Simulation complete! Rewards extracted: ${lootStr}.`
                         : 'Simulation complete! No rewards extracted.';
                 result.log.push({ action: 'reward', message: rewardMsg });
 
@@ -543,12 +525,7 @@ const WebAPIPostHandler = {
             const context = { byte, player, ...timeContext };
 
             if (
-                !checkRequirements(
-                    talent.requirements,
-                    byte,
-                    player,
-                    context,
-                )
+                !checkRequirements(talent.requirements, byte, player, context)
             ) {
                 return res.status(400).json({ error: 'Prerequisites not met' });
             }
@@ -691,17 +668,30 @@ const WebAPIPostHandler = {
                         if (oldProgress < tierReq && progress >= tierReq) {
                             const reward = tierData.reward;
 
-                            if (tierData.effects && tierData.effects.length > 0) {
-                                if (!byte) byte = await this.gameManager.getByte(userId);
+                            if (
+                                tierData.effects &&
+                                tierData.effects.length > 0
+                            ) {
+                                if (!byte)
+                                    byte =
+                                        await this.gameManager.getByte(userId);
                                 const timeContext = getTimeContext();
-                                const context = { byte, player, ...timeContext };
+                                const context = {
+                                    byte,
+                                    player,
+                                    ...timeContext,
+                                };
                                 const calculatedEffects = calculateEffects(
                                     tierData.effects,
                                     byte,
                                     player,
-                                    context
+                                    context,
                                 );
-                                const success = applyEffects(calculatedEffects, byte, player);
+                                const success = applyEffects(
+                                    calculatedEffects,
+                                    byte,
+                                    player,
+                                );
                                 if (success && byte) byteModified = true;
                             }
 
@@ -710,7 +700,8 @@ const WebAPIPostHandler = {
                                 userId,
                                 {
                                     name: ach.name,
-                                    description: tierData.description || ach.description,
+                                    description:
+                                        tierData.description || ach.description,
                                     reward: reward,
                                     tier: i + 1,
                                     totalTiers: ach.tiers.length,

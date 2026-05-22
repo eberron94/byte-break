@@ -1,7 +1,11 @@
 const LootManager = require('../LootManager');
 const GameEvents = require('../../util/GameEvents');
-const ItemManager = require('../ItemManager');
-const { calculateEffects, applyEffects, evaluateExpression } = require('../../util/effects');
+const GameObjectManager = require('../GameObjectManager');
+const {
+    calculateEffects,
+    applyEffects,
+    evaluateExpression,
+} = require('../../util/effects');
 
 class PacketSniffer {
     constructor() {
@@ -11,21 +15,18 @@ class PacketSniffer {
     generatePool(size) {
         const hexChars = '0123456789ABCDEF'.split('');
         // Pick unique first characters so none repeat
-        const firstChars = [...hexChars].sort(() => 0.5 - Math.random()).slice(0, size);
-        const pool = firstChars.map(char => {
-            const secondChar = hexChars[Math.floor(Math.random() * hexChars.length)];
+        const firstChars = [...hexChars]
+            .sort(() => 0.5 - Math.random())
+            .slice(0, size);
+        const pool = firstChars.map((char) => {
+            const secondChar =
+                hexChars[Math.floor(Math.random() * hexChars.length)];
             return char + secondChar;
         });
         return pool.sort();
     }
 
-    async start(
-        chatId,
-        gameManager,
-        byte,
-        player,
-        activity = null,
-    ) {
+    async start(chatId, gameManager, byte, player, activity = null) {
         let energyCost = 0;
         if (activity && activity.effects && activity.effects.length > 0) {
             const effects = calculateEffects(activity.effects, byte, player);
@@ -44,15 +45,26 @@ class PacketSniffer {
             await gameManager.savePlayer(player);
         }
 
-        const rawConfig = (activity && activity.difficulty) 
-            ? activity.difficulty 
-            : {};
-        
+        const rawConfig =
+            activity && activity.difficulty ? activity.difficulty : {};
+
         const config = {
             level: rawConfig.level || 'normal',
-            guessLength: evaluateExpression(rawConfig.guessLength !== undefined ? rawConfig.guessLength : 4, byte, player),
-            poolSize: evaluateExpression(rawConfig.poolSize !== undefined ? rawConfig.poolSize : 8, byte, player),
-            maxGuesses: evaluateExpression(rawConfig.maxGuesses !== undefined ? rawConfig.maxGuesses : 6, byte, player)
+            guessLength: evaluateExpression(
+                rawConfig.guessLength !== undefined ? rawConfig.guessLength : 4,
+                byte,
+                player,
+            ),
+            poolSize: evaluateExpression(
+                rawConfig.poolSize !== undefined ? rawConfig.poolSize : 8,
+                byte,
+                player,
+            ),
+            maxGuesses: evaluateExpression(
+                rawConfig.maxGuesses !== undefined ? rawConfig.maxGuesses : 6,
+                byte,
+                player,
+            ),
         };
 
         const pool = this.generatePool(config.poolSize);
@@ -61,7 +73,9 @@ class PacketSniffer {
             .slice(0, config.guessLength);
 
         console.log(`[Minigame] PacketSniffer initialized for user ${chatId}`);
-        console.log(`[Minigame] Difficulty: ${config.level.toUpperCase()} | Pool: ${config.poolSize} | Target: ${config.guessLength} | Guesses: ${config.maxGuesses}`);
+        console.log(
+            `[Minigame] Difficulty: ${config.level.toUpperCase()} | Pool: ${config.poolSize} | Target: ${config.guessLength} | Guesses: ${config.maxGuesses}`,
+        );
         console.log(`[Minigame] Available Pool: [${pool.join('] [')}]`);
         console.log(`[Minigame] Secret Target:  [${target.join('] [')}]`);
 
@@ -74,7 +88,7 @@ class PacketSniffer {
             target: target,
             history: [],
             currentGuess: [],
-            activityId: activity ? activity.id : null
+            activityId: activity ? activity.id : null,
         };
         return { state, display: this.render(state) };
     }
@@ -113,17 +127,14 @@ class PacketSniffer {
             text += `Breached on Cycle ${history.length}/${maxGuesses}.\n`;
             text += `Payload extracted.\n\n`;
 
-            if (state.grantedLoot && (state.grantedLoot.bits > 0 || state.grantedLoot.items.length > 0)) {
-                text += `💰 REWARDS:\n`;
-                if (state.grantedLoot.bits)
-                    text += `+ ${state.grantedLoot.bits} Bits\n`;
-                if (state.grantedLoot.items) {
-                    state.grantedLoot.items.forEach((itemLoot) => {
-                        const itemObj = ItemManager.getItem(itemLoot.id);
-                        const itemName = itemObj ? itemObj.name : itemLoot.id;
-                        text += `+ [Item] ${itemName} (x${itemLoot.amount})\n`;
-                    });
-                }
+            const lootStr = GameObjectManager.formatLootString(
+                state.grantedLoot,
+            );
+            if (lootStr) {
+                text += `💰 REWARDS:\n${lootStr
+                    .split(', ')
+                    .map((s) => '+ ' + s)
+                    .join('\n')}\n`;
             }
             text += `-------------------------\n`;
             text += `root:~# _\n\`\`\``;
@@ -211,21 +222,14 @@ class PacketSniffer {
         };
     }
 
-    async handleInput(
-        cmd,
-        state,
-        gameManager,
-        chatId,
-        byte,
-        player,
-    ) {
+    async handleInput(cmd, state, gameManager, chatId, byte, player) {
         const { target, pool, config, activityId } = state;
         const activity = gameManager.activityManager.getActivity(activityId);
         const { guessLength, maxGuesses, level } = config;
 
         if (cmd === 'help') {
             return {
-                alert: 'ACK: Correct node in correct slot.\nSEQ: Correct node in wrong slot.\nDRP: Node not in target sequence.\nFeedback order is randomized!'
+                alert: 'ACK: Correct node in correct slot.\nSEQ: Correct node in wrong slot.\nDRP: Node not in target sequence.\nFeedback order is randomized!',
             };
         } else if (cmd === 'clear') {
             state.currentGuess = [];
@@ -264,32 +268,54 @@ class PacketSniffer {
                     const isLoss = state.history.length >= maxGuesses && !isWin;
 
                     if (isWin && activity && activity.winEffects) {
-                        const calculatedWinEffects = calculateEffects(activity.winEffects, byte, player);
-                            state.grantedLoot = LootManager.processLoot(calculatedWinEffects, player);
+                        const calculatedWinEffects = calculateEffects(
+                            activity.winEffects,
+                            byte,
+                            player,
+                        );
+                        state.grantedLoot = LootManager.processLoot(
+                            calculatedWinEffects,
+                            player,
+                        );
                         applyEffects(calculatedWinEffects, byte, player);
                     } else if (isLoss && activity && activity.loseEffects) {
-                        const calculatedLoseEffects = calculateEffects(activity.loseEffects, byte, player);
-                            state.grantedLoot = LootManager.processLoot(calculatedLoseEffects, player);
+                        const calculatedLoseEffects = calculateEffects(
+                            activity.loseEffects,
+                            byte,
+                            player,
+                        );
+                        state.grantedLoot = LootManager.processLoot(
+                            calculatedLoseEffects,
+                            player,
+                        );
                         applyEffects(calculatedLoseEffects, byte, player);
                     }
 
                     if (isWin || isLoss) {
-                            try {
-                                await gameManager.saveByte(byte);
-                                await gameManager.savePlayer(player);
-                                
-                                const guessesRemaining = maxGuesses - state.history.length;
-                                const resultStr = isWin ? 'win' : 'loss';
-                                gameManager.emit(
-                                    GameEvents.MINIGAME_END,
-                                    chatId,
-                                    this.id,
-                                    { result: resultStr, guessesRemaining, difficulty: level },
-                                );
-                            } catch (err) {
-                                console.error('[PacketSniffer] Error saving results:', err);
-                                return { alert: 'Database error saving results!' };
-                            }
+                        try {
+                            await gameManager.saveByte(byte);
+                            await gameManager.savePlayer(player);
+
+                            const guessesRemaining =
+                                maxGuesses - state.history.length;
+                            const resultStr = isWin ? 'win' : 'loss';
+                            gameManager.emit(
+                                GameEvents.MINIGAME_END,
+                                chatId,
+                                this.id,
+                                {
+                                    result: resultStr,
+                                    guessesRemaining,
+                                    difficulty: level,
+                                },
+                            );
+                        } catch (err) {
+                            console.error(
+                                '[PacketSniffer] Error saving results:',
+                                err,
+                            );
+                            return { alert: 'Database error saving results!' };
+                        }
                     }
                 }
                 return this.render(state);

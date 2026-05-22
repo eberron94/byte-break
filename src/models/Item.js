@@ -1,5 +1,6 @@
 const { calculateEffects, applyEffects } = require('../util/effects');
 const { getTimeContext } = require('../util/time');
+const LootManager = require('../managers/LootManager');
 
 /**
  * Represents a distinct object that can be stored in a Player's inventory.
@@ -17,9 +18,12 @@ class Item {
             data.maxCount !== undefined
                 ? data.maxCount
                 : Number.MAX_SAFE_INTEGER;
-        this.effects = data.effects || {};
+        this.effects = data.effects || [];
         this.cost = data.cost;
-        this.isConsumed = data.isConsumed !== undefined ? data.isConsumed : (this.type === 'consumable');
+        this.isConsumed =
+            data.isConsumed !== undefined
+                ? data.isConsumed
+                : this.type === 'consumable';
         this.cooldown = data.cooldown || 0;
     }
 
@@ -47,17 +51,36 @@ class Item {
     // Applies the item's configured effects to the byte and player
     use(byte, player = null) {
         if (this.isOnCooldown(player)) {
-            throw new Error(`Item is on cooldown. Wait ${this.getCooldownRemaining(player)} minute(s).`);
+            throw new Error(
+                `Item is on cooldown. Wait ${this.getCooldownRemaining(player)} minute(s).`,
+            );
         }
         const locals = getTimeContext();
-        const calculatedEffects = calculateEffects(this.effects, byte, player, locals);
+        const calculatedEffects = calculateEffects(
+            this.effects,
+            byte,
+            player,
+            locals,
+        );
+
+        // Pre-process any loot so it can be extracted and reported to the UI
+        let grantedLoot = null;
+        if (
+            calculatedEffects.loot ||
+            calculatedEffects.bits ||
+            (calculatedEffects.inventory &&
+                Object.keys(calculatedEffects.inventory).length > 0)
+        ) {
+            grantedLoot = LootManager.processLoot(calculatedEffects, player);
+        }
+
         const success = applyEffects(calculatedEffects, byte, player);
 
         if (success && this.cooldown > 0 && player) {
             player.history[`item_used_${this.id}`] = new Date().toISOString();
         }
 
-        return success;
+        return { success, grantedLoot };
     }
 }
 

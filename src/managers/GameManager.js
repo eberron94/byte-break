@@ -276,9 +276,9 @@ class GameManager extends EventEmitter {
                     // Attempt to trigger a random event
                     const event = EventManager.getRandomEvent(context);
                     if (event) {
-                        const success = event.occur(context);
-                        if (success) {
-                            this.emit(GameEvents.RANDOM_EVENT, byte, event);
+                        const result = event.occur(context);
+                        if (result && result.success) {
+                            this.emit(GameEvents.RANDOM_EVENT, byte, event, result.grantedLoot);
                         }
                     }
                 }

@@ -10,6 +10,7 @@ const handleCallbackQuery = require('./TelegramCallbackHandler');
 const TelegramCommandHandlers = require('./TelegramCommandHandlers');
 const handleMessage = require('./TelegramMessageHandlers');
 const TelegramUIOperators = require('./TelegramUIOperators');
+const GameObjectManager = require('../managers/GameObjectManager');
 
 /**
  * Acts as the UI layer mapping Telegram interactions into GameManager logic.
@@ -50,14 +51,18 @@ class TelegramBotController {
         };
 
         // Garbage collection: Sweep stale user states every hour to prevent memory leaks from abandoned minigames/prompts
-        setInterval(() => {
-            const now = Date.now();
-            for (const [chatId, state] of this.userStates.entries()) {
-                if (state.timestamp && now - state.timestamp > 3600000) { // 1 hour
-                    this.userStates.delete(chatId);
+        setInterval(
+            () => {
+                const now = Date.now();
+                for (const [chatId, state] of this.userStates.entries()) {
+                    if (state.timestamp && now - state.timestamp > 3600000) {
+                        // 1 hour
+                        this.userStates.delete(chatId);
+                    }
                 }
-            }
-        }, 60 * 60 * 1000);
+            },
+            60 * 60 * 1000,
+        );
 
         // --- Mixin Pattern ---
         // The `Object.assign` method is used to "mix in" the methods from the
@@ -123,18 +128,24 @@ class TelegramBotController {
         this.bot.on('message', handleMessage.bind(this));
 
         // Register system callbacks for global messaging
-        this.game.on(GameEvents.RANDOM_EVENT, async (b, e) => {
+        this.game.on(GameEvents.RANDOM_EVENT, async (b, e, grantedLoot) => {
             try {
                 const player = await this.game.getPlayer(b.ownerId);
                 if (player.settings?.notifications?.events === false) return;
 
-                await this.bot.sendMessage(
-                    b.ownerId,
-                    `🔔 **Random Event:** ${e.name}\n_${e.description}_`,
-                    { parse_mode: 'Markdown' },
-                );
+                let msg = `🔔 **Random Event:** ${e.name}\n_${e.description}_`;
+
+                const lootStr = GameObjectManager.formatLootString(grantedLoot);
+                if (lootStr) msg += `\n\n🎁 **Rewards:** ${lootStr}`;
+
+                await this.bot.sendMessage(b.ownerId, msg, {
+                    parse_mode: 'Markdown',
+                });
             } catch (err) {
-                console.error('[GameEvents] Error in RANDOM_EVENT listener:', err);
+                console.error(
+                    '[GameEvents] Error in RANDOM_EVENT listener:',
+                    err,
+                );
             }
         });
 
@@ -149,7 +160,10 @@ class TelegramBotController {
                     { parse_mode: 'Markdown' },
                 );
             } catch (err) {
-                console.error('[GameEvents] Error in ENERGY_REWARD listener:', err);
+                console.error(
+                    '[GameEvents] Error in ENERGY_REWARD listener:',
+                    err,
+                );
             }
         });
 

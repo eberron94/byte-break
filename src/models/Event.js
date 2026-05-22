@@ -1,5 +1,6 @@
 const { calculateEffects, applyEffects } = require('../util/effects');
 const { checkRequirements } = require('../util/requirements');
+const LootManager = require('../managers/LootManager');
 
 /**
  * Represents a random occurrence that can trigger during the game loop.
@@ -11,7 +12,7 @@ class Event {
         this.description = data.description;
         this.probability = data.probability || 0;
         this.requirements = data.requirements || [];
-        this.effects = data.effects || {};
+        this.effects = data.effects || [];
         this.ticksPerCheck = data.ticksPerCheck;
     }
 
@@ -49,12 +50,23 @@ class Event {
             player,
             locals,
         );
+
+        let grantedLoot = null;
+        if (
+            calculatedEffects.loot ||
+            calculatedEffects.bits ||
+            (calculatedEffects.inventory &&
+                Object.keys(calculatedEffects.inventory).length > 0)
+        ) {
+            grantedLoot = LootManager.processLoot(calculatedEffects, player);
+        }
+
         const success = applyEffects(calculatedEffects, byte, player);
         if (success) {
             // Log successful event occurrence
             byte.recordHistory(this.id);
         }
-        return success;
+        return { success, grantedLoot };
     }
 }
 
