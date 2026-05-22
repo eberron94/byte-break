@@ -527,7 +527,8 @@ const WebAPIPostHandler = {
             if (
                 !checkRequirements(talent.requirements, byte, player, context)
             ) {
-                return res.status(400).json({ error: 'Prerequisites not met' });
+                const reqStr = GameObjectManager.formatRequirementsList(talent.requirements);
+                return res.status(400).json({ error: `Prerequisites not met.\nRequires:\n• ${reqStr}` });
             }
 
             player.talents[talentId] = currentLevel + 1;

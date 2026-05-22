@@ -2,6 +2,7 @@ const sharp = require('sharp');
 const { generateClassBasedAvatar } = require('../util/avatar');
 const GameEvents = require('../util/GameEvents');
 const RoomManager = require('../managers/RoomManager');
+const GameObjectManager = require('../managers/GameObjectManager');
 
 /**
  * @mixin TelegramCommandHandlers
@@ -203,9 +204,10 @@ const TelegramCommandHandlers = {
         }
 
         if (!room.canEnter(byte, player)) {
+            const reqStr = GameObjectManager.formatRequirementsList(room.requirements);
             return this.bot.sendMessage(
                 chatId,
-                `${byte.name} does not meet the requirements to enter the ${room.name}.`,
+                `${byte.name} does not meet the requirements to enter the ${room.name}.\n\nRequires:\n• ${reqStr}`,
             );
         }
 

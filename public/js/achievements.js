@@ -16,10 +16,16 @@ async function renderAchievements() {
             let checkboxesHtml = '';
             for (let i = 0; i < ach.tiers.length; i++) {
                 const tier = ach.tiers[i];
+                const effectsHtml = tier.formattedEffects
+                    ? `<div style="margin-top: 3px; font-size: 11px; color: #aaa;">✨ <strong>Rewards:</strong><br>• ${tier.formattedEffects.replace(/\n/g, '<br>')}</div>`
+                    : '';
                 checkboxesHtml += `
                     <div style="display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: 12px; color: #ccc;">
                         <div style="width: 12px; height: 12px; border-radius: 3px; background: ${tier.checkColor};"></div>
-                        <span>Tier ${i + 1}: ${tier.req} <strong style="color: #ffd700;">(+${tier.reward} α)</strong></span>
+                        <div style="display: flex; flex-direction: column;">
+                            <span>Tier ${i + 1}: ${tier.req} <strong style="color: #ffd700;">(+${tier.reward} α)</strong></span>
+                            ${effectsHtml}
+                        </div>
                     </div>
                 `;
             }

@@ -50,9 +50,7 @@ const WebAPIGetHandler = {
                         status.byteClass,
                         status.generation,
                     );
-                    const bClass = ByteClassManager.getClass(
-                        status.byteClass,
-                    );
+                    const bClass = ByteClassManager.getClass(status.byteClass);
                     status.enhanceStat = bClass
                         ? bClass.enhanceStat
                         : 'aptitude';
@@ -135,7 +133,12 @@ const WebAPIGetHandler = {
                 if (amount > 0) {
                     const item = ItemManager.getItem(itemId);
                     if (item) {
-                        const formattedEffects = item.effects && item.effects.length > 0 ? GameObjectManager.formatEffectsList(item.effects) : null;
+                        const formattedEffects =
+                            item.effects && item.effects.length > 0
+                                ? GameObjectManager.formatEffectsList(
+                                      item.effects,
+                                  )
+                                : null;
                         inventory.push({ ...item, amount, formattedEffects });
                     }
                 }
@@ -200,7 +203,7 @@ const WebAPIGetHandler = {
                     talent.requirements,
                     byte,
                     player,
-                    context
+                    context,
                 );
                 if (meetsPrereq) visibleTalents.add(talent.id);
                 else hiddenTalents.add(talent);
@@ -277,6 +280,12 @@ const WebAPIGetHandler = {
                         reward: tierReq.reward,
                         description: tierReq.description || ach.description,
                         checkColor: isCompleted ? '#4caf50' : '#4d4d73',
+                        formattedEffects:
+                            tierReq.effects && tierReq.effects.length > 0
+                                ? GameObjectManager.formatEffectsList(
+                                      tierReq.effects,
+                                  )
+                                : null,
                     };
                 });
 

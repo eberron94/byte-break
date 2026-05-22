@@ -38,7 +38,6 @@ class Shop {
                 this.requirements,
                 byte,
                 player,
-                context.itemManager,
                 context,
             )
         ) {
