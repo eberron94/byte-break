@@ -215,6 +215,23 @@ class GameObjectManager {
 
         return lines.length > 0 ? lines.join('\n• ') : 'None';
     }
+
+    formatLootString(grantedLoot, context = null) {
+        if (!grantedLoot) return '';
+        const lootMsg = [];
+        
+        if (grantedLoot.bits && grantedLoot.bits > 0) {
+            lootMsg.push(`${grantedLoot.bits} β`);
+        }
+        if (grantedLoot.items && grantedLoot.items.length > 0) {
+            for (const i of grantedLoot.items) {
+                const itemName = this.getObjectName(i.id);
+                lootMsg.push(`${itemName} (x${i.amount})`);
+            }
+        }
+        
+        return lootMsg.join(', ');
+    }
 }
 
 module.exports = new GameObjectManager();

@@ -39,12 +39,7 @@ if (missingFiles) {
 
 const GameManager = require('./managers/GameManager');
 const TelegramBotController = require('./controllers/TelegramBotController');
-const roomManager = require('./managers/RoomManager');
-const activityManager = require('./managers/ActivityManager');
-const eventManager = require('./managers/EventManager');
-const itemManager = require('./managers/ItemManager');
 const WebApiController = require('./controllers/WebApiController');
-const byteClassManager = require('./managers/ByteClassManager');
 const achievementManager = require('./managers/AchievementManager');
 const dumpUsableVariables = require('./util/dumpVariables');
 
@@ -69,20 +64,14 @@ async function start() {
         console.log(`[Telegram Polling Error] ${error.code || error.message}`);
     });
 
-    const controller = new TelegramBotController(
-        bot,
-        gameManager,
-        roomManager,
-        activityManager,
-        itemManager,
-    );
+    const controller = new TelegramBotController(bot, gameManager);
     controller.init();
 
     // Initialize achievements system
     achievementManager.init(gameManager);
 
     // 3. Start the game loop (e.g. tick every 60 seconds)
-    gameManager.startGameLoop(60000, eventManager, itemManager);
+    gameManager.startGameLoop(60000);
 
     // 4. Start the Express API server to serve the Web App
     const app = express();
@@ -93,12 +82,7 @@ async function start() {
     app.use(express.static(path.join(__dirname, '../public')));
 
     // Initialize the Web API Controller
-    const webApiController = new WebApiController(
-        app,
-        gameManager,
-        byteClassManager,
-        controller,
-    );
+    const webApiController = new WebApiController(app, gameManager, controller);
     webApiController.init();
 
     const PORT = process.env.PORT || 3000;
