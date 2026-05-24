@@ -34,6 +34,7 @@ class Player {
         this.talents = data.talents || {};
         this.settings = data.settings || {};
         this.hediffs = data.hediffs || {};
+        this.pendingEvents = [];
 
         // Handle daily resets (resets shop stock at UTC midnight)
         const today = new Date().toISOString().split('T')[0];
@@ -49,7 +50,12 @@ class Player {
 
     // Restores energy over time
     tick(context = null) {
+        const wasFull = this.energy.value >= this.energy.maxValue;
         this.energy.increase(1);
+
+        if (!wasFull && this.energy.value >= this.energy.maxValue) {
+            this.pendingEvents.push({ event: 'ENERGY_FULL', args: [this.id] });
+        }
 
         if (this.hediffs && context) {
             // Lazy load utilities to prevent circular dependencies inside the tick loop
@@ -147,8 +153,10 @@ class Player {
                     this.hediffs[h.id].stacks > hDef.maxStacks
                 ) {
                     if (hDef.nextTier || hDef.nextHediff) {
+                        const nextId = hDef.nextTier || hDef.nextHediff;
+                        this.pendingEvents.push({ event: 'PLAYER_HEDIFF_ESCALATED', args: [this.id, hDef, HediffManager.getHediff(nextId)] });
                         delete this.hediffs[h.id];
-                        this.hediffs[hDef.nextTier || hDef.nextHediff] = {
+                        this.hediffs[nextId] = {
                             stacks: 1,
                             ticksAlive: 0,
                         };
@@ -161,6 +169,7 @@ class Player {
                     this.hediffs[h.id].stacks -= 1;
                     this.hediffs[h.id].ticksAlive = 0;
                     if (this.hediffs[h.id].stacks <= 0) {
+                        this.pendingEvents.push({ event: 'PLAYER_HEDIFF_EXPIRED', args: [this.id, hDef] });
                         delete this.hediffs[h.id];
                         if (hDef.prevTier) {
                             const prevDef = HediffManager.getHediff(
@@ -177,6 +186,7 @@ class Player {
                     }
                 }
             } else if (h.action === 'remove') {
+                if (this.hediffs[h.id]) this.pendingEvents.push({ event: 'PLAYER_HEDIFF_EXPIRED', args: [this.id, hDef] });
                 delete this.hediffs[h.id];
             }
         }

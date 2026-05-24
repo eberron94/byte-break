@@ -132,7 +132,8 @@ class TelegramBotController {
         this.game.on(GameEvents.RANDOM_EVENT, async (b, e, grantedLoot) => {
             try {
                 const player = await this.game.getPlayer(b.ownerId);
-                if (player.settings?.notifications?.events === false) return;
+                const notifySetting = player.settings?.notifications?.events ?? 'sound';
+                if (notifySetting === false || notifySetting === 'off') return;
 
                 let msg = `🔔 **Random Event:** ${e.name}\n_${e.description}_`;
 
@@ -141,6 +142,7 @@ class TelegramBotController {
 
                 await this.bot.sendMessage(b.ownerId, msg, {
                     parse_mode: 'Markdown',
+                    disable_notification: notifySetting === 'silent'
                 });
             } catch (err) {
                 console.error(
@@ -153,12 +155,16 @@ class TelegramBotController {
         this.game.on(GameEvents.ENERGY_REWARD, async (playerId, amount) => {
             try {
                 const player = await this.game.getPlayer(playerId);
-                if (player.settings?.notifications?.energy === false) return;
+                const notifySetting = player.settings?.notifications?.energy ?? 'sound';
+                if (notifySetting === false || notifySetting === 'off') return;
 
                 await this.bot.sendMessage(
                     playerId,
                     `⚡ **Community Energy Reward!**\n_You gained ${amount} ε for being active._`,
-                    { parse_mode: 'Markdown' },
+                    { 
+                        parse_mode: 'Markdown',
+                        disable_notification: notifySetting === 'silent' 
+                    },
                 );
             } catch (err) {
                 console.error(
@@ -169,9 +175,29 @@ class TelegramBotController {
         });
 
         this.game.on(
+            GameEvents.LEVEL_UP,
+            async (playerId, newLevel, byteName) => {
+                if (!newLevel || !byteName) return; // Skip if arguments are missing
+                try {
+                    const player = await this.game.getPlayer(playerId);
+                    const notifySetting = player.settings?.notifications?.levelUp ?? 'silent';
+                    if (notifySetting === false || notifySetting === 'off') return;
+                    await this.bot.sendMessage(playerId, `🎉 **LEVEL UP!**\n${byteName} reached Level ${newLevel}!`, { 
+                        parse_mode: 'Markdown', 
+                        disable_notification: notifySetting === 'silent' 
+                    });
+                } catch (err) {}
+            }
+        );
+
+        this.game.on(
             GameEvents.ACHIEVEMENT_UNLOCKED,
             async (playerId, achievement) => {
                 try {
+                    const player = await this.game.getPlayer(playerId);
+                    const notifySetting = player.settings?.notifications?.achievements ?? 'sound';
+                    if (notifySetting === false || notifySetting === 'off') return;
+
                     const svgString = generateAchievementCard(achievement);
                     const pngBuffer = await sharp(Buffer.from(svgString))
                         .png()
@@ -180,12 +206,95 @@ class TelegramBotController {
                     await this.bot.sendPhoto(playerId, pngBuffer, {
                         caption: `🏆 **Achievement Unlocked!**\n*${achievement.name}*`,
                         parse_mode: 'Markdown',
+                        disable_notification: notifySetting === 'silent'
                     });
                 } catch (err) {
                     console.error('Failed to send achievement card:', err);
                 }
             },
         );
+
+        this.game.on('ENERGY_FULL', async (playerId) => {
+            const player = await this.game.getPlayer(playerId);
+            const notifySetting = player.settings?.notifications?.energyFull ?? 'sound';
+            if (notifySetting === false || notifySetting === 'off') return;
+            await this.bot.sendMessage(playerId, `🔋 **Energy Restored!**\nYour Player Energy is now at maximum capacity.`, { 
+                parse_mode: 'Markdown',
+                disable_notification: notifySetting === 'silent'
+            });
+        });
+
+        this.game.on('BYTE_DORMANT', async (playerId, byte) => {
+            const player = await this.game.getPlayer(playerId);
+            const notifySetting = player.settings?.notifications?.dormant ?? 'sound';
+            if (notifySetting === false || notifySetting === 'off') return;
+            await this.bot.sendMessage(playerId, `⚠️ **System Dormant!**\n${byte.name}'s core needs have depleted. Passive operations suspended.`, { 
+                parse_mode: 'Markdown',
+                disable_notification: notifySetting === 'silent'
+            });
+        });
+
+        this.game.on('BIT_BUFFER_FULL', async (playerId, byte) => {
+            const player = await this.game.getPlayer(playerId);
+            const notifySetting = player.settings?.notifications?.bufferFull ?? 'sound';
+            if (notifySetting === false || notifySetting === 'off') return;
+            await this.bot.sendMessage(playerId, `💾 **Buffer Full!**\n${byte.name} has filled their Bit Buffer. They are ready for a System Upgrade!`, { 
+                parse_mode: 'Markdown',
+                disable_notification: notifySetting === 'silent'
+            });
+        });
+
+        this.game.on('HEDIFF_ESCALATED', async (playerId, byte, oldDef, newDef) => {
+            const player = await this.game.getPlayer(playerId);
+            const notifySetting = player.settings?.notifications?.hediff ?? 'sound';
+            if (notifySetting === false || notifySetting === 'off') return;
+            await this.bot.sendMessage(playerId, `📉 **Condition Worsened!**\n${byte.name}'s ${oldDef.name} has escalated into ${newDef?.name || 'a severe state'}!`, { 
+                parse_mode: 'Markdown',
+                disable_notification: notifySetting === 'silent'
+            });
+        });
+
+        this.game.on('HEDIFF_EXPIRED', async (playerId, byte, hDef) => {
+            const player = await this.game.getPlayer(playerId);
+            const notifySetting = player.settings?.notifications?.hediff ?? 'sound';
+            if (notifySetting === false || notifySetting === 'off') return;
+            await this.bot.sendMessage(playerId, `✨ **Condition Cleared!**\n${byte.name} has recovered from ${hDef.name}.`, { 
+                parse_mode: 'Markdown',
+                disable_notification: notifySetting === 'silent'
+            });
+        });
+
+        this.game.on('PLAYER_HEDIFF_ESCALATED', async (playerId, oldDef, newDef) => {
+            const player = await this.game.getPlayer(playerId);
+            const notifySetting = player.settings?.notifications?.hediff ?? 'sound';
+            if (notifySetting === false || notifySetting === 'off') return;
+            await this.bot.sendMessage(playerId, `📉 **Condition Worsened!**\nYour ${oldDef.name} has escalated into ${newDef?.name || 'a severe state'}!`, { 
+                parse_mode: 'Markdown',
+                disable_notification: notifySetting === 'silent'
+            });
+        });
+
+        this.game.on('PLAYER_HEDIFF_EXPIRED', async (playerId, hDef) => {
+            const player = await this.game.getPlayer(playerId);
+            const notifySetting = player.settings?.notifications?.hediff ?? 'sound';
+            if (notifySetting === false || notifySetting === 'off') return;
+            await this.bot.sendMessage(playerId, `✨ **Condition Cleared!**\nYour status ${hDef.name} has expired.`, { 
+                parse_mode: 'Markdown',
+                disable_notification: notifySetting === 'silent'
+            });
+        });
+
+        this.game.on('ACTIVITY_LOG', async (chatId, message) => {
+            try {
+                const player = await this.game.getPlayer(chatId);
+                const notifySetting = player.settings?.notifications?.activity ?? 'silent';
+                if (notifySetting === false || notifySetting === 'off') return;
+                await this.bot.sendMessage(chatId, `📝 ${message}`, {
+                    parse_mode: 'Markdown',
+                    disable_notification: notifySetting === 'silent'
+                });
+            } catch (err) {}
+        });
 
         // Clean up user state automatically when a minigame concludes naturally
         this.game.on(GameEvents.MINIGAME_END, (chatId) => {

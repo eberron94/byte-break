@@ -19,6 +19,18 @@ async function handleCallbackQuery(query) {
     const messageId = query.message.message_id;
     const action = query.data;
 
+    const getChangesString = (calculatedEffects) => {
+        if (!calculatedEffects) return '';
+        const changes = [];
+        for (const [key, val] of Object.entries(calculatedEffects)) {
+            if (['inventory', 'loot', 'hediffs', 'player_hediffs', 'bits'].includes(key)) continue;
+            if (typeof val === 'number' && val !== 0) {
+                changes.push(`${val > 0 ? '+' : ''}${val} ${key.charAt(0).toUpperCase() + key.slice(1)}`);
+            }
+        }
+        return changes.join(', ');
+    };
+
     this.game.recordPlayerActivity(chatId).catch(console.error);
     console.log(`[Callback] Action '${action}' from chat ${chatId}`);
 
@@ -240,6 +252,12 @@ async function handleCallbackQuery(query) {
 
                         const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
                         if (lootStr) statusMessage += ` Found: ${lootStr}`;
+
+                        let logMsg = `*${activity.name}*\n`;
+                        const changesStr = getChangesString(result.calculatedEffects);
+                        if (changesStr) logMsg += `📊 ${changesStr}\n`;
+                        if (lootStr) logMsg += `🎁 ${lootStr}`;
+                        this.game.emit('ACTIVITY_LOG', chatId, logMsg);
                     } else {
                         alertMessage = `Failed to perform ${activity.name}.`;
                     }
@@ -304,6 +322,12 @@ async function handleCallbackQuery(query) {
                         await this.sendStasisUI(chatId, bytes, player);
                         return;
                     }
+
+                    let logMsg = `*${activity.name}*\n`;
+                    const changesStr = getChangesString(result.calculatedEffects);
+                    if (changesStr) logMsg += `📊 ${changesStr}\n`;
+                    if (lootStr) logMsg += `🎁 ${lootStr}`;
+                    this.game.emit('ACTIVITY_LOG', chatId, logMsg);
                 } else {
                     alertMessage = `Failed to perform ${activity.name}.`;
                 }
@@ -351,6 +375,12 @@ async function handleCallbackQuery(query) {
                             player,
                             msg,
                         );
+                        
+                        let logMsg = `*Used ${item.name}*\n`;
+                        const changesStr = getChangesString(result.calculatedEffects);
+                        if (changesStr) logMsg += `📊 ${changesStr}\n`;
+                        if (lootStr) logMsg += `🎁 ${lootStr}`;
+                        this.game.emit('ACTIVITY_LOG', chatId, logMsg);
                         return;
                     } else {
                         alertMessage = `Cannot use ${item.name} right now.`;

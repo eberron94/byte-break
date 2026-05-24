@@ -264,20 +264,11 @@
                             Get notified when events occur in the background.
                         </div>
                     </div>
-                    <label class="switch">
-                        <input
-                            type="checkbox"
-                            id="setting-notify-events"
-                            onchange="
-                                toggleSetting(
-                                    'notifications',
-                                    'events',
-                                    this.checked,
-                                )
-                            "
-                        />
-                        <span class="slider round"></span>
-                    </label>
+                    <select id="setting-notify-events" onchange="toggleSetting('notifications', 'events', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
                 </div>
 
                 <div
@@ -300,20 +291,95 @@
                             Get notified when you receive community energy.
                         </div>
                     </div>
-                    <label class="switch">
-                        <input
-                            type="checkbox"
-                            id="setting-notify-energy"
-                            onchange="
-                                toggleSetting(
-                                    'notifications',
-                                    'energy',
-                                    this.checked,
-                                )
-                            "
-                        />
-                        <span class="slider round"></span>
-                    </label>
+                    <select id="setting-notify-energy" onchange="toggleSetting('notifications', 'energy', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <div>
+                        <div style="font-weight: bold; color: #fff">Energy Restored</div>
+                        <div style="font-size: 11px; color: var(--tg-theme-hint-color, #aaa);">Get notified when your stamina is maxed.</div>
+                    </div>
+                    <select id="setting-notify-energyFull" onchange="toggleSetting('notifications', 'energyFull', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <div>
+                        <div style="font-weight: bold; color: #fff">Byte Dormancy</div>
+                        <div style="font-size: 11px; color: var(--tg-theme-hint-color, #aaa);">Get notified if your Byte's needs hit 0.</div>
+                    </div>
+                    <select id="setting-notify-dormant" onchange="toggleSetting('notifications', 'dormant', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <div>
+                        <div style="font-weight: bold; color: #fff">Bit Buffer Full</div>
+                        <div style="font-size: 11px; color: var(--tg-theme-hint-color, #aaa);">Get notified when ready to upgrade.</div>
+                    </div>
+                    <select id="setting-notify-bufferFull" onchange="toggleSetting('notifications', 'bufferFull', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <div>
+                        <div style="font-weight: bold; color: #fff">Status Effect Tracking</div>
+                        <div style="font-size: 11px; color: var(--tg-theme-hint-color, #aaa);">Get notified of status cures or escalations.</div>
+                    </div>
+                    <select id="setting-notify-hediff" onchange="toggleSetting('notifications', 'hediff', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <div>
+                        <div style="font-weight: bold; color: #fff">Activity Log</div>
+                        <div style="font-size: 11px; color: var(--tg-theme-hint-color, #aaa);">Receive silent logs of all performed activities.</div>
+                    </div>
+                    <select id="setting-notify-activity" onchange="toggleSetting('notifications', 'activity', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <div>
+                        <div style="font-weight: bold; color: #fff">Achievements</div>
+                        <div style="font-size: 11px; color: var(--tg-theme-hint-color, #aaa);">Get notified when you unlock new achievements.</div>
+                    </div>
+                    <select id="setting-notify-achievements" onchange="toggleSetting('notifications', 'achievements', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <div>
+                        <div style="font-weight: bold; color: #fff">Level Up</div>
+                        <div style="font-size: 11px; color: var(--tg-theme-hint-color, #aaa);">Get notified when your Byte levels up.</div>
+                    </div>
+                    <select id="setting-notify-levelUp" onchange="toggleSetting('notifications', 'levelUp', this.value)" style="background: #2a2a40; color: #fff; border: 1px solid #4d4d73; border-radius: 4px; padding: 4px; outline: none; font-size: 12px; cursor: pointer;">
+                        <option value="sound">Sound</option>
+                        <option value="silent">Silent</option>
+                        <option value="off">Off</option>
+                    </select>
                 </div>
             </div>
         </div>

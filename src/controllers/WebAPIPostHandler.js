@@ -124,19 +124,15 @@ const WebAPIPostHandler = {
 
             const newLevel = playerByte.level;
 
+            if (newLevel > previousLevel) {
+                playerByte.pendingEvents.push({ event: GameEvents.LEVEL_UP, args: [userId, newLevel, playerByte.name] });
+            }
+
             await this.gameManager.saveByte(playerByte);
 
             if (this.botController) {
                 const player = await this.gameManager.getPlayer(userId);
                 let statusMsg = `System updated: ${upgradeKey} enhanced.`;
-                if (newLevel > previousLevel) {
-                    this.gameManager.emit(
-                        GameEvents.LEVEL_UP,
-                        userId,
-                        newLevel,
-                    );
-                    statusMsg += `\n🎉 **LEVEL UP!** ${playerByte.name} reached Level ${newLevel}!`;
-                }
 
                 this.botController
                     .sendStatusUI(userId, playerByte, player, statusMsg)
@@ -296,8 +292,12 @@ const WebAPIPostHandler = {
 
             const sellPrice = Math.floor(item.cost * shop.sellMultiplier);
 
+            const wasFull = byte.pools.bits.value >= byte.pools.bits.maxValue;
             player.removeItem(itemId, 1);
             byte.pools.bits.increase(sellPrice);
+            if (!wasFull && byte.pools.bits.value >= byte.pools.bits.maxValue) {
+                byte.pendingEvents.push({ event: 'BIT_BUFFER_FULL', args: [userId, byte] });
+            }
 
             await this.gameManager.saveByte(byte);
             await this.gameManager.savePlayer(player);

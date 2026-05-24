@@ -78,7 +78,7 @@ class Item {
                 new Date().toISOString();
         }
 
-        return { success, grantedLoot };
+        return { success, grantedLoot, calculatedEffects };
     }
 }
 

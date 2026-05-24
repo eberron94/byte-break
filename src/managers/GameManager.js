@@ -98,6 +98,10 @@ class GameManager extends EventEmitter {
         try {
             const s = byte.serialize();
             await dbManager.updateByte(s);
+            if (byte.pendingEvents && byte.pendingEvents.length > 0) {
+                byte.pendingEvents.forEach(e => this.emit(e.event, ...e.args));
+                byte.pendingEvents = [];
+            }
         } catch (error) {
             console.error(
                 `[GameManager] Failed to save byte ${byte.id}:`,
@@ -151,6 +155,10 @@ class GameManager extends EventEmitter {
         try {
             const s = player.serialize();
             await dbManager.savePlayer(s);
+            if (player.pendingEvents && player.pendingEvents.length > 0) {
+                player.pendingEvents.forEach(e => this.emit(e.event, ...e.args));
+                player.pendingEvents = [];
+            }
         } catch (error) {
             console.error(
                 `[GameManager] Failed to save player ${player.id}:`,
@@ -198,7 +206,11 @@ class GameManager extends EventEmitter {
                 // Fetch the latest player state to avoid overwriting recent activity with an old snapshot
                 const player = await this.getPlayer(data.id);
                 const initialEnergy = player.energy.value;
+                const wasFull = player.energy.value >= player.energy.maxValue;
                 player.energy.increase(energyReward);
+                if (!wasFull && player.energy.value >= player.energy.maxValue) {
+                    player.pendingEvents.push({ event: 'ENERGY_FULL', args: [player.id] });
+                }
                 const actualGain = player.energy.value - initialEnergy;
                 await this.savePlayer(player);
                 if (actualGain > 0) {

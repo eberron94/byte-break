@@ -42,7 +42,9 @@ class Activity {
         // 6. If the activity requires an item selection, verify they have at least one valid item
         if (this.itemSelect && context.player) {
             let hasValidItem = false;
-            for (const [itemId, amount] of Object.entries(context.player.inventory)) {
+            for (const [itemId, amount] of Object.entries(
+                context.player.inventory,
+            )) {
                 if (amount > 0) {
                     const item = ItemManager.getItem(itemId);
                     if (item && !item.isOnCooldown(context.player)) {
@@ -82,7 +84,10 @@ class Activity {
             (calculatedEffects.inventory &&
                 Object.keys(calculatedEffects.inventory).length > 0)
         ) {
-            grantedLoot = LootManager.processLoot(calculatedEffects, context.player);
+            grantedLoot = LootManager.processLoot(
+                calculatedEffects,
+                context.player,
+            );
         }
 
         const success = applyEffects(calculatedEffects, context);
@@ -108,7 +113,7 @@ class Activity {
                 }
             }
         }
-        return { success, grantedLoot };
+        return { success, grantedLoot, calculatedEffects };
     }
 }
 

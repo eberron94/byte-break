@@ -82,6 +82,7 @@ class Byte {
         this.isAsleep = data.isAsleep === 1 || data.isAsleep === true;
         this.generation = data.generation || 0;
         this.bufferOverflow = data.bufferOverflow || 0;
+        this.pendingEvents = [];
     }
 
     get investedBits() {
@@ -114,6 +115,9 @@ class Byte {
      */
     applyEffects(effects) {
         if (!this.isAlive) return false;
+
+        const oldLevel = this.level;
+        const bitsWasFull = this.pools.bits.value >= this.pools.bits.maxValue;
 
         for (const [key, value] of Object.entries(effects)) {
             if (this.needs[key]) {
@@ -168,6 +172,14 @@ class Byte {
             }
         }
 
+        if (this.level > oldLevel) {
+            this.pendingEvents.push({ event: 'levelUp', args: [this.ownerId, this.level, this.name] });
+        }
+
+        if (!bitsWasFull && this.pools.bits.value >= this.pools.bits.maxValue) {
+            this.pendingEvents.push({ event: 'BIT_BUFFER_FULL', args: [this.ownerId, this] });
+        }
+
         this.updateLastInteraction();
         return true;
     }
@@ -187,8 +199,10 @@ class Byte {
 
                 if (hDef.maxStacks && this.hediffs[h.id].stacks > hDef.maxStacks) {
                     if (hDef.nextTier || hDef.nextHediff) {
+                        const nextId = hDef.nextTier || hDef.nextHediff;
+                        this.pendingEvents.push({ event: 'HEDIFF_ESCALATED', args: [this.ownerId, this, hDef, HediffManager.getHediff(nextId)] });
                         delete this.hediffs[h.id];
-                        this.hediffs[hDef.nextTier || hDef.nextHediff] = { stacks: 1, ticksAlive: 0 };
+                        this.hediffs[nextId] = { stacks: 1, ticksAlive: 0 };
                     } else {
                         this.hediffs[h.id].stacks = hDef.maxStacks;
                     }
@@ -198,6 +212,7 @@ class Byte {
                     this.hediffs[h.id].stacks -= 1;
                     this.hediffs[h.id].ticksAlive = 0;
                     if (this.hediffs[h.id].stacks <= 0) {
+                        this.pendingEvents.push({ event: 'HEDIFF_EXPIRED', args: [this.ownerId, this, hDef] });
                         delete this.hediffs[h.id];
                         if (hDef.prevTier) {
                             const prevDef = HediffManager.getHediff(hDef.prevTier);
@@ -206,6 +221,7 @@ class Byte {
                     }
                 }
             } else if (h.action === 'remove') {
+                if (this.hediffs[h.id]) this.pendingEvents.push({ event: 'HEDIFF_EXPIRED', args: [this.ownerId, this, hDef] });
                 delete this.hediffs[h.id];
             }
         }
@@ -225,8 +241,14 @@ class Byte {
     tick(context) {
         if (!this.isAlive) return;
 
+        const wasDormant = this.isDormant;
+
         // Trigger natural decay across all loaded needs
         Object.values(this.needs).forEach((need) => need.tick(this, context.player));
+
+        if (!wasDormant && this.isDormant) {
+            this.pendingEvents.push({ event: 'BYTE_DORMANT', args: [this.ownerId, this] });
+        }
 
         if (this.isDormant) {
             return;
