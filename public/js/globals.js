@@ -9,7 +9,6 @@ const user = window.Telegram.WebApp.initDataUnsafe.user;
 const originalFetch = window.fetch;
 window.fetch = async function (resource, config = {}) {
     const headers = new Headers(config.headers || {});
-    headers.set('ngrok-skip-browser-warning', 'true');
     if (
         window.Telegram &&
         window.Telegram.WebApp &&

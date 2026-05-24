@@ -8,7 +8,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const ngrok = require('@ngrok/ngrok');
 
 // --- Verify Data Files Exist Before Loading Managers ---
 const requiredDataFiles = [
@@ -103,24 +102,19 @@ async function start() {
     webApiController.init();
 
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+    // Bind explicitly to IPv4 localhost to prevent Cloudflare Tunnel connection drops
+    app.listen(PORT, '127.0.0.1', () => {
         console.log(`Web server listening on port ${PORT}`);
     });
 
-    // 5. Start ngrok tunnel automatically for local Web App testing
+    // 5. Start Cloudflare Tunnel automatically for local Web App testing
+    let tunnelRef; // Keep reference alive to prevent garbage collection
     try {
-        console.log(`Starting ngrok tunnel on port ${PORT}...`);
-        const ngrokOptions = {
-            addr: PORT,
-            authtoken: process.env.NGROK_AUTHTOKEN,
-        };
-        if (process.env.NGROK_DOMAIN) {
-            ngrokOptions.domain = process.env.NGROK_DOMAIN;
-        }
-
-        const listener = await ngrok.forward(ngrokOptions);
-        const url = listener.url();
-        console.log(`Ngrok tunnel created: ${url}`);
+        console.log(`Starting Cloudflare Tunnel on port ${PORT}...`);
+        const untun = await import('untun');
+        tunnelRef = await untun.startTunnel({ port: PORT });
+        const url = await tunnelRef.getURL();
+        console.log(`Cloudflare Tunnel created: ${url}`);
 
         // Make it immediately available to the running Bot Controller
         process.env.WEB_APP_URL = url;
@@ -138,7 +132,7 @@ async function start() {
         }
         fs.writeFileSync(envPath, envContent.trim() + '\n');
     } catch (error) {
-        console.error('Error starting ngrok:', error);
+        console.error('Error starting Cloudflare Tunnel:', error);
     }
 
     console.log('Tamagotchi Bot is running! Press Ctrl+C to stop.');
