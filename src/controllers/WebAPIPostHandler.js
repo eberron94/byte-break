@@ -676,6 +676,8 @@ const WebAPIPostHandler = {
                                 if (success && byte) byteModified = true;
                             }
 
+                            player.history[`ach_unlocked_${ach.id}_tier_${i + 1}`] = new Date().toISOString();
+
                             this.gameManager.emit(
                                 GameEvents.ACHIEVEMENT_UNLOCKED,
                                 userId,

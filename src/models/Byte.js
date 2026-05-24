@@ -18,6 +18,7 @@ const Bits = require('./pools/Bits');
 const RoomManager = require('../managers/RoomManager');
 const HediffManager = require('../managers/HediffManager');
 const ByteClassManager = require('../managers/ByteClassManager');
+const { checkRequirements } = require('../util/requirements');
 const {
     calculateEffects,
     applyEffects,
@@ -163,53 +164,51 @@ class Byte {
             } else if (key === 'isAsleep') {
                 this.isAsleep = value;
             } else if (key === 'hediffs' && Array.isArray(value)) {
-                for (const h of value) {
-                    const hDef = HediffManager.getHediff(h.id);
-                    if (!hDef) continue;
-
-                    if (h.action === 'escalate') {
-                        if (!this.hediffs[h.id])
-                            this.hediffs[h.id] = { stacks: 1 };
-                        else this.hediffs[h.id].stacks += 1;
-
-                        if (
-                            hDef.maxStacks &&
-                            this.hediffs[h.id].stacks > hDef.maxStacks
-                        ) {
-                            if (hDef.nextTier) {
-                                delete this.hediffs[h.id];
-                                this.hediffs[hDef.nextTier] = { stacks: 1 };
-                            } else {
-                                this.hediffs[h.id].stacks = hDef.maxStacks;
-                            }
-                        }
-                    } else if (h.action === 'reduce') {
-                        if (this.hediffs[h.id]) {
-                            this.hediffs[h.id].stacks -= 1;
-                            if (this.hediffs[h.id].stacks <= 0) {
-                                delete this.hediffs[h.id];
-                                if (hDef.prevTier) {
-                                    const prevDef = HediffManager.getHediff(
-                                        hDef.prevTier,
-                                    );
-                                    this.hediffs[hDef.prevTier] = {
-                                        stacks:
-                                            prevDef && prevDef.maxStacks
-                                                ? prevDef.maxStacks
-                                                : 1,
-                                    };
-                                }
-                            }
-                        }
-                    } else if (h.action === 'remove') {
-                        delete this.hediffs[h.id];
-                    }
-                }
+                this.applyHediffs(value);
             }
         }
 
         this.updateLastInteraction();
         return true;
+    }
+
+    applyHediffs(hediffList) {
+        for (const h of hediffList) {
+            const hDef = HediffManager.getHediff(h.id);
+            if (!hDef) continue;
+
+            if (h.action === 'escalate') {
+                if (!this.hediffs[h.id])
+                    this.hediffs[h.id] = { stacks: 1, ticksAlive: 0 };
+                else {
+                    this.hediffs[h.id].stacks += 1;
+                    this.hediffs[h.id].ticksAlive = 0;
+                }
+
+                if (hDef.maxStacks && this.hediffs[h.id].stacks > hDef.maxStacks) {
+                    if (hDef.nextTier || hDef.nextHediff) {
+                        delete this.hediffs[h.id];
+                        this.hediffs[hDef.nextTier || hDef.nextHediff] = { stacks: 1, ticksAlive: 0 };
+                    } else {
+                        this.hediffs[h.id].stacks = hDef.maxStacks;
+                    }
+                }
+            } else if (h.action === 'reduce') {
+                if (this.hediffs[h.id]) {
+                    this.hediffs[h.id].stacks -= 1;
+                    this.hediffs[h.id].ticksAlive = 0;
+                    if (this.hediffs[h.id].stacks <= 0) {
+                        delete this.hediffs[h.id];
+                        if (hDef.prevTier) {
+                            const prevDef = HediffManager.getHediff(hDef.prevTier);
+                            this.hediffs[hDef.prevTier] = { stacks: prevDef && prevDef.maxStacks ? prevDef.maxStacks : 1, ticksAlive: 0 };
+                        }
+                    }
+                }
+            } else if (h.action === 'remove') {
+                delete this.hediffs[h.id];
+            }
+        }
     }
 
     // Logs an activity or event occurrence to the pet's condensed historical record
@@ -258,16 +257,36 @@ class Byte {
         // Process Passive Hediffs
         for (const [hId, hData] of Object.entries(this.hediffs)) {
             const hDef = HediffManager.getHediff(hId);
-            if (hDef && hDef.tickEffects) {
-                const hediffContext = new GameContext(this, context.player, {
-                    ...context.locals,
-                    stacks: hData.stacks,
-                });
+            if (!hDef) continue;
+
+            hData.ticksAlive = (hData.ticksAlive || 0) + 1;
+
+            const hediffContext = new GameContext(this, context.player, {
+                ...context.locals,
+                stacks: hData.stacks,
+                ticksAlive: hData.ticksAlive,
+            });
+
+            let shouldDecay = false;
+            if (hDef.decay) {
+                if (hDef.decay.requirements && checkRequirements(hDef.decay.requirements, hediffContext)) {
+                    shouldDecay = true;
+                } else if (hDef.decay.ticks !== undefined) {
+                    const decayTicks = evaluateExpression(hDef.decay.ticks, hediffContext);
+                    if (hData.ticksAlive >= decayTicks) {
+                        shouldDecay = true;
+                    }
+                }
+            }
+
+            if (shouldDecay) {
+                const action = hDef.decay.action || 'remove';
+                this.applyHediffs([{ id: hId, action }]);
+            }
+
+            if (this.hediffs[hId] && hDef.tickEffects) {
                 const activeTickEffects = hDef.tickEffects.filter((effect) => {
-                    const tpt =
-                        effect.ticksPerTrigger !== undefined
-                            ? evaluateExpression(effect.ticksPerTrigger, hediffContext)
-                            : 1;
+                    const tpt = effect.ticksPerTrigger !== undefined ? evaluateExpression(effect.ticksPerTrigger, hediffContext) : 1;
                     return tpt <= 1 || hediffContext.locals.tickCounter % tpt === 0;
                 });
                 if (activeTickEffects.length > 0) {
@@ -404,6 +423,15 @@ class Byte {
 
     // Formats relevant display data for front-end rendering
     getStatus() {
+        const formattedHediffs = {};
+        for (const [hId, hData] of Object.entries(this.hediffs)) {
+            const hDef = HediffManager.getHediff(hId);
+            formattedHediffs[hId] = {
+                ...hData,
+                name: hDef ? hDef.name : hId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+            };
+        }
+
         return {
             name: this.name,
             byteClass: this.byteClass,
@@ -421,6 +449,7 @@ class Byte {
             generation: this.generation,
             isDormant: this.isDormant,
             bufferOverflow: this.bufferOverflow,
+            hediffs: formattedHediffs,
         };
     }
 }

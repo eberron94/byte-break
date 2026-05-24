@@ -1,4 +1,5 @@
 const { generateClassBasedAvatar, getAvatarColors, generateAchievementIcon } = require('./avatar');
+const GameObjectManager = require('../managers/GameObjectManager');
 
 function generateTradingCard(byte) {
     const status = byte.getStatus();
@@ -97,6 +98,28 @@ function generateTradingCard(byte) {
 
     const isDormant = status.isDormant;
 
+    let hediffsSvg = '';
+    if (status.hediffs && Object.keys(status.hediffs).length > 0) {
+        let xOffset = 40;
+        let yOffset = 382;
+        Object.entries(status.hediffs).forEach(([hId, hData]) => {
+            const name = GameObjectManager.getObjectName(hId).toUpperCase();
+            const textContent = hData.stacks > 1 ? `${name} X${hData.stacks}` : name;
+            const textWidth = textContent.length * 8 + 16;
+            
+            if (xOffset + textWidth > 560) {
+                xOffset = 40;
+                yOffset += 28;
+            }
+            
+            hediffsSvg += `
+                <rect x="${xOffset}" y="${yOffset}" width="${textWidth}" height="22" rx="11" fill="#f44336" fill-opacity="0.15" stroke="#f44336" stroke-width="1.5"/>
+                <text x="${xOffset + textWidth / 2}" y="${yOffset + 15}" fill="#ffcccc" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">${textContent}</text>
+            `;
+            xOffset += textWidth + 8;
+        });
+    }
+
     const svg = `
     <svg width="600" height="800" viewBox="0 0 600 800" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -126,6 +149,8 @@ function generateTradingCard(byte) {
         </g>
 
         ${statsSvg}
+        
+        ${hediffsSvg}
         
         <text x="40" y="420" fill="${colors.primary}" font-family="sans-serif" font-size="16" font-weight="bold">BIT BUFFER</text>
         <text x="560" y="420" fill="#cccccc" font-family="sans-serif" font-size="14" text-anchor="end">${bitsValue}/${status.pools.bits.maxValue}${overflowValue > 0 ? ` (+${overflowValue})` : ''}</text>

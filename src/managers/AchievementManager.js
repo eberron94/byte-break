@@ -50,6 +50,8 @@ class AchievementManager {
                         if (success && byte) byteModified = true;
                     }
 
+                    player.history[`ach_unlocked_${ach.id}_tier_${i + 1}`] = new Date().toISOString();
+
                     gameManager.emit(GameEvents.ACHIEVEMENT_UNLOCKED, userId, {
                         name: ach.name,
                         description: tierData.description || ach.description,

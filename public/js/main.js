@@ -20,6 +20,18 @@ function renderStatsHtml(byte) {
         statsHtml += `</div>`;
     }
 
+    // Active Status Effects (Hediffs)
+    if (byte.hediffs && Object.keys(byte.hediffs).length > 0) {
+        statsHtml += `<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">`;
+        for (const [hId, hData] of Object.entries(byte.hediffs)) {
+            const name = (hData.name || hId.replace(/_/g, ' ')).toUpperCase();
+            const textContent =
+                hData.stacks > 1 ? `${name} X${hData.stacks}` : name;
+            statsHtml += `<div style="background: rgba(244, 67, 54, 0.15); border: 1.5px solid #f44336; border-radius: 11px; padding: 4px 10px; color: #ffcccc; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">${textContent}</div>`;
+        }
+        statsHtml += `</div>`;
+    }
+
     // Bit Buffer
     if (byte.pools && byte.pools.bits) {
         const value = byte.pools.bits.value;
@@ -70,7 +82,7 @@ function renderStatsHtml(byte) {
     statsHtml += `<div class="section-title">CAPACITIES</div>`;
     const displayPools = [
         { key: 'integrity', color: '#f44336' },
-        { key: 'teraflops', color: '#3f51b5' }
+        { key: 'teraflops', color: '#3f51b5' },
     ];
 
     for (const poolConfig of displayPools) {
@@ -176,6 +188,9 @@ async function loadByte() {
         document.getElementById('main-view').style.display = 'block';
 
         if (window.location.href.includes('view=upgrades')) showUpgrades();
+        else if (window.location.href.includes('view=player')) {
+            if (typeof showPlayer === 'function') showPlayer();
+        }
         if (
             byte.room === 'dojo' &&
             window.location.href.includes('activity=combat_simulation')

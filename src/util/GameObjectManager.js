@@ -116,6 +116,13 @@ class GameObjectManager {
                         sCond.push(`Max ${req.maxStacks} Stacks`);
                     if (sCond.length > 0) desc += ` (${sCond.join(', ')})`;
                     break;
+                case 'player_hediff':
+                    desc = `Player Status: ${this.getObjectName(req.id)}`;
+                    const psCond = [];
+                    if (req.minStacks !== undefined) psCond.push(`Min ${req.minStacks} Stacks`);
+                    if (req.maxStacks !== undefined) psCond.push(`Max ${req.maxStacks} Stacks`);
+                    if (psCond.length > 0) desc += ` (${psCond.join(', ')})`;
+                    break;
                 case 'timePhase':
                     desc = `Time: ${req.phases
                         .map((p) => this.getObjectName(p))
@@ -157,12 +164,13 @@ class GameObjectManager {
             } else if (effect.type === 'loot') {
                 const tableId = this.getObjectName(effect.table);
                 desc = `Random Loot (${tableId})`;
-            } else if (effect.type === 'hediff') {
+            } else if (effect.type === 'hediff' || effect.type === 'player_hediff') {
                 const hediffName = this.getObjectName(effect.id);
                 const action = effect.action || 'escalate';
-                if (action === 'escalate') desc = `Apply/Worsen ${hediffName}`;
-                else if (action === 'reduce') desc = `Recover from ${hediffName}`;
-                else if (action === 'remove') desc = `Cure ${hediffName}`;
+                const target = effect.type === 'player_hediff' ? 'Player ' : '';
+                if (action === 'escalate') desc = `Apply/Worsen ${target}${hediffName}`;
+                else if (action === 'reduce') desc = `Recover from ${target}${hediffName}`;
+                else if (action === 'remove') desc = `Cure ${target}${hediffName}`;
             } else if (effect.type === 'isAsleep') {
                 desc = effect.amount ? `Put Byte to Sleep` : `Wake Byte up`;
             } else if (effect.type) {

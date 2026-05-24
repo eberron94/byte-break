@@ -72,6 +72,12 @@ function calculateEffects(effects, context) {
                     id: effect.id,
                     action: effect.action || 'escalate',
                 });
+            } else if (key === 'player_hediff') {
+                if (!calculated.player_hediffs) calculated.player_hediffs = [];
+                calculated.player_hediffs.push({
+                    id: effect.id,
+                    action: effect.action || 'escalate',
+                });
             } else {
                 if (effect.amount !== undefined) {
                     let value = evaluateExpression(effect.amount, context);
@@ -174,6 +180,9 @@ function applyEffects(calculatedEffects, context) {
                     player.removeItem(itemId, Math.abs(amount));
                 }
             }
+        }
+        if (calculatedEffects.player_hediffs) {
+            player.applyHediffs(calculatedEffects.player_hediffs);
         }
     }
 

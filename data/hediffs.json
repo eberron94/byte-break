@@ -17,5 +17,17 @@
         "id": "melted_down",
         "name": "Melted Down",
         "description": "The system has critically overheated."
+    },
+    {
+        "id": "solar_eclipse",
+        "name": "Solar Eclipse",
+        "description": "An anomalous celestial event blocking out all solar radiation.",
+        "decay": {
+            "action": "remove",
+            "ticks": 60
+        },
+        "localOverrides": {
+            "timePhase": "night"
+        }
     }
 ]

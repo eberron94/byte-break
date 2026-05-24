@@ -1,4 +1,5 @@
 const { getTimeContext } = require('../util/time');
+const HediffManager = require('../managers/HediffManager');
 
 class GameContext {
     /**
@@ -15,6 +16,20 @@ class GameContext {
             ...getTimeContext(),
             ...extraLocals,
         };
+
+        // Apply Local Context Overrides from Player or Byte Hediffs
+        const applyOverrides = (hediffs) => {
+            if (!hediffs) return;
+            for (const hId of Object.keys(hediffs)) {
+                const hDef = HediffManager.getHediff(hId);
+                if (hDef && hDef.localOverrides) {
+                    Object.assign(this.locals, hDef.localOverrides);
+                }
+            }
+        };
+
+        if (this.player) applyOverrides(this.player.hediffs);
+        if (this.byte) applyOverrides(this.byte.hediffs);
     }
 }
 

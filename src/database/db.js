@@ -66,6 +66,12 @@ class DatabaseManager {
             type TEXT
         )
         `);
+        
+        try {
+            await this.db.exec(`ALTER TABLE players ADD COLUMN hediffs TEXT DEFAULT '{}'`);
+        } catch (e) {
+            // Column might already exist
+        }
 
         await this.db.exec(`
         CREATE INDEX IF NOT EXISTS idx_bytes_ownerId ON bytes(ownerId);
@@ -190,15 +196,13 @@ class DatabaseManager {
             talents: this._safeParse(data.talents),
             settings: this._safeParse(data.settings),
             achievements: this._safeParse(data.achievements),
+            hediffs: this._safeParse(data.hediffs),
         };
     }
 
     async savePlayer(s) {
         return this.db.run(
-            `INSERT INTO players (id, inventory, energy, history, maxBytes, lastAction, talents, settings, achievements)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT(id) DO UPDATE SET inventory = excluded.inventory, energy = excluded.energy, history = excluded.history, maxBytes = excluded.maxBytes, lastAction = excluded.lastAction, talents = excluded.talents, settings = excluded.settings, achievements = excluded.achievements`,
-            [
+            `INSERT INTO players (id, inventory, energy, history, maxBytes, lastAction, talents, settings, achievements
                 s.id,
                 JSON.stringify(s.inventory),
                 s.energy,
@@ -208,6 +212,7 @@ class DatabaseManager {
                 JSON.stringify(s.talents || {}),
                 JSON.stringify(s.settings || {}),
                 JSON.stringify(s.achievements || {}),
+                JSON.stringify(s.hediffs || {}),
             ],
         );
     }
@@ -226,6 +231,7 @@ class DatabaseManager {
             talents: this._safeParse(row.talents),
             settings: this._safeParse(row.settings),
             achievements: this._safeParse(row.achievements),
+            hediffs: this._safeParse(row.hediffs),
         }));
     }
 

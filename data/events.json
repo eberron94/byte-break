@@ -20,5 +20,17 @@
             { "type": "telemetry", "amount": 20, "die": 2 },
             { "type": "energy", "amount": 5, "die": 4 }
         ]
-    }
+    },
+    {
+    "id": "solar_eclipse_event",
+    "name": "Solar Eclipse",
+    "description": "The sun is completely blocked out by an anomalous celestial body! It suddenly feels like night...",
+    "probability": 0.01,
+    "requirements": [
+        { "type": "timePhase", "phases": ["day", "evening"] }
+    ],
+    "effects": [
+        { "type": "player_hediff", "id": "solar_eclipse" }
+    ]
+}
 ]

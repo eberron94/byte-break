@@ -33,6 +33,7 @@ class Player {
         );
         this.talents = data.talents || {};
         this.settings = data.settings || {};
+        this.hediffs = data.hediffs || {};
 
         // Handle daily resets (resets shop stock at UTC midnight)
         const today = new Date().toISOString().split('T')[0];
@@ -49,6 +50,136 @@ class Player {
     // Restores energy over time
     tick(context = null) {
         this.energy.increase(1);
+
+        if (this.hediffs && context) {
+            // Lazy load utilities to prevent circular dependencies inside the tick loop
+            const HediffManager = require('../managers/HediffManager');
+            const GameContext = require('./GameContext');
+            const {
+                calculateEffects,
+                applyEffects,
+                evaluateExpression,
+            } = require('../util/effects');
+            const { checkRequirements } = require('../util/requirements');
+
+            for (const [hId, hData] of Object.entries(this.hediffs)) {
+                const hDef = HediffManager.getHediff(hId);
+                if (!hDef) continue;
+
+                hData.ticksAlive = (hData.ticksAlive || 0) + 1;
+
+                const hediffContext = new GameContext(context.byte, this, {
+                    ...context.locals,
+                    stacks: hData.stacks,
+                    ticksAlive: hData.ticksAlive,
+                });
+
+                let shouldDecay = false;
+                if (hDef.decay) {
+                    if (
+                        hDef.decay.requirements &&
+                        checkRequirements(
+                            hDef.decay.requirements,
+                            hediffContext,
+                        )
+                    ) {
+                        shouldDecay = true;
+                    } else if (hDef.decay.ticks !== undefined) {
+                        const decayTicks = evaluateExpression(
+                            hDef.decay.ticks,
+                            hediffContext,
+                        );
+                        if (hData.ticksAlive >= decayTicks) {
+                            shouldDecay = true;
+                        }
+                    }
+                }
+
+                if (shouldDecay) {
+                    const action = hDef.decay.action || 'remove';
+                    this.applyHediffs([{ id: hId, action }]);
+                }
+
+                if (this.hediffs[hId] && hDef.tickEffects) {
+                    const activeTickEffects = hDef.tickEffects.filter(
+                        (effect) => {
+                            const tpt =
+                                effect.ticksPerTrigger !== undefined
+                                    ? evaluateExpression(
+                                          effect.ticksPerTrigger,
+                                          hediffContext,
+                                      )
+                                    : 1;
+                            return (
+                                tpt <= 1 ||
+                                hediffContext.locals.tickCounter % tpt === 0
+                            );
+                        },
+                    );
+                    if (activeTickEffects.length > 0) {
+                        const calculatedEffects = calculateEffects(
+                            activeTickEffects,
+                            hediffContext,
+                        );
+                        applyEffects(calculatedEffects, hediffContext);
+                    }
+                }
+            }
+        }
+    }
+
+    applyHediffs(hediffList) {
+        const HediffManager = require('../managers/HediffManager');
+        for (const h of hediffList) {
+            const hDef = HediffManager.getHediff(h.id);
+            if (!hDef) continue;
+
+            if (h.action === 'escalate') {
+                if (!this.hediffs[h.id])
+                    this.hediffs[h.id] = { stacks: 1, ticksAlive: 0 };
+                else {
+                    this.hediffs[h.id].stacks += 1;
+                    this.hediffs[h.id].ticksAlive = 0;
+                }
+
+                if (
+                    hDef.maxStacks &&
+                    this.hediffs[h.id].stacks > hDef.maxStacks
+                ) {
+                    if (hDef.nextTier || hDef.nextHediff) {
+                        delete this.hediffs[h.id];
+                        this.hediffs[hDef.nextTier || hDef.nextHediff] = {
+                            stacks: 1,
+                            ticksAlive: 0,
+                        };
+                    } else {
+                        this.hediffs[h.id].stacks = hDef.maxStacks;
+                    }
+                }
+            } else if (h.action === 'reduce') {
+                if (this.hediffs[h.id]) {
+                    this.hediffs[h.id].stacks -= 1;
+                    this.hediffs[h.id].ticksAlive = 0;
+                    if (this.hediffs[h.id].stacks <= 0) {
+                        delete this.hediffs[h.id];
+                        if (hDef.prevTier) {
+                            const prevDef = HediffManager.getHediff(
+                                hDef.prevTier,
+                            );
+                            this.hediffs[hDef.prevTier] = {
+                                stacks:
+                                    prevDef && prevDef.maxStacks
+                                        ? prevDef.maxStacks
+                                        : 1,
+                                ticksAlive: 0,
+                            };
+                        }
+                    }
+                }
+            } else if (h.action === 'remove') {
+                delete this.hediffs[h.id];
+            }
+        }
     }
 
     // Checks if the player holds at least the requested amount of an item
@@ -125,6 +256,7 @@ class Player {
             talents: this.talents,
             settings: this.settings,
             achievements: this.achievementPoints.progress,
+            hediffs: this.hediffs,
         };
     }
 
@@ -133,6 +265,18 @@ class Player {
         const data = this.serialize();
         data.availableAchievementPoints = this.achievementPoints.available;
         data.achievementPoints = this.achievementPoints.value;
+
+        const HediffManager = require('../managers/HediffManager');
+        const formattedHediffs = {};
+        for (const [hId, hData] of Object.entries(this.hediffs)) {
+            const hDef = HediffManager.getHediff(hId);
+            formattedHediffs[hId] = {
+                ...hData,
+                name: hDef ? hDef.name : hId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+            };
+        }
+        data.hediffs = formattedHediffs;
+
         return data;
     }
 }

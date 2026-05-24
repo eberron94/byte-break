@@ -69,6 +69,14 @@ const TelegramUIBuilders = {
 
         let text = ` **Room:** ${roomName}\n`;
 
+        if (player.hediffs && Object.keys(player.hediffs).length > 0) {
+            const phStrings = Object.entries(player.hediffs).map(([hId, hData]) => {
+                const name = GameObjectManager.getObjectName(hId);
+                return hData.stacks > 1 ? `${name} (x${hData.stacks})` : name;
+            });
+            text += `👤 **Player Status:** ${phStrings.join(', ')}\n`;
+        }
+
         if (status.isDormant) {
             text += `\n⚠️ **SYSTEM DORMANT** ⚠️\n_Core needs depleted. Passive operations suspended._\n\n`;
         }
@@ -199,14 +207,16 @@ const TelegramUIBuilders = {
         if (webAppUrl) {
             const separator = webAppUrl.includes('?') ? '&' : '?';
             inline_keyboard.push([
+                { text: '👤 Player Profile', web_app: { url: `${webAppUrl}${separator}view=player` } },
                 { text: '📱 Byte Specification', web_app: { url: webAppUrl } },
+            ]);
+            inline_keyboard.push([
                 {
                     text: '⬆️ Upgrades',
                     web_app: { url: `${webAppUrl}${separator}view=upgrades` },
                 },
             ]);
             inline_keyboard.push([
-                {
                     text: '🏆 Achievements',
                     web_app: {
                         url: `${webAppUrl}${separator}view=achievements`,

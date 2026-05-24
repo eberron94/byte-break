@@ -156,6 +156,22 @@ function checkRequirements(
                 if (sMin !== undefined && hData.stacks < sMin) return false;
                 if (sMax !== undefined && hData.stacks > sMax) return false;
                 break;
+            case 'player_hediff':
+                if (!player || !player.hediffs) return false;
+                const phData = player.hediffs[req.id];
+                if (!phData) return false;
+
+                const phMin =
+                    req.minStacks !== undefined
+                        ? evaluateExpression(req.minStacks, context)
+                        : undefined;
+                const phMax =
+                    req.maxStacks !== undefined
+                        ? evaluateExpression(req.maxStacks, context)
+                        : undefined;
+                if (phMin !== undefined && phData.stacks < phMin) return false;
+                if (phMax !== undefined && phData.stacks > phMax) return false;
+                break;
             case 'timePhase':
                 if (
                     !timePhase ||

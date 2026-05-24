@@ -273,6 +273,7 @@ const WebAPIGetHandler = {
                                       tierReq.effects,
                                   )
                                 : null,
+                        unlockDate: player.history[`ach_unlocked_${ach.id}_tier_${i + 1}`] || null,
                     };
                 });
 

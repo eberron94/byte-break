@@ -54,5 +54,9 @@
     "Compression": ["Reduces the Teraflop cost of abilities."],
     "Core Stats": [
         "The fundamental hardware processing capabilities of the Byte."
+    ],
+    "Energy": [
+        "The personal stamina of the Player.",
+        "Energy (ε) is consumed when merging Bytes or performing certain minigames and activities. It slowly regenerates over time, and active players are occasionally rewarded with bonus Energy bursts."
     ]
 }

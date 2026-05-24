@@ -3,10 +3,12 @@ async function showUpgrades() {
     document.getElementById('upgrades-view').style.display = 'block';
 
     try {
-        const res = await fetch(`/api/inventory/${user.id}`);
-        if (res.ok) {
-            inventoryDataList = await res.json();
-        }
+        const [invRes, playerRes] = await Promise.all([
+            fetch(`/api/inventory/${user.id}`),
+            fetch(`/api/player/${user.id}`)
+        ]);
+        if (invRes.ok) inventoryDataList = await invRes.json();
+        if (playerRes.ok) window.currentPlayer = await playerRes.json();
     } catch (e) {
         console.error(e);
     }
@@ -22,6 +24,17 @@ function renderUpgrades(lastUpgradedKey = null) {
     bitsSpan.innerHTML = `${bitsValue} ${overflowValue > 0 ? `<span style="color: #9c27b0;">(+${overflowValue} Overflow)</span>` : ''}`;
 
     let html = '';
+
+    if (window.currentPlayer && window.currentPlayer.hediffs && Object.keys(window.currentPlayer.hediffs).length > 0) {
+        html += '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px;">';
+        for (const [hId, hData] of Object.entries(window.currentPlayer.hediffs)) {
+            const name = (hData.name || hId.replace(/_/g, ' ')).toUpperCase();
+            const textContent = hData.stacks > 1 ? `${name} X${hData.stacks}` : name;
+            // Use a purple color scheme to differentiate Player statuses from Byte statuses
+            html += `<div style="background: rgba(156, 39, 176, 0.15); border: 1.5px solid #9c27b0; border-radius: 11px; padding: 4px 10px; color: #e1bee7; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">👤 ${textContent}</div>`;
+        }
+        html += '</div>';
+    }
 
     if (inventoryDataList) {
         const rebooter = inventoryDataList.find(
