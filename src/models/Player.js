@@ -40,7 +40,11 @@ class Player {
         const today = new Date().toISOString().split('T')[0];
         if (this.history['last_login_date'] !== today) {
             for (const key of Object.keys(this.history)) {
-                if (key.startsWith('shop_')) {
+                if (
+                    key.startsWith('shop_') ||
+                    key.startsWith('daily_') ||
+                    key.startsWith('temp_')
+                ) {
                     delete this.history[key];
                 } else if (key.startsWith('item_used_')) {
                     const itemId = key.replace('item_used_', '');
