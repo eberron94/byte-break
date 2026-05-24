@@ -83,7 +83,7 @@ function generateTradingCard(byte) {
             statsSvg += `<line x1="320" y1="${y}" x2="560" y2="${y}" stroke="#4d4d73" stroke-width="2"/>`;
         }
         statsSvg += `
-            <text x="340" y="${y + 32}" fill="${colors.primary}" font-family="sans-serif" font-size="14" font-weight="bold">${key.toUpperCase()}</text>
+            <text x="340" y="${y + 32}" fill="${colors.primaryLight || colors.primary}" font-family="sans-serif" font-size="14" font-weight="bold">${key.toUpperCase()}</text>
             <text x="540" y="${y + 34}" fill="#ffffff" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="end">${status.stats[key]}</text>
         `;
     });
@@ -111,8 +111,8 @@ function generateTradingCard(byte) {
             }
             
             hediffsSvg += `
-                <rect x="${xOffset}" y="${yOffset}" width="${textWidth}" height="22" rx="11" fill="#f44336" fill-opacity="0.15" stroke="#f44336" stroke-width="1.5"/>
-                <text x="${xOffset + textWidth / 2}" y="${yOffset + 15}" fill="#ffcccc" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">${textContent}</text>
+                <rect x="${xOffset}" y="${yOffset}" width="${textWidth}" height="22" rx="11" fill="${colors.primary}" fill-opacity="0.15" stroke="${colors.primary}" stroke-width="1.5"/>
+                <text x="${xOffset + textWidth / 2}" y="${yOffset + 15}" fill="${colors.primaryLight || '#ffffff'}" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle">${textContent}</text>
             `;
             xOffset += textWidth + 8;
         });
@@ -135,8 +135,8 @@ function generateTradingCard(byte) {
         </defs>
         <rect width="600" height="800" rx="20" fill="url(#bgGrad)" stroke="${colors.primary}" stroke-width="6"/>
         <path d="M 3 23 Q 3 3 23 3 L 577 3 Q 597 3 597 23 L 597 90 L 3 90 Z" fill="url(#headerGrad)"/>
-        <text x="40" y="55" fill="#ffffff" font-family="sans-serif" font-size="34" font-weight="bold" letter-spacing="1">${status.name}</text>
-        <text x="40" y="80" fill="#d0e8ff" font-family="sans-serif" font-size="18" font-weight="normal" text-transform="uppercase">Class: ${status.byteClass}</text>
+        <text x="40" y="55" fill="${colors.buttonText || '#ffffff'}" font-family="sans-serif" font-size="34" font-weight="bold" letter-spacing="1">${status.name}</text>
+        <text x="40" y="80" fill="${colors.buttonText || '#ffffff'}" fill-opacity="0.85" font-family="sans-serif" font-size="18" font-weight="normal" text-transform="uppercase">Class: ${status.byteClass}</text>
         <rect x="400" y="20" width="160" height="50" rx="10" fill="#121212" fill-opacity="0.5"/>
         <text x="480" y="53" fill="#ffffff" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle">GEN.LVL ${status.generation}.${status.level}</text>
         
@@ -150,16 +150,16 @@ function generateTradingCard(byte) {
         
         ${hediffsSvg}
         
-        <text x="40" y="420" fill="${colors.primary}" font-family="sans-serif" font-size="16" font-weight="bold">BIT BUFFER</text>
+        <text x="40" y="420" fill="${colors.primaryLight || colors.primary}" font-family="sans-serif" font-size="16" font-weight="bold">BIT BUFFER</text>
         <text x="560" y="420" fill="#cccccc" font-family="sans-serif" font-size="14" text-anchor="end">${bitsValue}/${status.pools.bits.maxValue}${overflowValue > 0 ? ` (+${overflowValue})` : ''}</text>
         <rect x="40" y="430" width="520" height="12" rx="6" fill="#333333" />
         <rect x="40" y="430" width="${bitsPct * 520}" height="12" rx="6" fill="#ffd700" />
         <text x="300" y="465" fill="#aaaaaa" font-family="sans-serif" font-size="15" font-style="italic" text-anchor="middle">Invest ${status.bitsToNextLevel} β in System Upgrades to level up</text>
         <line x1="40" y1="485" x2="560" y2="485" stroke="#333" stroke-width="2"/>
         
-        <text x="40" y="525" fill="${colors.primary}" font-family="sans-serif" font-size="18" font-weight="bold">SYSTEM NEEDS</text>
+        <text x="40" y="525" fill="${colors.primaryLight || colors.primary}" font-family="sans-serif" font-size="18" font-weight="bold">SYSTEM NEEDS</text>
         ${needsSvg}
-        <text x="320" y="525" fill="${colors.primary}" font-family="sans-serif" font-size="18" font-weight="bold">CAPACITIES</text>
+        <text x="320" y="525" fill="${colors.primaryLight || colors.primary}" font-family="sans-serif" font-size="18" font-weight="bold">CAPACITIES</text>
         ${poolsSvg}
     </svg>`;
     return svg;
@@ -214,7 +214,7 @@ function generateStasisCard(bytes, player) {
         svg += `
         <rect x="40" y="${rowY}" width="520" height="160" rx="15" fill="#2a2a40" stroke="${colors.primary}" stroke-width="3"/>
         <text x="175" y="${rowY + 50}" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">${status.name}</text>
-        <text x="175" y="${rowY + 75}" fill="${colors.primary}" font-family="sans-serif" font-size="16" font-weight="bold">GEN.LVL ${status.generation}.${status.level} ${status.byteClass.toUpperCase()}</text>
+        <text x="175" y="${rowY + 75}" fill="${colors.primaryLight || colors.primary}" font-family="sans-serif" font-size="16" font-weight="bold">GEN.LVL ${status.generation}.${status.level} ${status.byteClass.toUpperCase()}</text>
         `;
 
         svg += `

@@ -27,7 +27,7 @@ function renderStatsHtml(byte) {
             const name = (hData.name || hId.replace(/_/g, ' ')).toUpperCase();
             const textContent =
                 hData.stacks > 1 ? `${name} X${hData.stacks}` : name;
-            statsHtml += `<div style="background: rgba(244, 67, 54, 0.15); border: 1.5px solid #f44336; border-radius: 11px; padding: 4px 10px; color: #ffcccc; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">${textContent}</div>`;
+            statsHtml += `<div style="background: hsla(${byte.colors.finalHue}, 75%, 60%, 0.15); border: 1.5px solid ${byte.colors.primary}; border-radius: 11px; padding: 4px 10px; color: ${byte.colors.primaryLight || '#ffffff'}; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">${textContent}</div>`;
         }
         statsHtml += `</div>`;
     }
@@ -158,7 +158,7 @@ async function loadByte() {
                 `hsl(${byte.colors.finalHue}, 25%, 16%)`,
             );
             root.style.setProperty('--tg-theme-text-color', '#ffffff');
-            root.style.setProperty('--tg-theme-button-text-color', '#ffffff');
+        root.style.setProperty('--tg-theme-button-text-color', byte.colors.buttonText || '#ffffff');
             root.style.setProperty(
                 '--header-end-color',
                 `hsl(${byte.colors.finalHue}, 75%, 40%)`,
@@ -166,10 +166,13 @@ async function loadByte() {
         }
 
         document.getElementById('byte-name').innerText = byte.name;
+        document.getElementById('byte-name').style.color = byte.colors.buttonText || '#ffffff';
         document.getElementById('byte-class').innerText =
             `Class: ${byte.byteClass}`;
+        document.getElementById('byte-class').style.color = byte.colors.buttonText || '#ffffff';
         document.getElementById('byte-level').innerText =
             `GEN.LVL ${byte.generation}.${byte.level}`;
+        document.getElementById('byte-level').style.color = byte.colors.buttonText || '#ffffff';
 
         const mainAvatar = document.getElementById('main-avatar');
         mainAvatar.src = `/api/avatar?name=${encodeURIComponent(byte.name)}&class=${byte.byteClass}&level=${byte.level}&generation=${byte.generation}`;

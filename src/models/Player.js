@@ -287,12 +287,14 @@ class Player {
         data.achievementPoints = this.achievementPoints.value;
 
         const HediffManager = require('../managers/HediffManager');
+        const { getAvatarColors } = require('../util/avatar');
         const formattedHediffs = {};
         for (const [hId, hData] of Object.entries(this.hediffs)) {
             const hDef = HediffManager.getHediff(hId);
             formattedHediffs[hId] = {
                 ...hData,
-                name: hDef ? hDef.name : hId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                name: hDef ? hDef.name : hId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+                colors: getAvatarColors(hId, 'player_hediff', 0)
             };
         }
         data.hediffs = formattedHediffs;

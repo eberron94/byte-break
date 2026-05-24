@@ -1,5 +1,16 @@
 const crypto = require('crypto');
 
+function getLuminance(h, s, l) {
+    s /= 100;
+    l /= 100;
+    const k = n => (n + h / 30) % 12;
+    const a = s * Math.min(l, 1 - l);
+    const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    const r = f(0), g = f(8), b = f(4);
+    // Perceived luminance formula (sRGB)
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
 function getAvatarColors(name, charClass = 'demo', generation = 0) {
     const nameHash = crypto
         .createHash('sha256')
@@ -24,7 +35,12 @@ function getAvatarColors(name, charClass = 'demo', generation = 0) {
     const tertiary = `hsl(${(finalHue + 60) % 360}, 80%, 65%)`; // A vibrant accent color
     const bgColor = '#0c0c0c';
 
-    return { primary, secondary, tertiary, bgColor, nameHash, finalHue };
+    // Guaranteed bright variant for text on dark backgrounds
+    const primaryLight = `hsl(${finalHue}, 80%, 75%)`;
+    // Dynamic button text color (white or dark) depending on perceived brightness
+    const buttonText = getLuminance(finalHue, 75, 60) > 0.6 ? '#121212' : '#ffffff';
+
+    return { primary, secondary, tertiary, bgColor, primaryLight, buttonText, nameHash, finalHue };
 }
 
 function generateClassBasedAvatar(

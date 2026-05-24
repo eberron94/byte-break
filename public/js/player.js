@@ -68,7 +68,8 @@ function renderPlayerStatus(player, bytes, achData, talData) {
             const name = (hData.name || hId.replace(/_/g, ' ')).toUpperCase();
             const textContent =
                 hData.stacks > 1 ? `${name} X${hData.stacks}` : name;
-            html += `<div style="background: rgba(156, 39, 176, 0.15); border: 1.5px solid #9c27b0; border-radius: 11px; padding: 4px 10px; color: #e1bee7; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">👤 ${textContent}</div>`;
+            const colors = hData.colors || { finalHue: 280, primary: '#9c27b0', primaryLight: '#e1bee7' };
+            html += `<div style="background: hsla(${colors.finalHue}, 75%, 60%, 0.15); border: 1.5px solid ${colors.primary}; border-radius: 11px; padding: 4px 10px; color: ${colors.primaryLight}; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">👤 ${textContent}</div>`;
         }
         html += '</div>';
     }
@@ -162,7 +163,7 @@ function renderPlayerStatus(player, bytes, achData, talData) {
                     ).toUpperCase();
                     const textContent =
                         hData.stacks > 1 ? `${name} X${hData.stacks}` : name;
-                    hediffsHtml += `<div style="background: rgba(244, 67, 54, 0.15); border: 1px solid #f44336; border-radius: 8px; padding: 2px 6px; color: #ffcccc; font-size: 10px; font-weight: bold;">${textContent}</div>`;
+                    hediffsHtml += `<div style="background: hsla(${b.colors.finalHue}, 75%, 60%, 0.15); border: 1px solid ${b.colors.primary}; border-radius: 8px; padding: 2px 6px; color: ${b.colors.primaryLight || '#ffffff'}; font-size: 10px; font-weight: bold;">${textContent}</div>`;
                 }
                 hediffsHtml += '</div>';
             }

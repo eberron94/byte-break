@@ -30,8 +30,8 @@ function renderUpgrades(lastUpgradedKey = null) {
         for (const [hId, hData] of Object.entries(window.currentPlayer.hediffs)) {
             const name = (hData.name || hId.replace(/_/g, ' ')).toUpperCase();
             const textContent = hData.stacks > 1 ? `${name} X${hData.stacks}` : name;
-            // Use a purple color scheme to differentiate Player statuses from Byte statuses
-            html += `<div style="background: rgba(156, 39, 176, 0.15); border: 1.5px solid #9c27b0; border-radius: 11px; padding: 4px 10px; color: #e1bee7; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">👤 ${textContent}</div>`;
+            const colors = hData.colors || { finalHue: 280, primary: '#9c27b0', primaryLight: '#e1bee7' };
+            html += `<div style="background: hsla(${colors.finalHue}, 75%, 60%, 0.15); border: 1.5px solid ${colors.primary}; border-radius: 11px; padding: 4px 10px; color: ${colors.primaryLight}; font-size: 12px; font-weight: bold; letter-spacing: 0.5px;">👤 ${textContent}</div>`;
         }
         html += '</div>';
     }
