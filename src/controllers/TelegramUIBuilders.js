@@ -59,14 +59,6 @@ const TelegramUIBuilders = {
         const room = RoomManager.getRoom(status.room);
         const roomName = room ? room.name : status.room.replace(/_/g, '\\_');
 
-        const invEntries = Object.entries(player.inventory).map(([id, amt]) => {
-            const item = ItemManager.getItem(id);
-            const name = item ? item.shortname : id.replace(/_/g, '\\_');
-            return `${name}: ${amt}`;
-        });
-        const invString =
-            invEntries.length > 0 ? invEntries.join(', ') : 'Empty';
-
         let text = ` **Room:** ${roomName}\n`;
 
         if (player.hediffs && Object.keys(player.hediffs).length > 0) {
@@ -172,7 +164,7 @@ const TelegramUIBuilders = {
             }
         }
 
-        text += `\n━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue} ε | 🪙 **Achievement Points:** ${player.achievementPoints.available}/${player.achievementPoints.value} α\n🎒 **Inventory:** ${invString}`;
+        text += `\n━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue} ε\n🌟 **Achievement Points:** ${player.achievementPoints.available}/${player.achievementPoints.value} α`;
 
         if (lastActionMessage) {
             text += `\n📢 **Last Action:** ${lastActionMessage}`;
@@ -196,11 +188,6 @@ const TelegramUIBuilders = {
 
         inline_keyboard.push([
             { text: '🚶 Move Rooms', callback_data: 'nav_rooms' },
-            { text: '🎒 Inventory', callback_data: 'nav_inventory' },
-        ]);
-
-        inline_keyboard.push([
-            { text: '🔄 Refresh Status', callback_data: 'nav_status' },
         ]);
 
         const webAppUrl = process.env.WEB_APP_URL;
@@ -211,28 +198,23 @@ const TelegramUIBuilders = {
                 { text: '📱 Byte Specification', web_app: { url: webAppUrl } },
             ]);
             inline_keyboard.push([
-                {
-                    text: '⬆️ Upgrades',
-                    web_app: { url: `${webAppUrl}${separator}view=upgrades` },
-                },
+                { text: '🧬 Talents', web_app: { url: `${webAppUrl}${separator}view=talents` } },
+                { text: '⬆️ Upgrades', web_app: { url: `${webAppUrl}${separator}view=upgrades` } },
             ]);
             inline_keyboard.push([
-                {
-                    text: '🏆 Achievements',
-                    web_app: {
-                        url: `${webAppUrl}${separator}view=achievements`,
-                    },
-                },
-                {
-                    text: '🧬 Talents',
-                    web_app: { url: `${webAppUrl}${separator}view=talents` },
-                },
+                { text: '📦 Inventory', callback_data: 'nav_inventory' },
+                { text: '🏆 Achievements', web_app: { url: `${webAppUrl}${separator}view=achievements` } },
             ]);
             inline_keyboard.push([
-                {
-                    text: '⚙️ Settings',
-                    web_app: { url: `${webAppUrl}${separator}view=settings` },
-                },
+                { text: '🔄 Refresh Status', callback_data: 'nav_status' },
+                { text: '⚙️ Settings', web_app: { url: `${webAppUrl}${separator}view=settings` } },
+            ]);
+        } else {
+            inline_keyboard.push([
+                { text: '📦 Inventory', callback_data: 'nav_inventory' },
+            ]);
+            inline_keyboard.push([
+                { text: '🔄 Refresh Status', callback_data: 'nav_status' },
             ]);
         }
 
@@ -266,7 +248,7 @@ const TelegramUIBuilders = {
             { text: '🔙 Back to Status', callback_data: 'nav_status' },
         ]);
 
-        let text = `🎒 **Your Inventory** 🎒\n\n`;
+        let text = `📦 **Your Inventory** 📦\n\n`;
         text +=
             buttons.length === 0
                 ? `_Your inventory is currently empty._`
@@ -280,7 +262,7 @@ const TelegramUIBuilders = {
     getItemDetailDisplay(player, itemId) {
         const item = ItemManager.getItem(itemId);
         const amount = player.inventory[itemId] || 0;
-        let text = `🎒 **Item Details** 🎒\n\n**${item.name}** (x${amount})\n_${item.description}_\n`;
+        let text = `📦 **Item Details** 📦\n\n**${item.name}** (x${amount})\n_${item.description}_\n`;
         
         if (item.effects && item.effects.length > 0) {
             text += `\n✨ **Effects:**\n• ${GameObjectManager.formatEffectsList(item.effects)}\n`;
@@ -386,7 +368,7 @@ const TelegramUIBuilders = {
         inline_keyboard.push([
             { text: '🔙 Cancel', callback_data: 'act_cancel' },
         ]);
-        let text = `🎒 **Select an item for: ${activity.name}**\n\nChoose an item to use:`;
+        let text = `📦 **Select an item for: ${activity.name}**\n\nChoose an item to use:`;
         const options = { parse_mode: 'Markdown' };
         if (inline_keyboard.length > 0)
             options.reply_markup = { inline_keyboard };
@@ -410,7 +392,7 @@ const TelegramUIBuilders = {
             text += `\n\n**${byte.name}** (V${gen}.${byte.level}) - Class: ${byte.byteClass}`;
         }
 
-        text += `\n\n━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue} ε | 🪙 **Achievement Points:** ${player.achievementPoints.available}/${player.achievementPoints.value} α`;
+        text += `\n\n━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue} ε\n🌟 **Achievement Points:** ${player.achievementPoints.available}/${player.achievementPoints.value} α`;
 
         const bottomRow = [];
         const webAppUrl = process.env.WEB_APP_URL;
