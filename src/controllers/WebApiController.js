@@ -94,6 +94,7 @@ class WebApiController {
             '/api/achievement-icon',
             this.getAchievementIcon.bind(this),
         );
+        this.app.get('/api/logs/:id', this.getPlayerLogs.bind(this));
         this.app.post('/api/special/reboot', this.useRebooter.bind(this));
         this.app.post('/api/special/mutate', this.useMutator.bind(this));
         this.app.get('/api/debug/data/:id', this.getDebugData.bind(this));

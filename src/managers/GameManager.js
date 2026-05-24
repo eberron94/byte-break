@@ -31,9 +31,47 @@ class GameManager extends EventEmitter {
                     console.log(
                         `[GameEvent] ${eventName} -> ${parsedArgs.join(' | ')}`,
                     );
+                    this._logGameEvent(eventName, args).catch(err => {
+                        console.error(`[GameManager] Event logging failed for ${eventName}:`, err);
+                    });
                 });
             }
         });
+    }
+
+    async _logGameEvent(eventName, args) {
+        if (!args || args.length === 0) return;
+    
+        let playerId = null;
+        let byteId = null;
+    
+        // The first argument is almost always the player/user ID.
+        // A notable exception is RANDOM_EVENT where it's the byte.
+        if (eventName === GameEvents.RANDOM_EVENT) {
+            const byte = args[0];
+            if (byte && byte.ownerId) {
+                playerId = byte.ownerId;
+                byteId = byte.id;
+            }
+        } else if (args[0] && (typeof args[0] === 'string' || typeof args[0] === 'number')) {
+            playerId = args[0].toString();
+        }
+    
+        if (!playerId) return; // Don't log events without a player context
+    
+        const sanitizedArgs = args.map(arg => {
+            if (arg instanceof Byte) {
+                if (!byteId) byteId = arg.id;
+                return { type: 'Byte', id: arg.id, name: arg.name };
+            }
+            if (arg instanceof Player) {
+                return { type: 'Player', id: arg.id };
+            }
+            // For other objects, just pass them through to be stringified.
+            return arg;
+        });
+    
+        await dbManager.logEvent(eventName, playerId, byteId, sanitizedArgs);
     }
 
     // Factory method to initialize the database before creating the manager
@@ -47,6 +85,32 @@ class GameManager extends EventEmitter {
                 error,
             );
             throw error;
+        }
+    }
+
+    // Migrates dead/merged bytes to the lightweight archived_bytes table
+    async archiveDeadBytes(days = 90) {
+        try {
+            const oldBytesData = await dbManager.getOldDeadBytes(days);
+            for (const data of oldBytesData) {
+                const byte = new Byte(data); // Instantiate to calculate final level
+                
+                await dbManager.insertArchivedByte({
+                    id: byte.id,
+                    ownerId: byte.ownerId,
+                    name: byte.name,
+                    byteClass: byte.byteClass,
+                    generation: byte.generation,
+                    level: byte.level,
+                    birthDate: byte.birthDate.toISOString(),
+                    deathDate: byte.lastInteraction.toISOString(),
+                    archivedDate: new Date().toISOString()
+                });
+                
+                await this.deleteByte(byte.ownerId, byte.id);
+            }
+        } catch (error) {
+            console.error('[GameManager] Error archiving dead bytes:', error);
         }
     }
 
@@ -230,6 +294,14 @@ class GameManager extends EventEmitter {
         this.tickCounter = (this.tickCounter || 0) + 1;
         if (this.tickCounter % 10 === 0) {
             await this.rewardActivePlayers();
+        }
+
+        // Daily cleanup of old event logs and archiving of old dead bytes
+        const today = new Date().toISOString().split('T')[0];
+        if (this.lastLogPruneDate !== today) {
+            dbManager.pruneOldEventLogs(90).catch(err => console.error('[GameManager] Failed to prune logs:', err));
+            this.archiveDeadBytes(90).catch(err => console.error('[GameManager] Failed to archive dead bytes:', err));
+            this.lastLogPruneDate = today;
         }
 
         // Retrieve all currently living bytes

@@ -73,10 +73,47 @@ class DatabaseManager {
             // Column might already exist
         }
 
+        // Table for logging all game events for auditing and player history
+        await this.db.exec(`
+        CREATE TABLE IF NOT EXISTS event_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            playerId TEXT NOT NULL,
+            byteId TEXT,
+            timestamp TEXT NOT NULL,
+            params TEXT
+        )
+        `);
+
+        // Table for long-term storage of merged/dead bytes, keeping primitive stats for family trees
+        await this.db.exec(`
+        CREATE TABLE IF NOT EXISTS archived_bytes (
+            id TEXT PRIMARY KEY,
+            ownerId TEXT NOT NULL,
+            name TEXT NOT NULL,
+            byteClass TEXT NOT NULL,
+            generation INTEGER NOT NULL,
+            level INTEGER NOT NULL,
+            birthDate TEXT NOT NULL,
+            deathDate TEXT NOT NULL,
+            archivedDate TEXT NOT NULL
+        )
+        `);
+
+        try {
+            await this.db.exec(`ALTER TABLE event_logs ADD COLUMN byteId TEXT`);
+        } catch (e) {
+            // Column might already exist
+        }
+
         await this.db.exec(`
         CREATE INDEX IF NOT EXISTS idx_bytes_ownerId ON bytes(ownerId);
         CREATE INDEX IF NOT EXISTS idx_bytes_alive_only ON bytes(ownerId) WHERE isAlive = 1;
         CREATE INDEX IF NOT EXISTS idx_players_lastAction ON players(lastAction);
+        CREATE INDEX IF NOT EXISTS idx_event_logs_playerId ON event_logs(playerId);
+        CREATE INDEX IF NOT EXISTS idx_event_logs_byteId ON event_logs(byteId);
+        CREATE INDEX IF NOT EXISTS idx_event_logs_type ON event_logs(type);
+        CREATE INDEX IF NOT EXISTS idx_archived_bytes_ownerId ON archived_bytes(ownerId);
         `);
     }
 
@@ -110,6 +147,16 @@ class DatabaseManager {
 
     async getAliveBytes() {
         const rows = await this.db.all('SELECT * FROM bytes WHERE isAlive = 1');
+        return rows.map((row) => this._parseByteData(row));
+    }
+
+    async getOldDeadBytes(days) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        const rows = await this.db.all(
+            `SELECT * FROM bytes WHERE isAlive = 0 AND lastInteraction < ?`,
+            [cutoffDate.toISOString()]
+        );
         return rows.map((row) => this._parseByteData(row));
     }
 
@@ -190,6 +237,7 @@ class DatabaseManager {
         return {
             ...data,
             inventory: this._safeParse(data.inventory),
+            energy: typeof data.energy === 'string' && data.energy.startsWith('{') ? this._safeParse(data.energy) : data.energy,
             history: this._safeParse(data.history),
             maxBytes: data.maxBytes || 2,
             lastAction: data.lastAction || new Date().toISOString(),
@@ -202,10 +250,13 @@ class DatabaseManager {
 
     async savePlayer(s) {
         return this.db.run(
-            `INSERT INTO players (id, inventory, energy, history, maxBytes, lastAction, talents, settings, achievements
+            `INSERT INTO players (id, inventory, energy, history, maxBytes, lastAction, talents, settings, achievements, hediffs)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET inventory = excluded.inventory, energy = excluded.energy, history = excluded.history, maxBytes = excluded.maxBytes, lastAction = excluded.lastAction, talents = excluded.talents, settings = excluded.settings, achievements = excluded.achievements, hediffs = excluded.hediffs`,
+            [
                 s.id,
                 JSON.stringify(s.inventory),
-                s.energy,
+                typeof s.energy === 'object' ? JSON.stringify(s.energy) : s.energy,
                 JSON.stringify(s.history || {}),
                 s.maxBytes,
                 s.lastAction,
@@ -213,7 +264,7 @@ class DatabaseManager {
                 JSON.stringify(s.settings || {}),
                 JSON.stringify(s.achievements || {}),
                 JSON.stringify(s.hediffs || {}),
-            ],
+            ]
         );
     }
 
@@ -225,6 +276,7 @@ class DatabaseManager {
         return rows.map((row) => ({
             ...row,
             inventory: this._safeParse(row.inventory),
+            energy: typeof row.energy === 'string' && row.energy.startsWith('{') ? this._safeParse(row.energy) : row.energy,
             history: this._safeParse(row.history),
             maxBytes: row.maxBytes || 2,
             lastAction: row.lastAction || new Date().toISOString(),
@@ -258,6 +310,40 @@ class DatabaseManager {
              VALUES (?, ?, ?)
              ON CONFLICT(chatId) DO UPDATE SET messageId = excluded.messageId, type = excluded.type`,
             [chatId.toString(), messageId, type],
+        );
+    }
+
+    // --- EVENT LOG QUERIES ---
+
+    async logEvent(type, playerId, byteId, params) {
+        const now = new Date().toISOString();
+        return this.db.run(
+            `INSERT INTO event_logs (type, playerId, byteId, timestamp, params) VALUES (?, ?, ?, ?, ?)`,
+            [type, playerId.toString(), byteId ? byteId.toString() : null, now, JSON.stringify(params)],
+        );
+    }
+
+    async getEventLogs(playerId, limit, offset) {
+        return this.db.all(
+            `SELECT * FROM event_logs WHERE playerId = ? ORDER BY timestamp DESC LIMIT ? OFFSET ?`,
+            [playerId.toString(), limit, offset]
+        );
+    }
+
+    async pruneOldEventLogs(days = 90) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        return this.db.run(
+            `DELETE FROM event_logs WHERE timestamp < ?`,
+            [cutoffDate.toISOString()]
+        );
+    }
+
+    async insertArchivedByte(b) {
+        return this.db.run(
+            `INSERT INTO archived_bytes (id, ownerId, name, byteClass, generation, level, birthDate, deathDate, archivedDate)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [b.id, b.ownerId, b.name, b.byteClass, b.generation, b.level, b.birthDate, b.deathDate, b.archivedDate]
         );
     }
 }

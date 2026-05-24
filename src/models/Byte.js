@@ -83,6 +83,17 @@ class Byte {
         this.generation = data.generation || 0;
         this.bufferOverflow = data.bufferOverflow || 0;
         this.pendingEvents = [];
+
+        // Handle daily resets for temporary byte mechanics
+        const today = new Date().toISOString().split('T')[0];
+        if (this.history['last_active_date'] !== today) {
+            for (const key of Object.keys(this.history)) {
+                if (key.startsWith('daily_') || key.startsWith('temp_')) {
+                    delete this.history[key];
+                }
+            }
+            this.history['last_active_date'] = today;
+        }
     }
 
     get investedBits() {

@@ -42,6 +42,12 @@ class Player {
             for (const key of Object.keys(this.history)) {
                 if (key.startsWith('shop_')) {
                     delete this.history[key];
+                } else if (key.startsWith('item_used_')) {
+                    const itemId = key.replace('item_used_', '');
+                    const item = ItemManager.getItem(itemId);
+                    if (!item || !item.isOnCooldown(this)) {
+                        delete this.history[key];
+                    }
                 }
             }
             this.history['last_login_date'] = today;

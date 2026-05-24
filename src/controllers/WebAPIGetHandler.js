@@ -7,6 +7,7 @@ const { checkRequirements } = require('../util/requirements');
 const GameContext = require('../models/GameContext');
 const GameObjectManager = require('../managers/GameObjectManager');
 const ByteClassManager = require('../managers/ByteClassManager');
+const dbManager = require('../database/db');
 
 /**
  * @mixin WebAPIGetHandler
@@ -322,6 +323,21 @@ const WebAPIGetHandler = {
         } catch (error) {
             console.error('Debug Data API Error:', error);
             res.status(500).json({ error: error.message });
+        }
+    },
+
+    async getPlayerLogs(req, res) {
+        try {
+            const playerId = req.params.id;
+            const page = parseInt(req.query.page) || 0;
+            const limit = 10;
+            const offset = page * limit;
+            
+            const logs = await dbManager.getEventLogs(playerId, limit, offset);
+            res.json(logs);
+        } catch (error) {
+            console.error('Failed to fetch player logs:', error);
+            res.status(500).json({ error: 'Failed to fetch logs' });
         }
     },
 };

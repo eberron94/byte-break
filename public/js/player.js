@@ -1,3 +1,6 @@
+let currentLogsPage = 0;
+let logsLoaded = false;
+
 async function showPlayer() {
     document.getElementById('main-view').style.display = 'none';
     const playerView = document.getElementById('player-view');
@@ -10,6 +13,9 @@ async function showPlayer() {
     } else {
         playerView.style.display = 'block';
     }
+
+    currentLogsPage = 0;
+    logsLoaded = false;
 
     try {
         // Fetch all required states concurrently for max performance
@@ -176,6 +182,94 @@ function renderPlayerStatus(player, bytes, achData, talData) {
         html += '<p style="font-size: 12px; color: #aaa;">No living bytes.</p>';
     }
 
+    // 6. Event Logs (Accordion)
+    html += `
+    <div class="section-title" style="margin-top: 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleLogs()">
+        <span>ACTIVITY LOGS</span>
+        <span id="logs-indicator">▶</span>
+    </div>
+    <div id="logs-container" style="display: none; margin-bottom: 20px;">
+        <div id="logs-list"></div>
+        <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+            <button class="btn" id="logs-prev-btn" onclick="loadLogs(-1)" style="width: 48%; display: none;">⬅️ Newer</button>
+            <button class="btn" id="logs-next-btn" onclick="loadLogs(1)" style="width: 48%; display: none;">Older ➡️</button>
+        </div>
+    </div>`;
+
     const playerContent = document.getElementById('player-content');
     if (playerContent) playerContent.innerHTML = html;
+}
+
+async function toggleLogs() {
+    const container = document.getElementById('logs-container');
+    const indicator = document.getElementById('logs-indicator');
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+        indicator.innerText = '▼';
+        if (!logsLoaded) {
+            await loadLogs(0);
+        }
+    } else {
+        container.style.display = 'none';
+        indicator.innerText = '▶';
+    }
+}
+
+async function loadLogs(direction) {
+    const prevPage = currentLogsPage;
+    currentLogsPage += direction;
+    if (currentLogsPage < 0) currentLogsPage = 0;
+    
+    try {
+        const res = await fetch(`/api/logs/${user.id}?page=${currentLogsPage}`);
+        if (!res.ok) throw new Error('Failed to fetch logs');
+        const logs = await res.json();
+        
+        const list = document.getElementById('logs-list');
+        let html = '';
+        
+        if (logs.length === 0) {
+            html = '<p style="font-size: 12px; color: #aaa;">No logs found.</p>';
+            if (currentLogsPage > 0) currentLogsPage = prevPage; // Revert if empty page
+        } else {
+            for (const log of logs) {
+                const d = new Date(log.timestamp);
+                let paramsHtml = '';
+                if (log.params) {
+                    try {
+                        const parsed = JSON.parse(log.params);
+                        const mapped = parsed.map(arg => {
+                            if (typeof arg === 'object' && arg !== null) {
+                                if (arg.type === 'Byte') return `Byte: ${arg.name}`;
+                                if (arg.type === 'Player') return `Player`;
+                                if (arg.name) return arg.name;
+                                if (arg.id) return arg.id;
+                                return JSON.stringify(arg);
+                            }
+                            return arg;
+                        });
+                        paramsHtml = mapped.join(' | ');
+                    } catch(e) {}
+                }
+                
+                html += `
+                <div style="background: #2a2a40; border: 1px solid #4d4d73; border-radius: 6px; padding: 8px; margin-bottom: 8px; font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong style="color: #2196f3;">${log.type}</strong>
+                        <span style="color: #888; font-size: 10px;">${d.toLocaleString()}</span>
+                    </div>
+                    ${paramsHtml ? `<div style="color: #ccc; word-break: break-word; margin-top: 5px;">${paramsHtml}</div>` : ''}
+                </div>`;
+            }
+        }
+        if (html) list.innerHTML = html;
+        
+        document.getElementById('logs-prev-btn').style.display = currentLogsPage > 0 ? 'block' : 'none';
+        document.getElementById('logs-next-btn').style.display = logs.length === 10 ? 'block' : 'none';
+        logsLoaded = true;
+    } catch(e) {
+        console.error(e);
+        const list = document.getElementById('logs-list');
+        list.innerHTML = '<p style="color:red;">Error loading logs.</p>';
+    }
 }
