@@ -1,4 +1,3 @@
-const { calculateEffects, applyEffects } = require('../util/effects');
 const { checkRequirements } = require('../util/requirements');
 const GameContext = require('./GameContext');
 const ItemManager = require('../managers/ItemManager');
@@ -71,6 +70,7 @@ class Activity {
      * Executes the activity, applies its effects, logs history, and consumes items.
      */
     perform(context, selectedItemId = null, override = false) {
+        const { calculateEffects, applyEffects } = require('../util/effects');
         // Enforce prerequisites unless override is true
         if (!this.canPerform(context) && !override)
             return { success: false, grantedLoot: null };

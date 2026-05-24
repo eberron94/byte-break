@@ -42,26 +42,24 @@ function generateTradingCard(byte) {
     });
 
     // Pools
-    const pools = [
-        {
+    const pools = [];
+    
+    if (status.pools.integrity) {
+        pools.push({
             label: 'Integrity',
             val: status.pools.integrity.value,
             max: status.pools.integrity.maxValue,
             color: '#f44336',
-        },
-        {
+        });
+    }
+    if (status.pools.teraflops) {
+        pools.push({
             label: 'TeraFlops',
             val: status.pools.teraflops.value,
             max: status.pools.teraflops.maxValue,
             color: '#3f51b5',
-        },
-        {
-            label: 'Bandwidth',
-            val: status.pools.bandwidth.value,
-            max: status.pools.bandwidth.maxValue,
-            color: '#8bc34a',
-        },
-    ];
+        });
+    }
 
     let poolsSvg = '';
     pools.forEach((pool, index) => {

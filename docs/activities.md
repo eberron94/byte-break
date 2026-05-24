@@ -46,8 +46,7 @@ When `isCombat` is `true`, the Web API expects a `combat` configuration object t
 | `scaleWithPlayer`         | Boolean | `true`             | If true, the enemy's pools will be calculated dynamically using multipliers against the player's own pools. If false, uses flat values. |
 | `hpMultiplier`            | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Integrity to determine the enemy's Integrity.                                   |
 | `tfMultiplier`            | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Teraflops to determine the enemy's Teraflops.                                   |
-| `bandwidthMultiplier`     | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Bandwidth to determine the enemy's Bandwidth.                                   |
-| `hp` / `tf` / `bandwidth` | Number  | `100`              | (If NOT scaling) Flat pool values for the enemy.                                                                                        |
+| `hp` / `tf`               | Number  | `100`              | (If NOT scaling) Flat pool values for the enemy.                                                                                        |
 | `skills`                  | Object  | `{}`               | An object overriding the enemy's specific invested skills (e.g., `{"assault": 10, "firewall": 5}`).                                     |
 | `winEffects`              | Array   | `[{...}]`          | An array of effects to apply to the player upon winning (typically `"loot"`).                                                           |
 

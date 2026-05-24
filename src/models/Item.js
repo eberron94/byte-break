@@ -1,4 +1,3 @@
-const { calculateEffects, applyEffects } = require('../util/effects');
 const GameContext = require('./GameContext');
 const LootManager = require('../managers/LootManager');
 
@@ -50,6 +49,7 @@ class Item {
 
     // Applies the item's configured effects to the byte and player
     use(context) {
+        const { calculateEffects, applyEffects } = require('../util/effects');
         if (this.isOnCooldown(context.player)) {
             throw new Error(
                 `Item is on cooldown. Wait ${this.getCooldownRemaining(context.player)} minute(s).`,

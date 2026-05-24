@@ -148,7 +148,6 @@
             { "type": "telemetry", "amount": 9999 },
             { "type": "integrity", "amount": 9999 },
             { "type": "teraflops", "amount": 9999 },
-            { "type": "bandwidth", "amount": 9999 },
             { "type": "energy", "amount": 9999 },
             { "type": "bits", "amount": 9999 }
         ]
@@ -188,12 +187,6 @@
         "name": "Fill Teraflops",
         "description": "Instantly fills the Teraflops pool.",
         "effects": [{ "type": "teraflops", "amount": 9999 }]
-    },
-    {
-        "id": "debug_fill_bandwidth",
-        "name": "Fill Bandwidth",
-        "description": "Instantly fills the Bandwidth pool.",
-        "effects": [{ "type": "bandwidth", "amount": 9999 }]
     },
     {
         "id": "debug_fill_bits",

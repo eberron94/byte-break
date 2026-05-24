@@ -217,6 +217,7 @@ const TelegramUIBuilders = {
                 },
             ]);
             inline_keyboard.push([
+                {
                     text: '🏆 Achievements',
                     web_app: {
                         url: `${webAppUrl}${separator}view=achievements`,

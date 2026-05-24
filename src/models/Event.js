@@ -1,4 +1,3 @@
-const { calculateEffects, applyEffects } = require('../util/effects');
 const { checkRequirements } = require('../util/requirements');
 const LootManager = require('../managers/LootManager');
 
@@ -29,6 +28,7 @@ class Event {
      * and potentially giving/taking items from the player's inventory.
      */
     occur(context) {
+        const { calculateEffects, applyEffects } = require('../util/effects');
         if (!this.canOccur(context))
             return { success: false, grantedLoot: null };
 

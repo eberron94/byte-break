@@ -125,7 +125,10 @@ const WebAPIPostHandler = {
             const newLevel = playerByte.level;
 
             if (newLevel > previousLevel) {
-                playerByte.pendingEvents.push({ event: GameEvents.LEVEL_UP, args: [userId, newLevel, playerByte.name] });
+                playerByte.pendingEvents.push({
+                    event: GameEvents.LEVEL_UP,
+                    args: [userId, newLevel, playerByte.name],
+                });
             }
 
             await this.gameManager.saveByte(playerByte);
@@ -296,7 +299,10 @@ const WebAPIPostHandler = {
             player.removeItem(itemId, 1);
             byte.pools.bits.increase(sellPrice);
             if (!wasFull && byte.pools.bits.value >= byte.pools.bits.maxValue) {
-                byte.pendingEvents.push({ event: 'BIT_BUFFER_FULL', args: [userId, byte] });
+                byte.pendingEvents.push({
+                    event: 'BIT_BUFFER_FULL',
+                    args: [userId, byte],
+                });
             }
 
             await this.gameManager.saveByte(byte);
@@ -346,7 +352,6 @@ const WebAPIPostHandler = {
                 scaleWithPlayer: true,
                 hpMultiplier: 1.0,
                 tfMultiplier: 1.0,
-                bandwidthMultiplier: 1.0,
                 winEffects: [{ type: 'loot', table: 'dojo_win_normal' }],
             };
 
@@ -368,15 +373,6 @@ const WebAPIPostHandler = {
                       ),
                   )
                 : combatConfig.tf || 100;
-            const eBw = combatConfig.scaleWithPlayer
-                ? Math.max(
-                      1,
-                      Math.floor(
-                          (playerByte.pools.bandwidth?.maxValue || 100) *
-                              (combatConfig.bandwidthMultiplier || 1),
-                      ),
-                  )
-                : combatConfig.bandwidth || 100;
 
             const enemyByte = ByteBuilder.default(
                 'npc_dummy',
@@ -386,7 +382,6 @@ const WebAPIPostHandler = {
                 .withPools({
                     integrity: { value: eHp, maxValue: eHp },
                     teraflops: { value: eTf, maxValue: eTf },
-                    bandwidth: { value: eBw, maxValue: eBw },
                     bits: { value: 0, maxValue: 100 },
                 })
                 .build();
@@ -421,7 +416,10 @@ const WebAPIPostHandler = {
             // Reward Bits if won
             if (result.winner === 'player') {
                 const context = new GameContext(playerByte, player);
-                const calculatedWinEffects = calculateEffects(result.winEffects, context);
+                const calculatedWinEffects = calculateEffects(
+                    result.winEffects,
+                    context,
+                );
                 const grantedLoot = LootManager.processLoot(
                     calculatedWinEffects,
                     player,
@@ -519,8 +517,14 @@ const WebAPIPostHandler = {
             const context = new GameContext(byte, player);
 
             if (!checkRequirements(talent.requirements, context)) {
-                const reqStr = GameObjectManager.formatRequirementsList(talent.requirements);
-                return res.status(400).json({ error: `Prerequisites not met.\nRequires:\n• ${reqStr}` });
+                const reqStr = GameObjectManager.formatRequirementsList(
+                    talent.requirements,
+                );
+                return res
+                    .status(400)
+                    .json({
+                        error: `Prerequisites not met.\nRequires:\n• ${reqStr}`,
+                    });
             }
 
             player.talents[talentId] = currentLevel + 1;
@@ -670,13 +674,19 @@ const WebAPIPostHandler = {
                                         await this.gameManager.getByte(userId);
                                 const context = new GameContext(byte, player);
                                 const calculatedEffects = calculateEffects(
-                                    tierData.effects, context
+                                    tierData.effects,
+                                    context,
                                 );
-                                const success = applyEffects(calculatedEffects, context);
+                                const success = applyEffects(
+                                    calculatedEffects,
+                                    context,
+                                );
                                 if (success && byte) byteModified = true;
                             }
 
-                            player.history[`ach_unlocked_${ach.id}_tier_${i + 1}`] = new Date().toISOString();
+                            player.history[
+                                `ach_unlocked_${ach.id}_tier_${i + 1}`
+                            ] = new Date().toISOString();
 
                             this.gameManager.emit(
                                 GameEvents.ACHIEVEMENT_UNLOCKED,
