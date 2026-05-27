@@ -29,5 +29,20 @@
         "localOverrides": {
             "timePhase": "night"
         }
+    },
+    {
+        "id": "lucky",
+        "name": "Lucky",
+        "description": "The network favors you. Increased curiosity and spontaneous bit generation.",
+        "decay": {
+            "action": "reduce",
+            "ticks": 60
+        },
+        "modifiers": [
+            { "type": "stat", "key": "curiosity", "amount": 5 }
+        ],
+        "tickEffects": [
+            { "type": "bits", "amount": 5, "ticksPerTrigger": 10 }
+        ]
     }
 ]

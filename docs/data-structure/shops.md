@@ -17,6 +17,7 @@ The file should contain a single JSON array composed of Shop objects.
 | `sellMultiplier`  | Number | `0.5`    | A modifier applied to the base `cost` of items when the player **sells** them. `0.5` means the player gets half the base value back.         |
 | `timeAvailable`   | Object | `{}`     | A scheduling object determining when the shop is open. See the **Availability Schedule** section below.                                      |
 | `stock`           | Object | `{}`     | A mapping of item IDs to their maximum stock limit per player. See the **Limited Stock** section below.                                      |
+| `defaultStock`    | Number | `null`   | A global stock limit applied to *all* items in the shop unless explicitly overridden in the `stock` object.                                  |
 | `requirements`    | Array  | `[]`     | Constraints the player/byte must meet for the shop to appear. See the **Appearance Requirements** section below.                             |
 
 ---
@@ -34,7 +35,7 @@ You can restrict a shop so it only opens on certain days of the week or times of
 
 ## Limited Stock (`stock`)
 
-You can prevent players from buying an infinite amount of powerful items by defining a `stock` cap. The stock limit is tracked per player in their `history` object and persists forever (unless reset by a specific game mechanic or admin command).
+You can prevent players from buying an infinite amount of powerful items by defining a `stock` cap or a `defaultStock`. The stock limit is tracked per player in their `history` object and persists forever (unless reset by a specific game mechanic or admin command).
 
 ```json
 "stock": {
@@ -114,4 +115,24 @@ An elite vendor that only talks to Bytes with high logic. Sells powerful, strict
         }
     ]
 }
+```
+
+### 4. Conditional Hidden Shop (Lucky Shop)
+
+A shop that only appears if the player has a specific status effect ("Lucky"). It dynamically stocks all items from the `"consumable"` category at half price, and enforces a universal stock limit of 1 on every item via `defaultStock`.
+
+```json
+{
+    "id": "lucky_shop",
+    "name": "Lucky Shop",
+    "description": "A mysterious vendor that only appears to those favored by the network.",
+    "categories": ["consumable"],
+    "priceMultiplier": 0.5,
+    "sellMultiplier": 0.5,
+    "defaultStock": 1,
+    "requirements": [
+        { "type": "hediff", "id": "lucky", "minStacks": 1 }
+    ]
+}
+```
 ```

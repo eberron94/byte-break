@@ -194,9 +194,10 @@ const WebAPIPostHandler = {
                 return res.status(400).json({ error: 'Insufficient bits' });
             }
 
-            if (shop.stock[itemId] !== undefined) {
+            const itemStock = shop.stock[itemId] !== undefined ? shop.stock[itemId] : shop.defaultStock;
+            if (itemStock !== undefined) {
                 const bought = player.history[`shop_${shop.id}_${itemId}`] || 0;
-                if (bought >= shop.stock[itemId]) {
+                if (bought >= itemStock) {
                     return res.status(400).json({ error: 'Item is sold out' });
                 }
             }
@@ -230,7 +231,7 @@ const WebAPIPostHandler = {
             }
             player.addItem(itemId, 1, ItemManager);
 
-            if (shop.stock[itemId] !== undefined) {
+            if (itemStock !== undefined) {
                 player.recordHistory(`shop_${shop.id}_${itemId}`);
             }
 

@@ -1,110 +1,87 @@
 # Hediffs Configuration (`hediffs.json`)
 
-The `hediffs.json` file defines all "Health Differences" (Hediffs)—which include buffs, debuffs, status conditions, and progressive diseases that can affect a Byte. Hediffs can passively alter core stats, modify maximum capacities, or cause damage/healing over time via the global tick loop.
+The `hediffs.json` file defines "Status Effects" (Health Differentials) that can be applied to Bytes or Players. Hediffs can provide passive stat modifiers, trigger recurring effects over time, override environmental variables, and naturally decay or escalate.
 
 The file should contain a single JSON array composed of Hediff objects.
 
 ## Hediff Object Properties
 
-| Property      | Type   | Default      | Description                                                                                                                   |
-| :------------ | :----- | :----------- | :---------------------------------------------------------------------------------------------------------------------------- |
-| `id`          | String | **Required** | The unique identifier for the hediff (e.g., `"overclocked"`, `"stunned"`).                                                    |
-| `name`        | String | **Required** | The display title of the status condition in the UI.                                                                          |
-| `description` | String | `""`         | The mechanical description or flavor text of the condition.                                                                   |
-| `maxStacks`   | Number | `undefined`  | The maximum number of stacks this condition can accumulate before it caps out (or evolves into the `nextTier`).               |
-| `nextTier`    | String | `null`       | The ID of the Hediff to evolve into if a player gains a stack that pushes them over `maxStacks`.                              |
-| `prevTier`    | String | `null`       | The ID of the Hediff to regress into if this condition's stacks drop to `0`. If omitted, the condition simply disappears.     |
-| `modifiers`   | Array  | `[]`         | An array of modifier objects applied instantly and persistently to the Byte's limits or stats. See the **Modifiers** section. |
-| `tickEffects` | Array  | `[]`         | An array of effect objects applied passively to the Byte over time while the condition persists. See Effects Configuration.   |
+| Property         | Type   | Default | Description                                                                                                    |
+| :--------------- | :----- | :------ | :------------------------------------------------------------------------------------------------------------- |
+| `id`             | String | **Req.**| The unique identifier for the status effect.                                                                   |
+| `name`           | String | **Req.**| The display title of the status effect shown in the UI.                                                        |
+| `description`    | String | `""`    | The flavor text describing the condition.                                                                      |
+| `maxStacks`      | Number | `null`  | The maximum number of stacks this condition can reach before being capped (or escalating to the next tier).    |
+| `nextTier`       | String | `null`  | If provided, reaching `maxStacks` + 1 will automatically cure this condition and apply 1 stack of this new ID. |
+| `prevTier`       | String | `null`  | If provided, reducing this condition below 1 stack will apply the max stacks of this previous ID instead.      |
+| `modifiers`      | Array  | `[]`    | An array of passive stat/skill modifier objects.                                                               |
+| `tickEffects`    | Array  | `[]`    | An array of effect objects applied every game tick while this condition is active.                             |
+| `decay`          | Object | `null`  | Configuration for how and when this status effect naturally cures or reduces itself.                           |
+| `localOverrides` | Object | `{}`    | A dictionary of environment variables to inject into the `GameContext` (e.g., forcing it to be "night").       |
 
 ---
 
-## Modifiers Configuration
+## Modifiers Array
 
-Modifiers natively hook into the Byte's getters. Unlike `tickEffects` which apply flat values (like healing or damage) over time, `modifiers` persistently raise or lower a Byte's effective limit as long as the status condition remains active.
+Modifiers are passive boosts or penalties applied strictly while the Hediff is active. They are dynamically evaluated on demand without permanently altering the underlying save file.
 
-| Property | Type          | Description                                                                                                                                      |
-| :------- | :------------ | :----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`   | String        | The system archetype being modified. Valid types are `"pool"`, `"stat"`, `"skill"`, `"need_max"`, and `"need_decay"`.                            |
-| `key`    | String        | The specific ID of the attribute being modified (e.g., `"integrity"`, `"logic"`, `"charge"`).                                                    |
-| `amount` | Number/String | The amount to dynamically modify the getter by. Supports math expressions. You can use the `stacks` context variable to scale the penalty/bonus! |
-
----
-
-## The Stack and Tier System
-
-Hediffs in Tele-grow operate on a stack-based severity model. When an item or event applies a Hediff with the `"escalate"` action, the stack count increases. If the `"reduce"` action is used, it decreases.
-
-- **Capping:** If `nextTier` is omitted, the stack count will simply halt at `maxStacks`.
-- **Evolving (`nextTier`):** If a Hediff surpasses its `maxStacks` limit and has a `nextTier` defined, the current condition is completely deleted, and the new condition is applied starting at 1 stack.
-- **Regressing (`prevTier`):** If a Hediff's stack count drops to `0`, it is normally removed. However, if `prevTier` is defined, the condition downgrades into the previous tier and is assigned its maximum possible stack limit.
+| Property | Type   | Description                                                                              |
+| :------- | :----- | :--------------------------------------------------------------------------------------- |
+| `type`   | String | The category of the target being modified (`"stat"`, `"skill"`, `"pool"`).               |
+| `key`    | String | The specific target ID (e.g., `"logic"`, `"assault"`).                                   |
+| `amount` | String | A math expression evaluating the modifier amount (e.g., `"-5 * stacks"`).                |
 
 ---
 
-## Environment Context in Expressions
+## Decay Configuration (`decay`)
 
-When writing math expressions inside `modifiers` or `tickEffects`, you have access to the standard context variables (`byte`, `player`, `timePhase`, `dayOfWeek`), as well as a special **`stacks`** variable.
+The `decay` object allows a status effect to automatically manage its own lifespan without needing external events or manual item usage.
 
-- `stacks`: The current number of stacks the Byte has of this specific Hediff.
+| Property       | Type          | Default    | Description                                                                                                       |
+| :------------- | :------------ | :--------- | :---------------------------------------------------------------------------------------------------------------- |
+| `action`       | String        | `"remove"` | What happens when the decay triggers. Can be `"remove"` (cure completely) or `"reduce"` (lose 1 stack).           |
+| `ticks`        | Number/String | `null`     | The number of global ticks the condition must be alive before it decays. Supports math expressions.               |
+| `requirements` | Array         | `[]`       | A standard requirements array. If these evaluate to true during a tick, the decay triggers instantly.             |
 
 ---
 
 ## Examples
 
-### 1. Basic Temporary Buff (Overclock)
+### 1. Temporary Account Buff (Player Hediff)
 
-A simple buff that gives the Byte a massive boost to their maximum TeraFlops capacity. Since `maxStacks` is not defined, it can be stacked infinitely to keep boosting the pool!
+A "Weekend Pass" that grants special access, automatically deleting itself when Monday arrives.
+
+```json
+{
+    "id": "weekend_pass",
+    "name": "Weekend Access Pass",
+    "description": "Grants access to premium weekend facilities.",
+    "decay": {
+        "action": "remove",
+        "requirements": [
+            { "type": "dayOfWeek", "days": [1, 2, 3, 4, 5] }
+        ]
+    }
+}
+```
+
+### 2. Escalating Condition
+
+A buff that increases stats but causes thermal damage over time. If stacked too high, it turns into a severe meltdown.
 
 ```json
 {
     "id": "overclocked",
     "name": "Overclocked",
-    "description": "System limits are bypassed. Max Teraflops significantly increased.",
+    "description": "Running beyond safe limits. Increased stats but higher thermal load.",
+    "maxStacks": 3,
+    "nextTier": "melted_down",
     "modifiers": [
-        {
-            "type": "pool",
-            "key": "teraflops",
-            "amount": "25 * stacks"
-        }
-    ]
-}
-```
-
-### 2. Tier 1 Progressive Disease (Minor Viral Infection)
-
-A debuff that slightly hurts the Byte's Integrity over time. If the infection reaches 3 stacks (e.g., from failing to cure it and letting it escalate), it evolves into a Severe Infection.
-
-```json
-{
-    "id": "viral_infection_minor",
-    "name": "Minor Viral Infection",
-    "description": "A parasitic background process draining Integrity.",
-    "maxStacks": 2,
-    "nextTier": "viral_infection_severe",
-    "tickEffects": [{ "type": "integrity", "amount": -2 }]
-}
-```
-
-### 3. Tier 2 Progressive Disease (Severe Viral Infection)
-
-The evolution of the previous disease. It drastically lowers maximum bandwidth, deals severe damage over time, and if the player manages to reduce it (e.g., by using an Antivirus item), it correctly drops back down into the Minor infection!
-
-```json
-{
-    "id": "viral_infection_severe",
-    "name": "Severe Viral Infection",
-    "description": "Core processes are critically compromised.",
-    "maxStacks": 5,
-    "prevTier": "viral_infection_minor",
-    "modifiers": [
-        {
-            "type": "pool",
-            "key": "bandwidth",
-            "amount": "-10 * stacks"
-        }
+        { "type": "stat", "key": "logic", "amount": "1 * stacks" },
+        { "type": "skill", "key": "assault", "amount": "2 * stacks" }
     ],
     "tickEffects": [
-        { "type": "integrity", "amount": -10, "ticksPerTrigger": 2 }
+        { "type": "thermal", "amount": "-5 * stacks" }
     ]
 }
 ```

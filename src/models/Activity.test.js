@@ -171,6 +171,25 @@ describe('Activity Model', () => {
                 expect(mockItem.use).toHaveBeenCalledWith(mockContext);
                 expect(mockContext.player.removeItem).not.toHaveBeenCalled();
             });
+
+            it('should consume the item if activity itemSelect overrides isConsumed to true', () => {
+                const activity = new Activity({ id: 'toss_coin', name: 'Toss Coin', itemSelect: { type: 'currency', isConsumed: true } });
+                
+                const mockItem = {
+                    type: 'currency',
+                    isOnCooldown: jest.fn().mockReturnValue(false),
+                    use: jest.fn().mockReturnValue({ success: true }),
+                    isConsumed: false // The item itself does not get consumed natively
+                };
+                ItemManager.getItem.mockReturnValue(mockItem);
+                mockContext.player.hasItem.mockReturnValue(true);
+                mockContext.player.inventory = { 'gold_coin': 1 };
+
+                activity.perform(mockContext, 'gold_coin');
+
+                expect(mockItem.use).toHaveBeenCalledWith(mockContext);
+                expect(mockContext.player.removeItem).toHaveBeenCalledWith('gold_coin', 1);
+            });
         });
     });
 });

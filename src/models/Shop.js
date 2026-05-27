@@ -15,6 +15,7 @@ class Shop {
             data.sellMultiplier !== undefined ? data.sellMultiplier : 0.5;
         this.requirements = data.requirements || [];
         this.stock = data.stock || {};
+        this.defaultStock = data.defaultStock;
     }
 
     canAppear(context) {
@@ -59,12 +60,13 @@ class Shop {
             })
             .map((item) => {
                 let remainingStock = undefined;
-                if (this.stock[item.id] !== undefined) {
+                const itemStock = this.stock[item.id] !== undefined ? this.stock[item.id] : this.defaultStock;
+                if (itemStock !== undefined) {
                     const bought =
                         player && player.history
                             ? player.history[`shop_${this.id}_${item.id}`] || 0
                             : 0;
-                    remainingStock = Math.max(0, this.stock[item.id] - bought);
+                    remainingStock = Math.max(0, itemStock - bought);
                 }
                 return {
                     ...item,

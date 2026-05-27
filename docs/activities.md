@@ -26,15 +26,13 @@ The file should contain a single JSON array composed of Activity objects.
 
 If an activity requires the player to sacrifice or use a specific item (like feeding the Byte or installing a module), you can define the `itemSelect` object. The UI will automatically filter the player's inventory and prompt them to pick a valid item.
 
-If the selected item has `"isConsumed": true` in `items.json`, it will automatically be removed from the player's inventory upon successful execution.
+If the `itemSelect` configuration has `"isConsumed": true`, or the item itself has `"isConsumed": true` in `items.json`, it will automatically be removed from the player's inventory upon successful execution.
 
-**Dynamic Context:** When an activity uses `itemSelect`, the specific item chosen by the player is injected into the math evaluator as `item`. You can use this to dynamically scale effects based on the item's properties (like `item.cost`).
-
-
-| Property | Type   | Description                                                                                      |
-| :------- | :----- | :----------------------------------------------------------------------------------------------- |
-| `type`   | String | Filters the selection to only allow items of this specific type (e.g., `"consumable"`, `"key"`). |
-| `ids`    | Array  | Filters the selection to only allow items that match these specific string IDs.                  |
+| Property     | Type    | Description                                                                                                                    |
+| :----------- | :------ | :----------------------------------------------------------------------------------------------------------------------------- |
+| `type`       | String  | Filters the selection to only allow items of this specific type (e.g., `"consumable"`, `"key"`).                               |
+| `ids`        | Array   | Filters the selection to only allow items that match these specific string IDs.                                                |
+| `isConsumed` | Boolean | If `true`, the selected item will be removed from the player's inventory, overriding the item's default `isConsumed` behavior. |
 
 ---
 
@@ -42,16 +40,16 @@ If the selected item has `"isConsumed": true` in `items.json`, it will automatic
 
 When `isCombat` is `true`, the Web API expects a `combat` configuration object to generate the NPC opponent.
 
-| Property                  | Type    | Default            | Description                                                                                                                             |
-| :------------------------ | :------ | :----------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| `enemyName`               | String  | `"Training Virus"` | The display name of the opponent.                                                                                                       |
-| `enemyClass`              | String  | `"virus"`          | The class of the opponent, which dictates their avatar appearance.                                                                      |
-| `scaleWithPlayer`         | Boolean | `true`             | If true, the enemy's pools will be calculated dynamically using multipliers against the player's own pools. If false, uses flat values. |
-| `hpMultiplier`            | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Integrity to determine the enemy's Integrity.                                   |
-| `tfMultiplier`            | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Teraflops to determine the enemy's Teraflops.                                   |
-| `hp` / `tf`               | Number  | `100`              | (If NOT scaling) Flat pool values for the enemy.                                                                                        |
-| `skills`                  | Object  | `{}`               | An object overriding the enemy's specific invested skills (e.g., `{"assault": 10, "firewall": 5}`).                                     |
-| `winEffects`              | Array   | `[{...}]`          | An array of effects to apply to the player upon winning (typically `"loot"`).                                                           |
+| Property          | Type    | Default            | Description                                                                                                                             |
+| :---------------- | :------ | :----------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| `enemyName`       | String  | `"Training Virus"` | The display name of the opponent.                                                                                                       |
+| `enemyClass`      | String  | `"virus"`          | The class of the opponent, which dictates their avatar appearance.                                                                      |
+| `scaleWithPlayer` | Boolean | `true`             | If true, the enemy's pools will be calculated dynamically using multipliers against the player's own pools. If false, uses flat values. |
+| `hpMultiplier`    | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Integrity to determine the enemy's Integrity.                                   |
+| `tfMultiplier`    | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Teraflops to determine the enemy's Teraflops.                                   |
+| `hp` / `tf`       | Number  | `100`              | (If NOT scaling) Flat pool values for the enemy.                                                                                        |
+| `skills`          | Object  | `{}`               | An object overriding the enemy's specific invested skills (e.g., `{"assault": 10, "firewall": 5}`).                                     |
+| `winEffects`      | Array   | `[{...}]`          | An array of effects to apply to the player upon winning (typically `"loot"`).                                                           |
 
 ---
 
@@ -147,24 +145,4 @@ Starts a hacking minigame. It dynamically determines the minigame configuration 
         "winEffects": [{ "type": "bits", "amount": 250 }]
     }
 }
-```
-
-### 5. Dynamic Item Consumption (Wishing Well)
-
-An activity that forces the player to select a `"currency"` item and consumes it. It then dynamically scales the amount of "Lucky" status stacks the player receives based on the monetary value of the coin they tossed in!
-
-```json
-{
-    "id": "wishing_well",
-    "name": "Toss Coin",
-    "description": "Toss a currency item into the roaming digital well to gain its favor.",
-    "itemSelect": {
-        "type": "currency",
-        "isConsumed": true
-    },
-    "effects": [
-        { "type": "hediff", "id": "lucky", "action": "escalate", "amount": "Math.max(1, Math.floor(item.cost / 100))" }
-    ]
-}
-```
 ```

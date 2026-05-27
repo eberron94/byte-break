@@ -308,5 +308,15 @@
             }
         ],
         "effects": [{ "type": "energy", "amount": -5 }]
+    },
+    {
+        "id": "wishing_well",
+        "name": "Toss Coin",
+        "description": "Toss a currency item into the roaming digital well to gain its favor.",
+        "itemSelect": {
+            "type": "currency",
+            "isConsumed": true
+        },
+        "effects": [{ "type": "hediff", "id": "lucky", "action": "escalate", "amount": "Math.max(1, Math.floor(item.cost / 100))" }]
     }
 ]

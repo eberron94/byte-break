@@ -71,12 +71,14 @@ function calculateEffects(effects, context) {
                 calculated.hediffs.push({
                     id: effect.id,
                     action: effect.action || 'escalate',
+                    amount: effect.amount !== undefined ? evaluateExpression(effect.amount, context) : 1
                 });
             } else if (key === 'player_hediff') {
                 if (!calculated.player_hediffs) calculated.player_hediffs = [];
                 calculated.player_hediffs.push({
                     id: effect.id,
                     action: effect.action || 'escalate',
+                    amount: effect.amount !== undefined ? evaluateExpression(effect.amount, context) : 1
                 });
             } else {
                 if (effect.amount !== undefined) {

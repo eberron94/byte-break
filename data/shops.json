@@ -48,5 +48,21 @@
         "sellMultiplier": 0.2,
         "requirements": {},
         "stock": {}
+    },
+    {
+        "id": "lucky_shop",
+        "name": "Lucky Shop",
+        "description": "A mysterious vendor that only appears to those favored by the network. Everything is half price, but stock is strictly limited!",
+        "categories": ["consumable"],
+        "priceMultiplier": 0.5,
+        "sellMultiplier": 0.5,
+        "defaultStock": 1,
+        "requirements": [
+            {
+                "type": "hediff",
+                "id": "lucky",
+                "minStacks": 1
+            }
+        ]
     }
 ]

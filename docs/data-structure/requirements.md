@@ -16,6 +16,7 @@ Many requirement fields (`min`, `max`, `rank`, `level`, etc.) support dynamic ma
 | `"achievement"`                            | `id`            | Checks if the player has unlocked a certain achievement tier. Accepts `rank`.                       |
 | `"talent"`                                 | `id`            | Checks the player's invested talent level. Accepts `level`.                                         |
 | `"hediff"`                                 | `id`            | Checks the stack count of a status effect on the Byte. Accepts `minStacks` and `maxStacks`.         |
+| `"player_hediff"`                          | `id`            | Checks the stack count of a status effect on the Player. Accepts `minStacks` and `maxStacks`.       |
 | `"timePhase"`                              | `phases`        | An array of valid time phases. Valid phases: `"day"`, `"evening"`, `"night"`.                       |
 | `"dayOfWeek"`                              | `days`          | An array of valid days (0-6, where 0 is Sunday).                                                    |
 
@@ -29,3 +30,4 @@ When writing math expressions inside `requirements`, you have access to the foll
 - `player`: The owner (e.g., `player.energy.value`, `player.inventory.basic_patch`).
 - `timePhase`: The current time block (`"day"`, `"evening"`, `"night"`).
 - `dayOfWeek`: The current day of the week (Integer 0-6).
+- `item`: The currently selected item (Only available during `itemSelect` Activities).

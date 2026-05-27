@@ -75,6 +75,14 @@ class Activity {
         if (!this.canPerform(context) && !override)
             return { success: false, grantedLoot: null };
 
+        // Inject the selected item into context locals for dynamic effect evaluation
+        if (this.itemSelect && selectedItemId && context.player) {
+            const item = ItemManager.getItem(selectedItemId);
+            if (item) {
+                context.locals.item = item;
+            }
+        }
+
         const calculatedEffects = calculateEffects(this.effects, context);
 
         let grantedLoot = null;
@@ -100,8 +108,9 @@ class Activity {
                 if (item && context.player.hasItem(selectedItemId, 1)) {
                     try {
                         const result = item.use(context);
-                        // Only remove the item if it's consumed
-                        if (result && result.success && item.isConsumed) {
+                        
+                        const shouldConsume = this.itemSelect.isConsumed !== undefined ? this.itemSelect.isConsumed : item.isConsumed;
+                        if (result && result.success && shouldConsume) {
                             context.player.removeItem(selectedItemId, 1);
                         }
                     } catch (err) {

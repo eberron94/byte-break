@@ -154,11 +154,13 @@ class Player {
             const hDef = HediffManager.getHediff(h.id);
             if (!hDef) continue;
 
+            const amount = h.amount !== undefined ? h.amount : 1;
+
             if (h.action === 'escalate') {
                 if (!this.hediffs[h.id])
-                    this.hediffs[h.id] = { stacks: 1, ticksAlive: 0 };
+                    this.hediffs[h.id] = { stacks: amount, ticksAlive: 0 };
                 else {
-                    this.hediffs[h.id].stacks += 1;
+                    this.hediffs[h.id].stacks += amount;
                     this.hediffs[h.id].ticksAlive = 0;
                 }
 
@@ -180,7 +182,7 @@ class Player {
                 }
             } else if (h.action === 'reduce') {
                 if (this.hediffs[h.id]) {
-                    this.hediffs[h.id].stacks -= 1;
+                    this.hediffs[h.id].stacks -= amount;
                     this.hediffs[h.id].ticksAlive = 0;
                     if (this.hediffs[h.id].stacks <= 0) {
                         this.pendingEvents.push({ event: 'PLAYER_HEDIFF_EXPIRED', args: [this.id, hDef] });

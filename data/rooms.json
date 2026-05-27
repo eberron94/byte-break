@@ -9,7 +9,7 @@
         "id": "cooling_chamber",
         "name": "Cooling Chamber",
         "description": "A frigid room filled with liquid nitrogen vats.",
-        "allowedActivities": ["flush_coolant"]
+        "allowedActivities": ["flush_coolant", "wishing_well"]
     },
     {
         "id": "memory_bank",
