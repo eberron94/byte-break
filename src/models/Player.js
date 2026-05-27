@@ -63,6 +63,10 @@ class Player {
         const wasFull = this.energy.value >= this.energy.maxValue;
         this.energy.increase(1);
 
+        if (process.env.DEBUG_INF_ENERGY === 'true') {
+            this.energy.value = this.energy.maxValue;
+        }
+
         if (!wasFull && this.energy.value >= this.energy.maxValue) {
             this.pendingEvents.push({ event: 'ENERGY_FULL', args: [this.id] });
         }

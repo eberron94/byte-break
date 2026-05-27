@@ -482,7 +482,7 @@
                 id="btn-finish"
                 class="btn"
                 style="display: none"
-                onclick="closeWebView()"
+                onclick="finishCombatAndClose()"
             >
                 Extract Data & Disconnect
             </button>
@@ -508,6 +508,15 @@
         <script src="js/settings.js"></script>
         <script src="js/player.js"></script>
         <script src="js/debug.js"></script>
+        <script>
+            function finishCombatAndClose() {
+                fetch('/api/ui/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id, isCombatFinish: true })
+                }).then(() => closeWebView());
+            }
+        </script>
         <script src="app.js"></script>
     </body>
 </html>

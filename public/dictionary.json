@@ -58,5 +58,29 @@
     "Energy": [
         "The personal stamina of the Player.",
         "Energy (ε) is consumed when merging Bytes or performing certain minigames and activities. It slowly regenerates over time, and active players are occasionally rewarded with bonus Energy bursts."
+    ],
+    "Achievement Points": [
+        "Special currency (α) earned by unlocking achievements.",
+        "Used to purchase permanent account-wide Talents."
+    ],
+    "Buffer Overflow": [
+        "Extra bits retained when a Byte's Bit Buffer exceeds its maximum capacity, or when a Byte is Rebooted.",
+        "Used to pay for future upgrades without needing to grind for capacity."
+    ],
+    "Status Effects": [
+        "Temporary or permanent conditions that apply passive modifiers to a Byte or Player.",
+        "They can escalate in severity or naturally decay over time depending on their type."
+    ],
+    "System Dormant": [
+        "A state triggered when one of a Byte's core needs reaches 0.",
+        "Passive operations and status conditions are suspended until the Byte's needs are met."
+    ],
+    "Talents": [
+        "Permanent, account-wide upgrades purchased using Achievement Points.",
+        "They provide powerful passive bonuses to all of your Bytes."
+    ],
+    "Generation": [
+        "Indicates how many times a Byte's lineage has been merged.",
+        "Higher generations inherit more stats and pass down stronger bonuses."
     ]
 }

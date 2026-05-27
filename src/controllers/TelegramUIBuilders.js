@@ -167,7 +167,7 @@ const TelegramUIBuilders = {
         text += `\n━━━━━━━━━━━━━━━━━━━━━\n⚡ **Player Energy:** ${player.energy.value}/${player.energy.maxValue} ε\n🌟 **Achievement Points:** ${player.achievementPoints.available}/${player.achievementPoints.value} α`;
 
         if (lastActionMessage) {
-            text += `\n📢 **Last Action:** ${lastActionMessage}`;
+            text += `\n━━━━━━━━━━━━━━━━━━━━━\n📢 **Last Action:**\n${lastActionMessage}`;
         }
 
         const inline_keyboard = [];

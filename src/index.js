@@ -3,6 +3,28 @@ require('dotenv').config();
 // Disable node-telegram-bot-api deprecation warning for file Buffers
 process.env.NTBA_FIX_350 = '1';
 
+// --- Parse Launch Server Settings ---
+const envArgs = process.env.args || process.env.ARGS || '';
+const cliArgs = process.argv.slice(2).join(' ');
+const launchArgs = `${envArgs} ${cliArgs}`.toLowerCase();
+
+if (launchArgs.includes('inf_needs')) {
+    console.log('[Debug] Infinite Needs enabled.');
+    process.env.DEBUG_INF_NEEDS = 'true';
+}
+if (launchArgs.includes('inf_energy')) {
+    console.log('[Debug] Infinite Energy enabled.');
+    process.env.DEBUG_INF_ENERGY = 'true';
+}
+if (launchArgs.includes('inf_bits')) {
+    console.log('[Debug] Infinite Bits enabled.');
+    process.env.DEBUG_INF_BITS = 'true';
+}
+if (launchArgs.includes('inf_integrity')) {
+    console.log('[Debug] Infinite Integrity enabled.');
+    process.env.DEBUG_INF_INTEGRITY = 'true';
+}
+
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const cors = require('cors');
@@ -86,9 +108,13 @@ async function start() {
     webApiController.init();
 
     const PORT = process.env.PORT || 3000;
-    // Bind explicitly to IPv4 localhost to prevent Cloudflare Tunnel connection drops
-    app.listen(PORT, '127.0.0.1', () => {
-        console.log(`Web server listening on port ${PORT}`);
+    
+    // Bind explicitly to IPv4 localhost and wait for it to be ready before starting the tunnel
+    await new Promise((resolve) => {
+        app.listen(PORT, '127.0.0.1', () => {
+            console.log(`Web server listening on port ${PORT}`);
+            resolve();
+        });
     });
 
     // 5. Start Cloudflare Tunnel automatically for local Web App testing
@@ -96,7 +122,7 @@ async function start() {
     try {
         console.log(`Starting Cloudflare Tunnel on port ${PORT}...`);
         const untun = await import('untun');
-        tunnelRef = await untun.startTunnel({ port: PORT });
+        tunnelRef = await untun.startTunnel({ url: `http://127.0.0.1:${PORT}` });
         const url = await tunnelRef.getURL();
         console.log(`Cloudflare Tunnel created: ${url}`);
 

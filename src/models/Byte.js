@@ -257,6 +257,23 @@ class Byte {
         // Trigger natural decay across all loaded needs
         Object.values(this.needs).forEach((need) => need.tick(this, context.player));
 
+        if (process.env.DEBUG_INF_NEEDS === 'true') {
+            Object.values(this.needs).forEach((need) => { need.value = 100; });
+        }
+
+        if (process.env.DEBUG_INF_INTEGRITY === 'true') {
+            if (this.pools.integrity) {
+                this.pools.integrity.value = this.pools.integrity.maxValue;
+            }
+        }
+
+        if (process.env.DEBUG_INF_BITS === 'true') {
+            if (this.pools.bits.value < this.pools.bits.maxValue) {
+                this.pools.bits.value = this.pools.bits.maxValue;
+                this.pendingEvents.push({ event: 'BIT_BUFFER_FULL', args: [this.ownerId, this] });
+            }
+        }
+
         if (!wasDormant && this.isDormant) {
             this.pendingEvents.push({ event: 'BYTE_DORMANT', args: [this.ownerId, this] });
         }

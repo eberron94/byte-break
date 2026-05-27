@@ -251,10 +251,12 @@ async function handleCallbackQuery(query) {
                         statusMessage = `Performed ${activity.name} with ${item.shortname}!`;
 
                         const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
-                        if (lootStr) statusMessage += ` Found: ${lootStr}`;
+                        const changesStr = getChangesString(result.calculatedEffects);
+
+                        if (changesStr) statusMessage += `\n📊 ${changesStr}`;
+                        if (lootStr) statusMessage += `\n🎁 ${lootStr}`;
 
                         let logMsg = `*${activity.name}*\n`;
-                        const changesStr = getChangesString(result.calculatedEffects);
                         if (changesStr) logMsg += `📊 ${changesStr}\n`;
                         if (lootStr) logMsg += `🎁 ${lootStr}`;
                         this.game.emit('ACTIVITY_LOG', chatId, logMsg);
@@ -315,7 +317,10 @@ async function handleCallbackQuery(query) {
                     statusMessage = `Performed ${activity.name}!`;
 
                     const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
-                    if (lootStr) statusMessage += ` Found: ${lootStr}`;
+                    const changesStr = getChangesString(result.calculatedEffects);
+
+                    if (changesStr) statusMessage += `\n📊 ${changesStr}`;
+                    if (lootStr) statusMessage += `\n🎁 ${lootStr}`;
 
                     if (byte.isAsleep) {
                         const bytes = await this.game.getBytes(chatId);
@@ -324,7 +329,6 @@ async function handleCallbackQuery(query) {
                     }
 
                     let logMsg = `*${activity.name}*\n`;
-                    const changesStr = getChangesString(result.calculatedEffects);
                     if (changesStr) logMsg += `📊 ${changesStr}\n`;
                     if (lootStr) logMsg += `🎁 ${lootStr}`;
                     this.game.emit('ACTIVITY_LOG', chatId, logMsg);
@@ -367,7 +371,10 @@ async function handleCallbackQuery(query) {
 
                         let msg = `Used ${item.name}!`;
                         const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
-                        if (lootStr) msg += ` Found: ${lootStr}`;
+                        const changesStr = getChangesString(result.calculatedEffects);
+
+                        if (changesStr) msg += `\n📊 ${changesStr}`;
+                        if (lootStr) msg += `\n🎁 ${lootStr}`;
 
                         await this.sendStatusUI(
                             chatId,
@@ -377,7 +384,6 @@ async function handleCallbackQuery(query) {
                         );
                         
                         let logMsg = `*Used ${item.name}*\n`;
-                        const changesStr = getChangesString(result.calculatedEffects);
                         if (changesStr) logMsg += `📊 ${changesStr}\n`;
                         if (lootStr) logMsg += `🎁 ${lootStr}`;
                         this.game.emit('ACTIVITY_LOG', chatId, logMsg);

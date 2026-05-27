@@ -2,6 +2,7 @@ const LootManager = require('../LootManager');
 const GameEvents = require('../../util/GameEvents');
 const GameContext = require('../../models/GameContext');
 const GameObjectManager = require('../GameObjectManager');
+const ActivityManager = require('../ActivityManager');
 const {
     calculateEffects,
     applyEffects,
@@ -215,7 +216,7 @@ class PacketSniffer {
     async handleInput(cmd, state, gameManager, chatId, context) {
         const { target, pool, config, activityId } = state;
         const { byte, player } = context;
-        const activity = gameManager.activityManager.getActivity(activityId);
+        const activity = ActivityManager.getActivity(activityId);
         const { guessLength, maxGuesses, level } = config;
 
         if (cmd === 'help') {

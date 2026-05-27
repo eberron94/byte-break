@@ -1,5 +1,8 @@
 const WebAPIGetHandler = require('./WebAPIGetHandler');
 const WebAPIPostHandler = require('./WebAPIPostHandler');
+const WebAPIDebugHandler = require('./WebAPIDebugHandler');
+const WebAPIPlayerHandler = require('./WebAPIPlayerHandler');
+const WebAPIShopHandler = require('./WebAPIShopHandler');
 const crypto = require('crypto');
 
 /**
@@ -21,6 +24,9 @@ class WebApiController {
         // `this` context (e.g., `this.gameManager`).
         Object.assign(this, WebAPIGetHandler);
         Object.assign(this, WebAPIPostHandler);
+        Object.assign(this, WebAPIDebugHandler);
+        Object.assign(this, WebAPIPlayerHandler);
+        Object.assign(this, WebAPIShopHandler);
     }
 
     authenticateWebAppRequest(req, res, next) {
@@ -39,7 +45,11 @@ class WebApiController {
         // Only enforce strict validation on routes dealing with specific user data
         if (botToken && requestedId) {
             if (!initDataString) {
-                return res.status(403).json({ error: 'Unauthorized. Missing Telegram signature.' });
+                return res
+                    .status(403)
+                    .json({
+                        error: 'Unauthorized. Missing Telegram signature.',
+                    });
             }
 
             try {
@@ -52,19 +62,35 @@ class WebApiController {
                     .sort()
                     .join('\n');
 
-                const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
-                const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataToCheck).digest('hex');
+                const secretKey = crypto
+                    .createHmac('sha256', 'WebAppData')
+                    .update(botToken)
+                    .digest();
+                const calculatedHash = crypto
+                    .createHmac('sha256', secretKey)
+                    .update(dataToCheck)
+                    .digest('hex');
 
                 if (calculatedHash !== hash) {
-                    return res.status(403).json({ error: 'Unauthorized. Data signature mismatch.' });
+                    return res
+                        .status(403)
+                        .json({
+                            error: 'Unauthorized. Data signature mismatch.',
+                        });
                 }
 
                 const validUser = JSON.parse(urlParams.get('user'));
                 if (requestedId.toString() !== validUser.id.toString()) {
-                    return res.status(403).json({ error: 'Unauthorized. User identity mismatch.' });
+                    return res
+                        .status(403)
+                        .json({
+                            error: 'Unauthorized. User identity mismatch.',
+                        });
                 }
             } catch (err) {
-                return res.status(403).json({ error: 'Unauthorized. Invalid auth payload.' });
+                return res
+                    .status(403)
+                    .json({ error: 'Unauthorized. Invalid auth payload.' });
             }
         }
         next();
