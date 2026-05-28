@@ -2,49 +2,50 @@ const TalentManager = require('../../managers/TalentManager');
 const AchievementManager = require('../../managers/AchievementManager');
 
 /**
- * Represents the achievement points pool for a player.
+ * Binds the achievement points sub-object to a Player instance.
  */
-class AchievementPoints {
-    constructor(data, player = null) {
-        this.id = 'achievement_points';
-        this.name = 'Achievement Points';
-        this._player = player;
-        this.progress = data && data.progress ? data.progress : {};
-    }
+function bindAchievementPoints(player, progressData) {
+    player.achievementPoints = {
+        progress: progressData || {},
 
-    get value() {
-        let total = 0;
-        const achievements = AchievementManager.getAllAchievements();
-        for (const ach of achievements) {
-            const progress = this.progress[ach.id] || 0;
-            for (let i = 0; i < ach.tiers.length; i++) {
-                if (progress >= ach.tiers[i]) {
-                    total += ach.rewards[i];
+        get value() {
+            let total = 0;
+            const achievements = AchievementManager.getAllAchievements();
+            for (const ach of achievements) {
+                const progress = this.progress[ach.id] || 0;
+                if (ach.tiers) {
+                    for (const tier of ach.tiers) {
+                        if (progress >= tier.requirement) {
+                            total += tier.reward || 0;
+                        }
+                    }
+                } else if (ach.requirement && progress >= ach.requirement) {
+                    total += ach.reward || 0; // Legacy fallback
                 }
             }
-        }
-        return total;
-    }
+            return total;
+        },
 
-    get maxValue() {
-        return Number.MAX_SAFE_INTEGER;
-    }
+        get maxValue() {
+            return Number.MAX_SAFE_INTEGER;
+        },
 
-    get invested() {
-        if (!this._player || !this._player.talents) return 0;
-        let total = 0;
-        for (const [talentId, level] of Object.entries(this._player.talents)) {
-            const talent = TalentManager.getTalent(talentId);
-            if (talent) {
-                total += talent.cost * level;
+        get invested() {
+            if (!player.talents) return 0;
+            let total = 0;
+            for (const [talentId, level] of Object.entries(player.talents)) {
+                const talent = TalentManager.getTalent(talentId);
+                if (talent) {
+                    total += talent.cost * level;
+                }
             }
-        }
-        return total;
-    }
+            return total;
+        },
 
-    get available() {
-        return Math.max(0, this.value - this.invested);
-    }
+        get available() {
+            return Math.max(0, this.value - this.invested);
+        }
+    };
 }
 
-module.exports = AchievementPoints;
+module.exports = bindAchievementPoints;

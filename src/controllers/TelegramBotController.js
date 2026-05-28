@@ -26,6 +26,7 @@ class TelegramBotController {
 
         // Simple state machine to track multi-step interactions per user
         this.userStates = new Map();
+        this.lastMinigameMessages = new Map();
 
         // Wrap the set method to automatically inject a timestamp for garbage collection
         const originalSet = this.userStates.set.bind(this.userStates);
@@ -59,6 +60,11 @@ class TelegramBotController {
                     if (state.timestamp && now - state.timestamp > 3600000) {
                         // 1 hour
                         this.userStates.delete(chatId);
+                    }
+                }
+                for (const [chatId, msgObj] of this.lastMinigameMessages.entries()) {
+                    if (msgObj.timestamp && now - msgObj.timestamp > 3600000) {
+                        this.lastMinigameMessages.delete(chatId);
                     }
                 }
             },
@@ -297,8 +303,11 @@ class TelegramBotController {
         });
 
         // Clean up user state automatically when a minigame concludes naturally
-        this.game.on(GameEvents.MINIGAME_END, (chatId) => {
+        this.game.on(GameEvents.MINIGAME_END, (chatId, minigameId, data) => {
             this.userStates.delete(chatId);
+            if (data && data.statusMessage) {
+                this.lastMinigameMessages.set(chatId, { msg: data.statusMessage, timestamp: Date.now() });
+            }
         });
 
         // Clean up user state if their active byte is permanently deleted

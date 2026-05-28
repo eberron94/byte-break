@@ -1,5 +1,5 @@
 const Energy = require('./Energy');
-const AchievementPoints = require('./pools/AchievementPoints');
+const bindAchievementPoints = require('./pools/AchievementPoints');
 const ItemManager = require('../managers/ItemManager');
 
 /**
@@ -25,12 +25,9 @@ class Player {
         this.lastAction = data.lastAction
             ? new Date(data.lastAction)
             : new Date();
-        this.achievementPoints = new AchievementPoints(
-            {
-                progress: data.achievements || {},
-            },
-            this,
-        );
+            
+        bindAchievementPoints(this, data.achievements || {});
+        
         this.talents = data.talents || {};
         this.settings = data.settings || {};
         this.hediffs = data.hediffs || {};
@@ -170,7 +167,14 @@ class Player {
                 ) {
                     if (hDef.nextTier || hDef.nextHediff) {
                         const nextId = hDef.nextTier || hDef.nextHediff;
-                        this.pendingEvents.push({ event: 'PLAYER_HEDIFF_ESCALATED', args: [this.id, hDef, HediffManager.getHediff(nextId)] });
+                        this.pendingEvents.push({
+                            event: 'PLAYER_HEDIFF_ESCALATED',
+                            args: [
+                                this.id,
+                                hDef,
+                                HediffManager.getHediff(nextId),
+                            ],
+                        });
                         delete this.hediffs[h.id];
                         this.hediffs[nextId] = {
                             stacks: 1,
@@ -185,7 +189,10 @@ class Player {
                     this.hediffs[h.id].stacks -= amount;
                     this.hediffs[h.id].ticksAlive = 0;
                     if (this.hediffs[h.id].stacks <= 0) {
-                        this.pendingEvents.push({ event: 'PLAYER_HEDIFF_EXPIRED', args: [this.id, hDef] });
+                        this.pendingEvents.push({
+                            event: 'PLAYER_HEDIFF_EXPIRED',
+                            args: [this.id, hDef],
+                        });
                         delete this.hediffs[h.id];
                         if (hDef.prevTier) {
                             const prevDef = HediffManager.getHediff(
@@ -202,7 +209,11 @@ class Player {
                     }
                 }
             } else if (h.action === 'remove') {
-                if (this.hediffs[h.id]) this.pendingEvents.push({ event: 'PLAYER_HEDIFF_EXPIRED', args: [this.id, hDef] });
+                if (this.hediffs[h.id])
+                    this.pendingEvents.push({
+                        event: 'PLAYER_HEDIFF_EXPIRED',
+                        args: [this.id, hDef],
+                    });
                 delete this.hediffs[h.id];
             }
         }
@@ -299,8 +310,16 @@ class Player {
             const hDef = HediffManager.getHediff(hId);
             formattedHediffs[hId] = {
                 ...hData,
-                name: hDef ? hDef.name : hId.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-                colors: getAvatarColors(hId, 'player_hediff', 0)
+                name: hDef
+                    ? hDef.name
+                    : hId
+                          .split('_')
+                          .map(
+                              (word) =>
+                                  word.charAt(0).toUpperCase() + word.slice(1),
+                          )
+                          .join(' '),
+                colors: getAvatarColors(hId, 'player_hediff', 0),
             };
         }
         data.hediffs = formattedHediffs;

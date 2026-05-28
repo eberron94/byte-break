@@ -178,7 +178,9 @@ const TelegramUIBuilders = {
                 const activity = ActivityManager.getActivity(actId);
                 if (activity) {
                     const context = new GameContext(byte, player);
-                    buttons.push(ActivityManager.getActivityButton(activity, context));
+                    if (activity.canPerform(context)) {
+                        buttons.push(ActivityManager.getActivityButton(activity, context));
+                    }
                 }
             }
             for (let i = 0; i < buttons.length; i += 2) {

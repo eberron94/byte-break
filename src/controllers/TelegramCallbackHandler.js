@@ -34,6 +34,10 @@ async function handleCallbackQuery(query) {
     this.game.recordPlayerActivity(chatId).catch(console.error);
     console.log(`[Callback] Action '${action}' from chat ${chatId}`);
 
+    if (this.lastMinigameMessages && this.lastMinigameMessages.has(chatId) && action !== 'nav_status') {
+        this.lastMinigameMessages.delete(chatId);
+    }
+
     let alertMessage = '';
     let showAlert = false;
 
@@ -63,8 +67,13 @@ async function handleCallbackQuery(query) {
 
         if (action === 'act_cancel' || action === 'nav_status') {
             this.userStates.delete(chatId);
+            let statusMessage = null;
+            if (action === 'nav_status' && this.lastMinigameMessages && this.lastMinigameMessages.has(chatId)) {
+                statusMessage = this.lastMinigameMessages.get(chatId).msg;
+                this.lastMinigameMessages.delete(chatId);
+            }
             if (byte) {
-                await this.sendStatusUI(chatId, byte, player);
+                await this.sendStatusUI(chatId, byte, player, statusMessage);
             } else {
                 const bytes = await this.game.getBytes(chatId);
                 await this.sendStasisUI(chatId, bytes, player);
@@ -289,7 +298,7 @@ async function handleCallbackQuery(query) {
                     await this.updateMessageDisplay(query, text, options);
                     return;
                 } else if (activity.isMinigame) {
-                    const minigame = minigameManager.getMinigame(actId);
+                    const minigame = minigameManager.getMinigame(activity.minigameId);
                     if (minigame) {
                         const result = await minigame.start(
                             chatId, this.game, new GameContext(byte, player), activity
