@@ -3,7 +3,7 @@ async function showSettings() {
     document.getElementById('settings-view').style.display = 'block';
 
     try {
-        const res = await fetch(`/api/settings/${user.id}`);
+        const res = await fetch(`/api/player/${user.id}`);
         if (!res.ok) throw new Error('Failed to fetch settings');
         const data = await res.json();
 

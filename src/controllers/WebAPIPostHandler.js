@@ -672,6 +672,25 @@ const WebAPIPostHandler = {
             activeTransactions.delete(userId);
         }
     },
+
+    async updateSettings(req, res) {
+        const { userId, settings } = req.body;
+        try {
+            this.gameManager.recordPlayerActivity(userId).catch(console.error);
+            const player = await this.gameManager.getPlayer(userId);
+
+            if (!player)
+                return res.status(404).json({ error: 'Player not found' });
+
+            player.settings = settings;
+            await this.gameManager.savePlayer(player);
+
+            res.json({ success: true });
+        } catch (error) {
+            console.error('Settings Update API Error:', error);
+            res.status(500).json({ error: 'Failed to update settings.' });
+        }
+    },
 };
 
 module.exports = WebAPIPostHandler;

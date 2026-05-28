@@ -111,6 +111,7 @@ class WebApiController {
         this.app.get('/api/shops', this.handleGetShops.bind(this));
         this.app.post('/api/shop/buy', this.handleBuyItem.bind(this));
         this.app.post('/api/shop/sell', this.handleSellItem.bind(this));
+        this.app.post('/api/settings/update', this.updateSettings.bind(this));
         this.app.post('/api/byte/merge', this.mergeBytes.bind(this));
         this.app.post('/api/ui/refresh', this.refreshUI.bind(this));
         this.app.get('/api/talents/:id', this.getTalents.bind(this));
