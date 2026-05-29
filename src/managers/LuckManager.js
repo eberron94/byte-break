@@ -21,49 +21,29 @@ class LuckManager {
         return this.roll(probability, context.byte || context.player);
     }
 
-    // --- Combat Checks ---
-
-    static checkCombatCompile(attacker) {
-        return this.roll(0.2, attacker);
+    // --- Dice Pool Mechanics ---
+    
+    static rollCustomDice(poolSize, sides = 6) {
+        const rolls = [];
+        for (let i = 0; i < poolSize; i++) {
+            rolls.push(Math.floor(Math.random() * sides) + 1);
+        }
+        return rolls;
     }
 
-    static checkCombatOverride(attacker) {
-        return this.roll(0.15, attacker);
+    static countSuccesses(rolls, threshold = 4) {
+        return rolls.filter(r => r >= threshold).length;
     }
 
-    static checkCombatDodge(attacker, defender) {
-        const dodgeChance = Math.max(
-            0,
-            (defender.skills.spoof - attacker.skills.scan) * 0.04,
-        );
-        return this.roll(dodgeChance, defender);
-    }
-
-    static checkCombatShred(attacker) {
-        return this.roll(0.2, attacker);
-    }
-
-    static checkCombatCompression(attacker, activeFirewall) {
-        if (attacker.skills.compression <= activeFirewall * 0.5) return false;
-        return this.roll(0.15, attacker);
-    }
-
-    static checkCombatCrit(attacker, defender) {
-        const critChance = Math.max(
-            0.05,
-            (attacker.skills.scan - defender.skills.spoof) * 0.05,
-        );
-        return this.roll(critChance, attacker);
-    }
-
-    static checkCombatParse(defender) {
-        const parseChance = defender.skills.parse * 0.05;
-        return this.roll(parseChance, defender);
-    }
-
-    static checkCombatSync(attacker) {
-        const syncChance = (attacker.skills.sync || 0) * 0.02;
-        return this.roll(syncChance, attacker);
+    static opposedRoll(attackPool, defendPool, sides = 6, threshold = 4) {
+        const atkRolls = this.rollCustomDice(attackPool, sides);
+        const defRolls = this.rollCustomDice(defendPool, sides);
+        const atkSuccesses = this.countSuccesses(atkRolls, threshold);
+        const defSuccesses = this.countSuccesses(defRolls, threshold);
+        return {
+            atkRolls, defRolls, atkSuccesses, defSuccesses,
+            netSuccesses: atkSuccesses - defSuccesses
+        };
     }
 }
 

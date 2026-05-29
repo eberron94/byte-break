@@ -3,14 +3,17 @@ const LuckManager = require('./LuckManager');
 
 // Mock the LuckManager so we can deterministically control the RNG flow of battle
 jest.mock('./LuckManager', () => ({
-    checkCombatCompile: jest.fn(() => false),
-    checkCombatOverride: jest.fn(() => false),
-    checkCombatDodge: jest.fn(() => false),
-    checkCombatShred: jest.fn(() => false),
-    checkCombatCompression: jest.fn(() => false),
-    checkCombatCrit: jest.fn(() => false),
-    checkCombatParse: jest.fn(() => false),
-    checkCombatSync: jest.fn(() => false),
+    rollCustomDice: jest.fn((poolSize) => Array(poolSize).fill(4)),
+    countSuccesses: jest.fn((rolls) => rolls.length), // With the above mock, success count exactly equals poolSize
+    opposedRoll: jest.fn((attackPool, defendPool) => {
+        const atk = typeof attackPool === 'number' ? attackPool : 0;
+        const def = typeof defendPool === 'number' ? defendPool : 0;
+        return {
+            atkSuccesses: atk,
+            defSuccesses: def,
+            netSuccesses: atk - def
+        };
+    })
 }));
 
 describe('CombatManager', () => {
@@ -57,7 +60,7 @@ describe('CombatManager', () => {
 
             expect(result.winner).toBe('player');
             expect(result.finalState.enemy.hp).toBe(0);
-            expect(result.finalState.player.hp).toBe(55); // 100 - (9 turns * 5 dmg)
+            expect(result.finalState.player.hp).toBe(10); // 100 - (9 turns * 10 dmg) since dmg = netSuccess * 2
         });
 
         it('should enforce the maximum turn limit and resolve as a draw', () => {
@@ -79,9 +82,8 @@ describe('CombatManager', () => {
     describe('Combat Skills & Mechanics', () => {
         it('should allow Dodging to completely negate a base attack', () => {
             // Force the enemy to dodge every single attack
-            LuckManager.checkCombatDodge.mockImplementation(
-                (attacker, defender) => defender.id === 'e1',
-            );
+            enemyByte = createMockByte('e1', 'Enemy', 100, 100, { spoof: 10, assault: 0 }); // vs Player scan 0 = 10 net success
+            playerByte.getSkills = () => ({ assault: 10, scan: 0 });
 
             const result = CombatManager.simulate(playerByte, enemyByte);
 
@@ -91,7 +93,9 @@ describe('CombatManager', () => {
         });
 
         it('should correctly calculate Critical Hits for 1.5x damage', () => {
-            LuckManager.checkCombatCrit.mockReturnValue(true); // Every hit is a crit
+            // Crit triggers if dodge check (Spoof vs Scan) nets <= -3.
+            playerByte = createMockByte('p1', 'Player', 100, 100, { assault: 10, scan: 10 });
+            enemyByte = createMockByte('e1', 'Enemy', 100, 100, { spoof: 0, firewall: 0 });
 
             const result = CombatManager.simulate(playerByte, enemyByte);
 
@@ -99,11 +103,10 @@ describe('CombatManager', () => {
                 (l) => l.action === 'assault' && l.critical === true,
             );
             expect(critLog).toBeDefined();
-            expect(critLog.damage).toBe(15); // 10 base * 1.5 multiplier
+            expect(critLog.damage).toBe(30); // 10 successes * 2 base dmg * 1.5 crit mult
         });
 
         it('should process Compile (healing) if HP is under 50%', () => {
-            LuckManager.checkCombatCompile.mockReturnValue(true);
             // Player starts at 10 HP (under 50%) and has 10 Compile skill
             playerByte = createMockByte('p1', 'Player', 10, 100, {
                 compile: 10,
@@ -113,11 +116,10 @@ describe('CombatManager', () => {
 
             const compileLog = result.log.find((l) => l.action === 'compile');
             expect(compileLog).toBeDefined();
-            expect(compileLog.amount).toBe(25); // 10 skill * 2.5 multiplier
+            expect(compileLog.amount).toBe(50); // 10 successes * 5 healing
         });
 
         it('should allow Override to consume TF and deal massive unavoidable damage', () => {
-            LuckManager.checkCombatOverride.mockReturnValue(true);
             playerByte = createMockByte('p1', 'Player', 100, 50, {
                 override: 10,
             });
@@ -127,14 +129,14 @@ describe('CombatManager', () => {
             const overrideLog = result.log.find((l) => l.action === 'override');
             expect(overrideLog).toBeDefined();
             expect(overrideLog.tfCost).toBe(25);
-            expect(overrideLog.damage).toBe(35); // 10 skill * 3.5 multiplier
+            expect(overrideLog.damage).toBe(60); // 10 successes * 5 dmg + 10 base
             expect(result.finalState.player.tf).toBe(25); // 50 start - 25 cost
         });
 
         it('should allow Compression to stun the opponent, causing them to skip a turn', () => {
-            LuckManager.checkCombatCompression.mockImplementation(
-                (attacker) => attacker.id === 'p1',
-            );
+            // Stun requires net success >= 2
+            playerByte = createMockByte('p1', 'Player', 100, 100, { compression: 5 }); 
+            enemyByte = createMockByte('e1', 'Enemy', 100, 100, { firewall: 0 });
 
             const result = CombatManager.simulate(playerByte, enemyByte);
             const stunLog = result.log.find(
@@ -147,11 +149,12 @@ describe('CombatManager', () => {
 
     describe('Post-Match Results', () => {
         it('should grant Datamine bonus bits and apply Sync pacification upon victory', () => {
-            LuckManager.checkCombatSync.mockReturnValue(true);
             playerByte = createMockByte('p1', 'Player', 100, 100, {
                 datamine: 10,
+                sync: 10
             });
-            enemyByte.pools.integrity.value = 5; // Instant win for player
+            // Instant win for player. Give enemy firewall to test Sync vs static skill value.
+            enemyByte = createMockByte('e1', 'Enemy', 5, 100, { firewall: 5 }); 
 
             const result = CombatManager.simulate(playerByte, enemyByte, [
                 { type: 'bits', amount: 100 },
@@ -160,10 +163,10 @@ describe('CombatManager', () => {
             expect(result.winner).toBe('player');
             expect(result.pacified).toBe(true);
 
-            // datamine bonus = floor(15 * 10 * 0.05) = floor(7.5) = 7
+            // datamine bonus = 10 successes * 3 bits = 30 bits
             expect(result.winEffects).toContainEqual({
                 type: 'bits',
-                amount: 7,
+                amount: 30,
             });
         });
     });

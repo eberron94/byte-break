@@ -39,7 +39,8 @@
             { "type": "energy", "amount": -1 },
             {
                 "type": "bits",
-                "amount": "2 + Math.floor((byte.stats.curiosity.value || 0) / 2)"
+                "dicePool": "2 + byte.stats.curiosity.value",
+                "amount": "Math.floor(Math.pow(1.2, successCount))"
             }
         ]
     },

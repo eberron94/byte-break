@@ -48,5 +48,22 @@ describe('Effects Utility', () => {
 
             expect(result.bits).toBe(300);
         });
+
+        it('should correctly process dicePool mechanics and inject successCount', () => {
+            const LuckManager = require('../managers/LuckManager');
+            jest.spyOn(LuckManager, 'rollCustomDice').mockReturnValue([
+                5, 6, 2,
+            ]); // 2 successes (>= 4)
+            jest.spyOn(LuckManager, 'countSuccesses').mockReturnValue(2);
+
+            const effects = [
+                { type: 'bits', dicePool: 3, amount: 'successCount * 10' },
+            ];
+            const context = { byte: { level: 3 }, player: null, locals: {} };
+            const result = calculateEffects(effects, context);
+
+            // 2 successes * 10 multiplier = 20 bits total
+            expect(result.bits).toBe(20);
+        });
     });
 });

@@ -150,6 +150,10 @@ class GameObjectManager {
             if (effect.die !== undefined) {
                 prefix = `(1-in-${effect.die} chance) `;
             }
+            if (effect.dicePool !== undefined) {
+                const poolStr = typeof effect.dicePool === 'number' ? effect.dicePool : 'Variable';
+                prefix = `(Roll ${poolStr} Dice) ` + prefix;
+            }
 
             if (effect.type === 'inventory') {
                 const amt = effect.amount;

@@ -1,4 +1,5 @@
 const LootManager = require('../managers/LootManager');
+const LuckManager = require('../managers/LuckManager');
 const exprCache = new Map();
 
 /**
@@ -55,11 +56,24 @@ function calculateEffects(effects, context) {
         }
 
         if (shouldApply) {
+            if (effect.dicePool !== undefined) {
+                const poolSize = evaluateExpression(effect.dicePool, context);
+                const sides = effect.diceSides !== undefined ? evaluateExpression(effect.diceSides, context) : 6;
+                const threshold = effect.diceThreshold !== undefined ? evaluateExpression(effect.diceThreshold, context) : 4;
+                const rolls = LuckManager.rollCustomDice(poolSize, sides);
+                const successes = LuckManager.countSuccesses(rolls, threshold);
+                context.locals.successCount = successes;
+            } else {
+                delete context.locals.successCount;
+            }
+
+            let baseAmount = effect.amount !== undefined ? evaluateExpression(effect.amount, context) : undefined;
+
             if (key === 'inventory') {
-                if (effect.id && effect.amount !== undefined) {
+                if (effect.id && baseAmount !== undefined) {
                     const currentAmount = calculated.inventory[effect.id] || 0;
                     calculated.inventory[effect.id] =
-                        currentAmount + evaluateExpression(effect.amount, context);
+                        currentAmount + baseAmount;
                 }
             } else if (key === 'loot') {
                 if (effect.table) {
@@ -71,18 +85,18 @@ function calculateEffects(effects, context) {
                 calculated.hediffs.push({
                     id: effect.id,
                     action: effect.action || 'escalate',
-                    amount: effect.amount !== undefined ? evaluateExpression(effect.amount, context) : 1
+                    amount: baseAmount !== undefined ? baseAmount : 1
                 });
             } else if (key === 'player_hediff') {
                 if (!calculated.player_hediffs) calculated.player_hediffs = [];
                 calculated.player_hediffs.push({
                     id: effect.id,
                     action: effect.action || 'escalate',
-                    amount: effect.amount !== undefined ? evaluateExpression(effect.amount, context) : 1
+                    amount: baseAmount !== undefined ? baseAmount : 1
                 });
             } else {
-                if (effect.amount !== undefined) {
-                    let value = evaluateExpression(effect.amount, context);
+                if (baseAmount !== undefined) {
+                    let value = baseAmount;
                     if (typeof value === 'number') {
                         const originalValue = value;
                         let currentAmount = calculated[key] || 0;
