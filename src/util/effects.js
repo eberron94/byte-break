@@ -59,7 +59,7 @@ function calculateEffects(effects, context) {
             if (effect.dicePool !== undefined) {
                 const poolSize = evaluateExpression(effect.dicePool, context);
                 const sides = effect.diceSides !== undefined ? evaluateExpression(effect.diceSides, context) : 6;
-                const threshold = effect.diceThreshold !== undefined ? evaluateExpression(effect.diceThreshold, context) : 4;
+                const threshold = effect.diceThreshold !== undefined ? evaluateExpression(effect.diceThreshold, context) : 3;
                 const rolls = LuckManager.rollCustomDice(poolSize, sides);
                 const successes = LuckManager.countSuccesses(rolls, threshold);
                 context.locals.successCount = successes;

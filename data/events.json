@@ -3,7 +3,11 @@
         "id": "found_treat",
         "name": "Found a Treat",
         "description": "Your pet found a yummy treat hiding under the sofa!",
-        "probability": 0.05,
+        "diceCheck": {
+            "pool": "Math.floor(byte.stats.curiosity.value / 2)",
+            "successes": 2,
+            "threshold": 2
+        },
         "requirements": [
             { "type": "room", "id": "charging_station" },
             { "type": "need", "key": "charge", "max": 80 }
@@ -14,18 +18,27 @@
         "id": "zoomies",
         "name": "The Zoomies!",
         "description": "Random burst of energy! Your pet runs around wildly.",
-        "probability": 0.1,
+        "diceCheck": {
+            "pool": 1,
+            "successes": 1,
+            "threshold": 1
+        },
         "requirements": [{ "type": "timePhase", "phases": ["day", "evening"] }],
         "effects": [
-            { "type": "telemetry", "amount": 20, "die": 2 },
-            { "type": "energy", "amount": 5, "die": 4 }
+            { "type": "telemetry", "amount": 20, "diceCheck": { "pool": 1, "successes": 1, "threshold": 3 } },
+            { "type": "energy", "amount": 5, "diceCheck": { "pool": 2, "successes": 2, "threshold": 3 } }
         ]
     },
     {
     "id": "solar_eclipse_event",
     "name": "Solar Eclipse",
     "description": "The sun is completely blocked out by an anomalous celestial body! It suddenly feels like night...",
-    "probability": 0.01,
+    "diceCheck": {
+        "pool": 1,
+        "successes": 1,
+        "threshold": 1,
+        "sides": 100
+    },
     "requirements": [
         { "type": "timePhase", "phases": ["day", "evening"] }
     ],

@@ -52,8 +52,8 @@ describe('Effects Utility', () => {
         it('should correctly process dicePool mechanics and inject successCount', () => {
             const LuckManager = require('../managers/LuckManager');
             jest.spyOn(LuckManager, 'rollCustomDice').mockReturnValue([
-                5, 6, 2,
-            ]); // 2 successes (>= 4)
+                1, 2, 6,
+            ]); // 2 successes (<= 3)
             jest.spyOn(LuckManager, 'countSuccesses').mockReturnValue(2);
 
             const effects = [

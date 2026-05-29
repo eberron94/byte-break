@@ -62,15 +62,29 @@ class EventManager {
                 }
             }
 
-            const evaluatedProb =
-                typeof event.probability === 'string'
-                    ? evaluateExpression(
-                          event.probability, context
-                      )
-                    : event.probability;
-
-            if (LuckManager.checkEvent(evaluatedProb, context)) {
-                return event;
+            if (event.diceCheck) {
+                const poolSize = evaluateExpression(event.diceCheck.pool || 1, context);
+                const requiredSuccesses = evaluateExpression(event.diceCheck.successes || 1, context);
+                const threshold = evaluateExpression(event.diceCheck.threshold || 3, context);
+                const sides = evaluateExpression(event.diceCheck.sides || 6, context);
+                if (poolSize > 0) {
+                    const rolls = LuckManager.rollCustomDice(poolSize, sides);
+                    const successes = LuckManager.countSuccesses(rolls, threshold);
+                    if (successes >= requiredSuccesses) {
+                        return event;
+                    }
+                }
+            } else if (event.probability !== undefined) {
+                const evaluatedProb =
+                    typeof event.probability === 'string'
+                        ? evaluateExpression(
+                              event.probability, context
+                          )
+                        : event.probability;
+    
+                if (LuckManager.checkEvent(evaluatedProb, context)) {
+                    return event;
+                }
             }
         }
         return null;

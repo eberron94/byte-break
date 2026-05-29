@@ -11,6 +11,7 @@ The file should contain a single JSON array composed of Event objects.
 | `id`           | String        | **Required** | The unique identifier for the event.                                                                                              |
 | `name`         | String        | **Required** | The display title of the event shown in the UI.                                                                                   |
 | `description`  | String        | `""`         | The flavor text describing what just happened.                                                                                    |
+| `diceCheck`    | Object        | `null`       | A configuration object for dice pool probability. See the **Probabilities (Dice Pool)** section.                                  |
 | `probability`  | Number/String | `0`          | The base chance of this event triggering. Can be a static number or a dynamic math expression. See the **Probabilities** section. |
 | `ticksPerCheck`| Number/String | `1`          | How many game ticks must pass before this event's probability is checked. `1` means it is checked every tick. Supports math expressions. |
 | `requirements` | Array         | `[]`         | An array of prerequisite conditions that must be met for this event to even be considered. See Requirements Configuration.        |
@@ -18,13 +19,18 @@ The file should contain a single JSON array composed of Event objects.
 
 ---
 
-## Probabilities
+## Probabilities (Dice Pool)
 
-The `probability` field determines how likely an event is to trigger _if_ its requirements are met. It interacts directly with the `LuckManager`.
+The `diceCheck` object is the preferred way to determine how likely an event is to trigger _if_ its requirements are met. It uses a dice pool system where a roll of 1, 2, or 3 (by default) is a success.
 
-- **Static Probability:** A flat number. (e.g., `0.05` represents a 5% chance to trigger per tick).
-- **Dynamic Probability:** A string containing a math expression. This allows events to become more or less likely depending on the pet's state, the player's inventory, or the time of day.
-    - _Example:_ `"0.05 + (byte.skills.curiosity.value * 0.01)"` (Base 5% chance, plus 1% for every point of Curiosity).
+| Property    | Type          | Default | Description                                                                 |
+| :---------- | :------------ | :------ | :-------------------------------------------------------------------------- |
+| `pool`      | Number/String | `1`     | The number of dice to roll. Supports math expressions.                      |
+| `successes` | Number/String | `1`     | The number of successful rolls required to trigger the event.               |
+| `threshold` | Number/String | `3`     | The maximum number on the die that counts as a success (inclusive).         |
+| `sides`     | Number/String | `6`     | The number of sides on the dice.                                            |
+
+*Note: The older `probability` field (e.g., `0.05` for 5%) is still supported as a legacy fallback, but `diceCheck` is recommended for dynamic scaling.*
 
 ---
 
@@ -43,14 +49,18 @@ This check happens *before* the probability roll, making it an efficient way to 
 
 ### 1. Basic Conditional Event
 
-An event with a flat 5% chance that only happens if the Byte is in the charging station and its charge is below 80%.
+An event with a custom dice pool that scales off of Curiosity. It requires 2 successes (rolling 2 or under on a d6) to trigger.
 
 ```json
 {
     "id": "found_treat",
     "name": "Found a Treat",
     "description": "Your pet found a yummy treat hiding under the sofa!",
-    "probability": 0.05,
+    "diceCheck": {
+        "pool": "Math.floor(byte.stats.curiosity.value / 2)",
+        "successes": 2,
+        "threshold": 2
+    },
     "requirements": [
         { "type": "room", "id": "charging_station" },
         { "type": "need", "key": "charge", "max": 80 }
@@ -61,18 +71,22 @@ An event with a flat 5% chance that only happens if the Byte is in the charging 
 
 ### 2. Time-Restricted Event
 
-An event that only happens during the day or evening, and rolls a die to determine if the effects actually apply once the event occurs.
+An event that only happens during the day or evening, and uses `diceCheck` on the effects to determine if they actually apply once the event occurs.
 
 ```json
 {
     "id": "zoomies",
     "name": "The Zoomies!",
     "description": "Random burst of energy! Your pet runs around wildly.",
-    "probability": 0.1,
+    "diceCheck": {
+        "pool": 1,
+        "successes": 1,
+        "threshold": 1
+    },
     "requirements": [{ "type": "timePhase", "phases": ["day", "evening"] }],
     "effects": [
-        { "type": "telemetry", "amount": 20, "die": 2 },
-        { "type": "energy", "amount": 5, "die": 4 }
+        { "type": "telemetry", "amount": 20, "diceCheck": { "pool": 1, "successes": 1, "threshold": 3 } },
+        { "type": "energy", "amount": 5, "diceCheck": { "pool": 2, "successes": 2, "threshold": 3 } }
     ]
 }
 ```

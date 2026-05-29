@@ -3,11 +3,21 @@ const LuckManager = require('./LuckManager');
 
 // Mock the LuckManager so we can deterministically control the RNG flow of battle
 jest.mock('./LuckManager', () => ({
-    rollCustomDice: jest.fn((poolSize) => Array(poolSize).fill(4)),
-    countSuccesses: jest.fn((rolls) => rolls.length), // With the above mock, success count exactly equals poolSize
+    rollCustomDice: jest.fn((poolInput) => {
+        let count = 0;
+        if (typeof poolInput === 'number') count = poolInput;
+        else if (Array.isArray(poolInput)) count = poolInput.reduce((sum, g) => sum + (g.size || 0), 0);
+        return Array(count).fill(2);
+    }),
+    countSuccesses: jest.fn((rolls) => rolls.length),
     opposedRoll: jest.fn((attackPool, defendPool) => {
-        const atk = typeof attackPool === 'number' ? attackPool : 0;
-        const def = typeof defendPool === 'number' ? defendPool : 0;
+        const getCount = (pool) => {
+            if (typeof pool === 'number') return pool;
+            if (Array.isArray(pool)) return pool.reduce((sum, g) => sum + (g.size || 0), 0);
+            return 0;
+        };
+        const atk = getCount(attackPool);
+        const def = getCount(defendPool);
         return {
             atkSuccesses: atk,
             defSuccesses: def,

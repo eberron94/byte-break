@@ -23,19 +23,29 @@ class LuckManager {
 
     // --- Dice Pool Mechanics ---
     
-    static rollCustomDice(poolSize, sides = 6) {
+    static rollCustomDice(poolInput, defaultSides = 6) {
         const rolls = [];
-        for (let i = 0; i < poolSize; i++) {
-            rolls.push(Math.floor(Math.random() * sides) + 1);
+        if (typeof poolInput === 'number') {
+            for (let i = 0; i < poolInput; i++) {
+                rolls.push(Math.floor(Math.random() * defaultSides) + 1);
+            }
+        } else if (Array.isArray(poolInput)) {
+            for (const group of poolInput) {
+                const groupSize = group.size || 0;
+                const groupSides = group.sides || defaultSides;
+                for (let i = 0; i < groupSize; i++) {
+                    rolls.push(Math.floor(Math.random() * groupSides) + 1);
+                }
+            }
         }
         return rolls;
     }
 
-    static countSuccesses(rolls, threshold = 4) {
-        return rolls.filter(r => r >= threshold).length;
+    static countSuccesses(rolls, threshold = 3) {
+        return rolls.filter(r => r <= threshold).length;
     }
 
-    static opposedRoll(attackPool, defendPool, sides = 6, threshold = 4) {
+    static opposedRoll(attackPool, defendPool, sides = 6, threshold = 3) {
         const atkRolls = this.rollCustomDice(attackPool, sides);
         const defRolls = this.rollCustomDice(defendPool, sides);
         const atkSuccesses = this.countSuccesses(atkRolls, threshold);
