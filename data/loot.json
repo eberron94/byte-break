@@ -4,8 +4,7 @@
         "items": [
             {
                 "id": "patch_kit",
-                "amount": 1,
-                "chance": 0.5
+                "die": 2
             }
         ]
     },
@@ -14,13 +13,12 @@
         "items": [
             {
                 "id": "patch_kit",
-                "amount": 1,
-                "chance": 1.0
+                "amount": 1
             },
             {
                 "id": "system_restore",
                 "amount": 1,
-                "chance": 0.25
+                "die": 4
             }
         ]
     },
@@ -29,13 +27,13 @@
         "items": [
             {
                 "id": "patch_kit",
-                "amount": 2,
-                "chance": 1.0
+                "dicePool": 4,
+                "amount": "successCount"
             },
             {
                 "id": "system_restore",
                 "amount": 1,
-                "chance": 0.5
+                "die": 2
             }
         ]
     },
@@ -44,8 +42,12 @@
         "items": [
             {
                 "id": "system_restore",
-                "amount": 1,
-                "chance": 0.1
+                "diceCheck": {
+                    "pool": 1,
+                    "successes": 1,
+                    "threshold": 1,
+                    "sides": 10
+                }
             }
         ]
     },
@@ -57,8 +59,7 @@
         "items": [
             {
                 "id": "patch_kit",
-                "amount": 1,
-                "chance": 0.1
+                "die": 10
             }
         ]
     },
@@ -67,8 +68,7 @@
         "items": [
             {
                 "id": "patch_kit",
-                "amount": 1,
-                "chance": 0.2
+                "die": 5
             }
         ]
     }

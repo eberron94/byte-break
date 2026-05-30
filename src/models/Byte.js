@@ -37,6 +37,7 @@ class Byte {
         this.byteClass = data.byteClass || 'demo';
 
         this.hediffs = data.hediffs || {};
+        this.loadout = data.loadout || { hardware: [], software: [] };
 
         // Needs automatically decay over time
         this.needs = {
@@ -94,6 +95,20 @@ class Byte {
             }
             this.history['last_active_date'] = today;
         }
+    }
+
+    getHardwareCapacity(player = null) {
+        const intervals = Math.floor(this.level / 3);
+        const levelBonus = Math.floor(intervals / 2); // Increases on the 2nd, 4th, 6th interval...
+        const talentBonus = player && player.talents ? (player.talents.hardware_capacity || 0) : 0;
+        return 1 + levelBonus + talentBonus;
+    }
+
+    getSoftwareCapacity(player = null) {
+        const intervals = Math.floor(this.level / 3);
+        const levelBonus = Math.ceil(intervals / 2); // Increases on the 1st, 3rd, 5th interval...
+        const talentBonus = player && player.talents ? (player.talents.software_capacity || 0) : 0;
+        return 1 + levelBonus + talentBonus;
     }
 
     get investedBits() {
@@ -347,6 +362,23 @@ class Byte {
                 }
             }
         }
+
+        // Process Equipment Tick Effects (Software)
+        const ItemManager = require('../managers/ItemManager');
+        const equippedIds = [...(this.loadout.hardware || []), ...(this.loadout.software || [])];
+        for (const itemId of equippedIds) {
+            const item = ItemManager.getItem(itemId);
+            if (item && item.tickEffects) {
+                const activeTickEffects = item.tickEffects.filter((effect) => {
+                    const tpt = effect.ticksPerTrigger !== undefined ? evaluateExpression(effect.ticksPerTrigger, context) : 1;
+                    return tpt <= 1 || context.locals.tickCounter % tpt === 0;
+                });
+                if (activeTickEffects.length > 0) {
+                    const calculatedEffects = calculateEffects(activeTickEffects, context);
+                    applyEffects(calculatedEffects, context);
+                }
+            }
+        }
     }
 
     updateLastInteraction() {
@@ -395,17 +427,43 @@ class Byte {
         return modifier;
     }
 
+    getEquipmentModifier(type, key) {
+        const ItemManager = require('../managers/ItemManager');
+        let modifier = 0;
+        const equippedIds = [...(this.loadout.hardware || []), ...(this.loadout.software || [])];
+        
+        for (const itemId of equippedIds) {
+            const item = ItemManager.getItem(itemId);
+            if (item && item.modifiers) {
+                const relevantMods = item.modifiers.filter(m => m.type === type && m.key === key);
+                if (relevantMods.length > 0) {
+                    const context = new GameContext(this, null);
+                    for (const mod of relevantMods) {
+                        modifier += evaluateExpression(mod.amount, context);
+                    }
+                }
+            }
+        }
+        return modifier;
+    }
+
     // Helper method to extract flat core stats
     getStats() {
         return Object.fromEntries(
-            Object.entries(this.stats).map(([k, stat]) => [k, stat.value]),
+            Object.entries(this.stats).map(([k, stat]) => [
+                k, 
+                Math.max(0, stat.value + this.getHediffModifier('stat', k) + this.getEquipmentModifier('stat', k))
+            ]),
         );
     }
 
     // Helper method to extract flat calculated skill values
     getSkills() {
         return Object.fromEntries(
-            Object.entries(this.skills).map(([k, skill]) => [k, skill.value]),
+            Object.entries(this.skills).map(([k, skill]) => [
+                k, 
+                Math.max(0, skill.value + this.getHediffModifier('skill', k) + this.getEquipmentModifier('skill', k))
+            ]),
         );
     }
 
@@ -462,6 +520,7 @@ class Byte {
             generation: this.generation,
             bufferOverflow: this.bufferOverflow,
             hediffs: this.hediffs,
+            loadout: this.loadout,
         };
     }
 
@@ -502,6 +561,7 @@ class Byte {
             isDormant: this.isDormant,
             bufferOverflow: this.bufferOverflow,
             hediffs: formattedHediffs,
+            loadout: this.loadout,
         };
     }
 }
@@ -598,6 +658,11 @@ class ByteBuilder {
 
     withIsAlive(isAlive) {
         this.byteData.isAlive = isAlive;
+        return this;
+    }
+
+    withLoadout(loadout) {
+        this.byteData.loadout = loadout;
         return this;
     }
 

@@ -97,7 +97,7 @@ describe('Item Model', () => {
             const item = new Item({
                 name: 'Heal',
                 cooldown: 10,
-                effects: [{ type: 'integrity', amount: 50 }],
+                useEffects: [{ type: 'integrity', amount: 50 }],
             });
 
             const result = item.use(mockContext);

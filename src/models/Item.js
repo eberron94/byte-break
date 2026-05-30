@@ -17,7 +17,10 @@ class Item {
             data.maxCount !== undefined
                 ? data.maxCount
                 : Number.MAX_SAFE_INTEGER;
-        this.effects = data.effects || [];
+        this.equipLabel = data.equipLabel || null; // Cosmetic label (e.g., "Payload", "Daemon", "Processor")
+        this.modifiers = data.modifiers || []; // Array of passive stat/skill boosts
+        this.tickEffects = data.tickEffects || []; // Effects run during global tick while equipped
+        this.useEffects = data.useEffects || [];
         this.cost = data.cost;
         this.isConsumed =
             data.isConsumed !== undefined
@@ -55,7 +58,7 @@ class Item {
                 `Item is on cooldown. Wait ${this.getCooldownRemaining(context.player)} minute(s).`,
             );
         }
-        const calculatedEffects = calculateEffects(this.effects, context);
+        const calculatedEffects = calculateEffects(this.useEffects, context);
 
         // Pre-process any loot so it can be extracted and reported to the UI
         let grantedLoot = null;
@@ -67,7 +70,7 @@ class Item {
         ) {
             grantedLoot = LootManager.processLoot(
                 calculatedEffects,
-                context.player,
+                context,
             );
         }
 

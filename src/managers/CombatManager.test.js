@@ -64,13 +64,13 @@ describe('CombatManager', () => {
 
     describe('Core Battle Loop', () => {
         it('should correctly simulate a basic combat where the stronger player wins', () => {
-            // Player deals 10 dmg/turn. Enemy deals 5 dmg/turn.
-            // Player will win in 10 turns. Enemy will only deal 45 damage before dying.
+            // Player has 10 Assault = 20 dmg/turn. Enemy has 5 Assault = 10 dmg/turn.
+            // Player will win in 5 turns. Enemy will deal 40 damage before dying.
             const result = CombatManager.simulate(playerByte, enemyByte);
 
             expect(result.winner).toBe('player');
             expect(result.finalState.enemy.hp).toBe(0);
-            expect(result.finalState.player.hp).toBe(10); // 100 - (9 turns * 10 dmg) since dmg = netSuccess * 2
+            expect(result.finalState.player.hp).toBe(60); // 100 - (4 turns * 10 dmg)
         });
 
         it('should enforce the maximum turn limit and resolve as a draw', () => {
@@ -85,7 +85,7 @@ describe('CombatManager', () => {
             expect(result.winner).toBe('draw');
             expect(result.finalState.player.hp).toBeGreaterThan(0);
             expect(result.finalState.enemy.hp).toBeGreaterThan(0);
-            expect(result.log.length).toBeGreaterThan(100); // 1 start + (50 * 2 turns) + 1 end
+            expect(result.log.length).toBe(100); // 1 start + (49 * 2 turns) + 1 end
         });
     });
 
@@ -121,6 +121,7 @@ describe('CombatManager', () => {
             playerByte = createMockByte('p1', 'Player', 10, 100, {
                 compile: 10,
             });
+            playerByte.pools.integrity.maxValue = 100;
 
             const result = CombatManager.simulate(playerByte, enemyByte);
 
@@ -133,6 +134,7 @@ describe('CombatManager', () => {
             playerByte = createMockByte('p1', 'Player', 100, 50, {
                 override: 10,
             });
+            enemyByte.pools.integrity.value = 60;
 
             const result = CombatManager.simulate(playerByte, enemyByte);
 
@@ -150,7 +152,7 @@ describe('CombatManager', () => {
 
             const result = CombatManager.simulate(playerByte, enemyByte);
             const stunLog = result.log.find(
-                (l) => l.action === 'stunned' && l.actor === 'e1',
+                (l) => l.action === 'stunned' && l.actor === 'enemy',
             );
 
             expect(stunLog).toBeDefined();

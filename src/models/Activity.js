@@ -94,7 +94,7 @@ class Activity {
         ) {
             grantedLoot = LootManager.processLoot(
                 calculatedEffects,
-                context.player,
+                context,
             );
         }
 

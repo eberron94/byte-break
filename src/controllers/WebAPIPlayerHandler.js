@@ -44,9 +44,9 @@ const WebAPIPlayerHandler = {
                     const item = ItemManager.getItem(itemId);
                     if (item) {
                         const formattedEffects =
-                            item.effects && item.effects.length > 0
+                            item.useEffects && item.useEffects.length > 0
                                 ? GameObjectManager.formatEffectsList(
-                                      item.effects,
+                                      item.useEffects,
                                   )
                                 : null;
                         inventory.push({ ...item, amount, formattedEffects });

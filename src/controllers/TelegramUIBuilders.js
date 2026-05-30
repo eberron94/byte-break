@@ -266,8 +266,8 @@ const TelegramUIBuilders = {
         const amount = player.inventory[itemId] || 0;
         let text = `📦 **Item Details** 📦\n\n**${item.name}** (x${amount})\n_${item.description}_\n`;
         
-        if (item.effects && item.effects.length > 0) {
-            text += `\n✨ **Effects:**\n• ${GameObjectManager.formatEffectsList(item.effects)}\n`;
+        if (item.useEffects && item.useEffects.length > 0) {
+            text += `\n✨ **Effects:**\n• ${GameObjectManager.formatEffectsList(item.useEffects)}\n`;
         }
 
         const inline_keyboard = [];

@@ -122,7 +122,7 @@ describe('Activity Model', () => {
             LootManager.processLoot.mockReturnValue({ bits: 100, items: [] });
 
             const result = activity.perform(mockContext);
-            expect(LootManager.processLoot).toHaveBeenCalledWith({ bits: 100 }, mockContext.player);
+            expect(LootManager.processLoot).toHaveBeenCalledWith({ bits: 100 }, mockContext);
             expect(result.grantedLoot).toEqual({ bits: 100, items: [] });
         });
 

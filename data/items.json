@@ -20,7 +20,7 @@
         "description": "Basic repair module to restore structural integrity.",
         "type": "consumable",
         "cost": 15,
-        "effects": [{ "type": "integrity", "amount": 50 }]
+        "useEffects": [{ "type": "integrity", "amount": 50 }]
     },
     {
         "id": "byte_rebooter",
@@ -44,11 +44,44 @@
         "shortname": "Restore",
         "description": "Instantly satisfies all core system needs (Charge, Thermal, Defrag, Telemetry).",
         "type": "consumable",
-        "effects": [
+        "useEffects": [
             { "type": "charge", "amount": 100 },
             { "type": "thermal", "amount": 100 },
             { "type": "defrag", "amount": 100 },
             { "type": "telemetry", "amount": 100 }
+        ]
+    },
+    {
+        "id": "broadsword_exe",
+        "name": "Broadsword.exe",
+        "description": "An aggressive payload designed to brutally execute target processes.",
+        "type": "hardware",
+        "cost": 500,
+        "equipLabel": "Payload",
+        "modifiers": [
+            { "type": "skill", "key": "assault", "amount": 3 }
+        ]
+    },
+    {
+        "id": "proxy_shield",
+        "name": "Proxy Shield",
+        "description": "A protective proxy that reinforces the system firewall.",
+        "type": "hardware",
+        "cost": 300,
+        "equipLabel": "Proxy",
+        "modifiers": [
+            { "type": "skill", "key": "firewall", "amount": 2 }
+        ]
+    },
+    {
+        "id": "scavenger_daemon",
+        "name": "Scavenger Daemon",
+        "description": "A background script that siphons stray bits from network noise.",
+        "type": "software",
+        "cost": 750,
+        "equipLabel": "Daemon",
+        "tickEffects": [
+            { "type": "bits", "amount": 5, "ticksPerTrigger": 10 }
         ]
     }
 ]

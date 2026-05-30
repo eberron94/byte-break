@@ -208,7 +208,7 @@ function applyEffects(calculatedEffects, context) {
         Array.isArray(calculatedEffects.loot)
     ) {
         for (const tableId of calculatedEffects.loot) {
-            const lootResults = LootManager.rollLoot(tableId);
+            const lootResults = LootManager.rollLoot(tableId, context);
             if (lootResults.bits && byte) {
                 byte.pools.bits.increase(lootResults.bits);
             }

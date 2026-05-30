@@ -17,11 +17,13 @@ The `loot.json` file defines "Drop Tables" that reward the player with Bits and 
 
 Every object inside the `items` array represents a potential item the player can receive. Each item rolls its `chance` independently, meaning a player could theoretically receive _every_ item in the table, or _none_ of them, depending on their luck!
 
-| Property | Type   | Default  | Description                                                                                            |
-| :------- | :----- | :------- | :----------------------------------------------------------------------------------------------------- |
-| `id`     | String | **Req.** | The `id` of the item from `items.json` to reward.                                                      |
-| `amount` | Number | `1`      | The quantity of this item to give if the roll succeeds.                                                |
-| `chance` | Number | `1.0`    | The probability of this item dropping, from `0.0` (0%) to `1.0` (100%). A `0.5` chance represents 50%. |
+| Property    | Type          | Default  | Description                                                                                                    |
+| :---------- | :------------ | :------- | :------------------------------------------------------------------------------------------------------------- |
+| `id`        | String        | **Req.** | The `id` of the item from `items.json` to reward.                                                              |
+| `amount`    | Number/String | `1`      | The quantity of this item to give if the roll succeeds. Supports math expressions (e.g., `"successCount"`).    |
+| `die`       | Number/String | `null`   | A simple 1-in-N chance for the item to drop (e.g., `2` = 50% chance, `4` = 25% chance).                        |
+| `diceCheck` | Object        | `null`   | A custom dice pool roll that must meet a required number of successes for the item to drop.                    |
+| `dicePool`  | Number/String | `null`   | Rolls a custom dice pool and injects `successCount` into the `amount` evaluator to scale the quantity dropped. |
 
 _Note: Even if an item successfully rolls, it is still strictly bound by the `maxCount` constraint defined in `items.json`. If a player's inventory is full, the excess loot is cleanly discarded._
 
@@ -38,9 +40,7 @@ A simple loot table that guarantees 100 Bits and exactly 1 Basic Patch every tim
     "bits": 100,
     "items": [
         {
-            "id": "basic_patch",
-            "amount": 1,
-            "chance": 1.0
+            "id": "basic_patch"
         }
     ]
 }

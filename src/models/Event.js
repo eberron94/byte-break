@@ -46,7 +46,7 @@ class Event {
         ) {
             grantedLoot = LootManager.processLoot(
                 calculatedEffects,
-                context.player,
+                context,
             );
         }
 

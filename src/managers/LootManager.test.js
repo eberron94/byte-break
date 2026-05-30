@@ -91,7 +91,7 @@ describe('LootManager', () => {
             const player = { inventory: { capped_item: 4 } }; // Has room for exactly 1 more
             const effectsObj = { inventory: { capped_item: 3 } }; // Trying to grant 3
 
-            const result = LootManager.processLoot(effectsObj, player);
+            const result = LootManager.processLoot(effectsObj, { player });
 
             expect(result.items).toContainEqual({
                 id: 'capped_item',

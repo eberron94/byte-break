@@ -436,7 +436,7 @@ const WebAPIPostHandler = {
                 );
                 const grantedLoot = LootManager.processLoot(
                     calculatedWinEffects,
-                    player,
+                    context,
                 );
                 applyEffects(calculatedWinEffects, context);
 

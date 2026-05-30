@@ -43,6 +43,12 @@ class DatabaseManager {
             // Column might already exist
         }
 
+        try {
+            await this.db.exec(`ALTER TABLE bytes ADD COLUMN loadout TEXT DEFAULT '{"hardware":[],"software":[]}'`);
+        } catch (e) {
+            // Column might already exist
+        }
+
         // Table for persisting player data (e.g., inventory tracking)
         await this.db.exec(`
         CREATE TABLE IF NOT EXISTS players (
@@ -132,6 +138,7 @@ class DatabaseManager {
             generation: data.generation || 0,
             bufferOverflow: data.bufferOverflow || 0,
             hediffs: data.hediffs ? (typeof data.hediffs === 'string' ? JSON.parse(data.hediffs) : data.hediffs) : {},
+            loadout: data.loadout ? (typeof data.loadout === 'string' ? JSON.parse(data.loadout) : data.loadout) : { hardware: [], software: [] },
         };
     }
 
@@ -166,8 +173,8 @@ class DatabaseManager {
 
     async insertByte(s) {
         return this.db.run(
-            `INSERT INTO bytes (id, ownerId, name, byteClass, needs, stats, skills, pools, room, isAlive, history, birthDate, lastInteraction, isAsleep, generation, bufferOverflow, hediffs)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO bytes (id, ownerId, name, byteClass, needs, stats, skills, pools, room, isAlive, history, birthDate, lastInteraction, isAsleep, generation, bufferOverflow, hediffs, loadout)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 s.id,
                 s.ownerId,
@@ -185,7 +192,8 @@ class DatabaseManager {
                 s.isAsleep,
                 s.generation,
                 s.bufferOverflow,
-                JSON.stringify(s.hediffs || {})
+                JSON.stringify(s.hediffs || {}),
+                JSON.stringify(s.loadout || { hardware: [], software: [] })
             ],
         );
     }
@@ -193,7 +201,7 @@ class DatabaseManager {
     async updateByte(s) {
         return this.db.run(
             `UPDATE bytes 
-             SET name = ?, byteClass = ?, needs = ?, stats = ?, skills = ?, pools = ?, room = ?, isAlive = ?, history = ?, lastInteraction = ?, isAsleep = ?, generation = ?, bufferOverflow = ?, hediffs = ?
+             SET name = ?, byteClass = ?, needs = ?, stats = ?, skills = ?, pools = ?, room = ?, isAlive = ?, history = ?, lastInteraction = ?, isAsleep = ?, generation = ?, bufferOverflow = ?, hediffs = ?, loadout = ?
              WHERE id = ?`,
             [
                 s.name,
@@ -210,6 +218,7 @@ class DatabaseManager {
                 s.generation,
                 s.bufferOverflow,
                 JSON.stringify(s.hediffs || {}),
+                JSON.stringify(s.loadout || { hardware: [], software: [] }),
                 s.id,
             ],
         );

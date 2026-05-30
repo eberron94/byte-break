@@ -265,7 +265,7 @@ class PacketSniffer {
                         );
                         state.grantedLoot = LootManager.processLoot(
                             calculatedWinEffects,
-                            player,
+                            context,
                         );
                         applyEffects(calculatedWinEffects, context);
                     } else if (isLoss && activity && activity.loseEffects) {
@@ -274,7 +274,7 @@ class PacketSniffer {
                         );
                         state.grantedLoot = LootManager.processLoot(
                             calculatedLoseEffects,
-                            player,
+                            context,
                         );
                         applyEffects(calculatedLoseEffects, context);
                     }
