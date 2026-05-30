@@ -7,6 +7,7 @@ const activitiesData = require('../../data/activities.json');
 const shopsData = require('../../data/shops.json');
 const classesData = require('../../data/classes.json');
 const skillsData = require('../../data/skills.json');
+const enemiesData = require('../../data/enemies.json');
 
 class GameObjectManager {
     constructor() {
@@ -20,8 +21,7 @@ class GameObjectManager {
             dataArray.forEach((item) => {
                 if (item && (item.id || item.name)) {
                     const id =
-                        item.id ||
-                        item.name.toLowerCase().replace(/\s+/g, '_');
+                        item.id || item.name.toLowerCase().replace(/\s+/g, '_');
                     this.catalog.set(id, {
                         id,
                         name: item.name,
@@ -41,6 +41,7 @@ class GameObjectManager {
         registerData(shopsData, 'shop');
         registerData(classesData, 'class');
         registerData(skillsData, 'skill');
+        registerData(enemiesData, 'enemy');
     }
 
     getObjectName(id, fallback = '') {
@@ -80,8 +81,10 @@ class GameObjectManager {
                 case 'history':
                     const targetName = this.getObjectName(req.key);
                     const conditions = [];
-                    if (req.min !== undefined) conditions.push(`Min ${req.min}`);
-                    if (req.max !== undefined) conditions.push(`Max ${req.max}`);
+                    if (req.min !== undefined)
+                        conditions.push(`Min ${req.min}`);
+                    if (req.max !== undefined)
+                        conditions.push(`Max ${req.max}`);
                     if (req.maxValueMin !== undefined)
                         conditions.push(`Capacity >= ${req.maxValueMin}`);
                     if (req.maxValueMax !== undefined)
@@ -105,7 +108,8 @@ class GameObjectManager {
                     break;
                 case 'talent':
                     desc = `Talent: ${this.getObjectName(req.id)}`;
-                    if (req.level !== undefined) desc += ` (Level ${req.level})`;
+                    if (req.level !== undefined)
+                        desc += ` (Level ${req.level})`;
                     break;
                 case 'hediff':
                     desc = `Status: ${this.getObjectName(req.id)}`;
@@ -119,8 +123,10 @@ class GameObjectManager {
                 case 'player_hediff':
                     desc = `Player Status: ${this.getObjectName(req.id)}`;
                     const psCond = [];
-                    if (req.minStacks !== undefined) psCond.push(`Min ${req.minStacks} Stacks`);
-                    if (req.maxStacks !== undefined) psCond.push(`Max ${req.maxStacks} Stacks`);
+                    if (req.minStacks !== undefined)
+                        psCond.push(`Min ${req.minStacks} Stacks`);
+                    if (req.maxStacks !== undefined)
+                        psCond.push(`Max ${req.maxStacks} Stacks`);
                     if (psCond.length > 0) desc += ` (${psCond.join(', ')})`;
                     break;
                 case 'timePhase':
@@ -129,7 +135,15 @@ class GameObjectManager {
                         .join(' or ')}`;
                     break;
                 case 'dayOfWeek':
-                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const days = [
+                        'Sun',
+                        'Mon',
+                        'Tue',
+                        'Wed',
+                        'Thu',
+                        'Fri',
+                        'Sat',
+                    ];
                     desc = `Day: ${req.days.map((d) => days[d]).join(' or ')}`;
                     break;
             }
@@ -151,11 +165,19 @@ class GameObjectManager {
                 prefix = `(1-in-${effect.die} chance) `;
             }
             if (effect.dicePool !== undefined) {
-                const poolStr = typeof effect.dicePool === 'number' ? effect.dicePool : 'Variable';
+                const poolStr =
+                    typeof effect.dicePool === 'number'
+                        ? effect.dicePool
+                        : 'Variable';
                 prefix = `(Roll ${poolStr} Dice) ` + prefix;
             }
 
-            if (effect.type === 'stat' || effect.type === 'skill' || effect.type === 'pool' || effect.type === 'need') {
+            if (
+                effect.type === 'stat' ||
+                effect.type === 'skill' ||
+                effect.type === 'pool' ||
+                effect.type === 'need'
+            ) {
                 const target = this.getObjectName(effect.key);
                 const amt = effect.amount;
                 let amtStr = amt;
@@ -166,7 +188,8 @@ class GameObjectManager {
                 }
 
                 if (effect.sides !== undefined) {
-                    const sidesStr = typeof effect.sides === 'number' ? effect.sides : 'X';
+                    const sidesStr =
+                        typeof effect.sides === 'number' ? effect.sides : 'X';
                     amtStr += ` (d${sidesStr})`;
                 }
 
@@ -184,14 +207,27 @@ class GameObjectManager {
             } else if (effect.type === 'loot') {
                 const tableId = this.getObjectName(effect.table);
                 desc = `Random Loot (${tableId})`;
-            } else if (effect.type === 'hediff' || effect.type === 'player_hediff') {
+            } else if (
+                effect.type === 'hediff' ||
+                effect.type === 'player_hediff'
+            ) {
                 const hediffName = this.getObjectName(effect.id);
                 const action = effect.action || 'escalate';
                 const target = effect.type === 'player_hediff' ? 'Player ' : '';
-                const amtStr = effect.amount !== undefined ? (typeof effect.amount === 'number' && effect.amount > 1 ? ` (${effect.amount} Stacks)` : (typeof effect.amount === 'string' ? ` (Variable Stacks)` : '')) : '';
-                if (action === 'escalate') desc = `Apply/Worsen ${target}${hediffName}${amtStr}`;
-                else if (action === 'reduce') desc = `Recover from ${target}${hediffName}${amtStr}`;
-                else if (action === 'remove') desc = `Cure ${target}${hediffName}${amtStr}`;
+                const amtStr =
+                    effect.amount !== undefined
+                        ? typeof effect.amount === 'number' && effect.amount > 1
+                            ? ` (${effect.amount} Stacks)`
+                            : typeof effect.amount === 'string'
+                              ? ` (Variable Stacks)`
+                              : ''
+                        : '';
+                if (action === 'escalate')
+                    desc = `Apply/Worsen ${target}${hediffName}${amtStr}`;
+                else if (action === 'reduce')
+                    desc = `Recover from ${target}${hediffName}${amtStr}`;
+                else if (action === 'remove')
+                    desc = `Cure ${target}${hediffName}${amtStr}`;
             } else if (effect.type === 'isAsleep') {
                 desc = effect.amount ? `Put Byte to Sleep` : `Wake Byte up`;
             } else if (effect.type) {
@@ -200,9 +236,7 @@ class GameObjectManager {
                     ? effect.type.replace('upgrade_', '')
                     : effect.type;
                 const statName = this.getObjectName(statKey);
-                const target = isUpgrade
-                    ? `${statName} (Permanent)`
-                    : statName;
+                const target = isUpgrade ? `${statName} (Permanent)` : statName;
 
                 const amt = effect.amount;
                 let amtStr = amt;
@@ -240,7 +274,7 @@ class GameObjectManager {
     formatLootString(grantedLoot, context = null) {
         if (!grantedLoot) return '';
         const lootMsg = [];
-        
+
         if (grantedLoot.bits && grantedLoot.bits > 0) {
             lootMsg.push(`${grantedLoot.bits} β`);
         }
@@ -250,7 +284,7 @@ class GameObjectManager {
                 lootMsg.push(`${itemName} (x${i.amount})`);
             }
         }
-        
+
         return lootMsg.join(', ');
     }
 }

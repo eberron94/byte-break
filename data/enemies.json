@@ -1,0 +1,33 @@
+[
+    {
+        "id": "basic_virus",
+        "name": "Basic Virus",
+        "enemyClass": "virus",
+        "hp": 80,
+        "tf": 80,
+        "skills": {
+            "assault": 3
+        },
+        "winEffects": [{ "type": "loot", "table": "dojo_win_easy" }]
+    },
+    {
+        "id": "training_virus",
+        "name": "Training Virus",
+        "enemyClass": "virus",
+        "hp": 100,
+        "tf": 100,
+        "skills": {
+            "assault": 5
+        },
+        "winEffects": [{ "type": "loot", "table": "dojo_win_normal" }]
+    },
+    {
+        "id": "elite_virus",
+        "name": "Elite Virus",
+        "enemyClass": "virus",
+        "hp": 120,
+        "tf": 120,
+        "skills": { "assault": 5, "firewall": 5 },
+        "winEffects": [{ "type": "loot", "table": "dojo_win_hard" }]
+    }
+]

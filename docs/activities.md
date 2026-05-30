@@ -40,16 +40,11 @@ If the `itemSelect` configuration has `"isConsumed": true`, or the item itself h
 
 When `isCombat` is `true`, the Web API expects a `combat` configuration object to generate the NPC opponent.
 
-| Property          | Type    | Default            | Description                                                                                                                             |
-| :---------------- | :------ | :----------------- | :-------------------------------------------------------------------------------------------------------------------------------------- |
-| `enemyName`       | String  | `"Training Virus"` | The display name of the opponent.                                                                                                       |
-| `enemyClass`      | String  | `"virus"`          | The class of the opponent, which dictates their avatar appearance.                                                                      |
-| `scaleWithPlayer` | Boolean | `true`             | If true, the enemy's pools will be calculated dynamically using multipliers against the player's own pools. If false, uses flat values. |
-| `hpMultiplier`    | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Integrity to determine the enemy's Integrity.                                   |
-| `tfMultiplier`    | Number  | `1.0`              | (If scaling) The multiplier applied to the player's Max Teraflops to determine the enemy's Teraflops.                                   |
-| `hp` / `tf`       | Number  | `100`              | (If NOT scaling) Flat pool values for the enemy.                                                                                        |
-| `skills`          | Object  | `{}`               | An object overriding the enemy's specific invested skills (e.g., `{"assault": 10, "firewall": 5}`).                                     |
-| `winEffects`      | Array   | `[{...}]`          | An array of effects to apply to the player upon winning (typically `"loot"`).                                                           |
+| Property    | Type   | Default            | Description                                                                                         |
+| :---------- | :----- | :----------------- | :-------------------------------------------------------------------------------------------------- |
+| `enemyId`   | String | `"training_virus"` | The ID of the enemy configured in `enemies.json`.                                                   |
+| `hp` / `tf` | Number | `100`              | Flat pool values for the enemy. Overrides defaults in `enemies.json`.                               |
+| `skills`    | Object | `{}`               | An object overriding the enemy's specific invested skills (e.g., `{"assault": 10, "firewall": 5}`). |
 
 ---
 
@@ -111,15 +106,10 @@ Opens the Web App to initiate a scaled combat simulation. Note that `isWebView` 
     "isCombat": true,
     "effects": [{ "type": "energy", "amount": -20 }],
     "combat": {
-        "enemyName": "Training Dummy",
-        "enemyClass": "virus",
-        "scaleWithPlayer": true,
-        "hpMultiplier": 0.8,
-        "tfMultiplier": 0.5,
+        "enemyId": "training_virus",
         "skills": {
             "firewall": 5
-        },
-        "winEffects": [{ "type": "loot", "table": "dojo_training_drops" }]
+        }
     }
 }
 ```

@@ -65,7 +65,10 @@ class CombatManager {
             if (this.getPoolSize(p.skills.sync) > 0) {
                 const rolls = LuckManager.rollCustomDice(p.skills.sync);
                 const syncSuccesses = LuckManager.countSuccesses(rolls);
-                if (syncSuccesses > 0 && syncSuccesses >= this.getPoolSize(e.skills.firewall)) {
+                if (
+                    syncSuccesses > 0 &&
+                    syncSuccesses >= this.getPoolSize(e.skills.firewall)
+                ) {
                     pacified = true;
                     log.push({
                         action: 'sync',
@@ -89,7 +92,10 @@ class CombatManager {
             log,
             pacified,
             winEffects,
-            enemyConfig: { name: enemyByte.name, byteClass: enemyByte.byteClass },
+            enemyConfig: {
+                name: enemyByte.name,
+                byteClass: enemyByte.byteClass || enemyByte.enemyClass,
+            },
             finalState: {
                 player: { hp: p.hp, tf: p.tf },
                 enemy: { hp: e.hp, tf: e.tf },
@@ -99,18 +105,67 @@ class CombatManager {
 
     static createCombatant(byte, id) {
         const skills = {};
-        const skillKeys = ['assault', 'firewall', 'compile', 'shred', 'scan', 'parse', 'datamine', 'override', 'sync', 'spoof', 'compression'];
-        skillKeys.forEach(k => {
-            skills[k] = byte.getDicePool ? byte.getDicePool('skill', k) : [{ size: (byte.getSkills ? byte.getSkills()[k] : byte.skills[k]) || 0, sides: 6 }];
+        const skillKeys = [
+            'assault',
+            'firewall',
+            'compile',
+            'shred',
+            'scan',
+            'parse',
+            'datamine',
+            'override',
+            'sync',
+            'spoof',
+            'compression',
+        ];
+        skillKeys.forEach((k) => {
+            skills[k] = byte.getDicePool
+                ? byte.getDicePool('skill', k)
+                : [
+                      {
+                          size:
+                              (byte.getSkills
+                                  ? byte.getSkills()[k]
+                                  : byte.skills
+                                    ? byte.skills[k]
+                                    : 0) || 0,
+                          sides: 6,
+                      },
+                  ];
         });
+
+        const hp =
+            byte.pools && byte.pools.integrity
+                ? byte.pools.integrity.value
+                : byte.hp !== undefined
+                  ? byte.hp
+                  : 100;
+        const maxHp =
+            byte.pools && byte.pools.integrity
+                ? byte.pools.integrity.maxValue || 100
+                : byte.hp !== undefined
+                  ? byte.hp
+                  : 100;
+        const tf =
+            byte.pools && byte.pools.teraflops
+                ? byte.pools.teraflops.value
+                : byte.tf !== undefined
+                  ? byte.tf
+                  : 100;
+        const maxTf =
+            byte.pools && byte.pools.teraflops
+                ? byte.pools.teraflops.maxValue || 100
+                : byte.tf !== undefined
+                  ? byte.tf
+                  : 100;
 
         return {
             id,
             name: byte.name,
-            hp: byte.pools.integrity.value,
-            maxHp: byte.pools.integrity.maxValue || 100,
-            tf: byte.pools.teraflops.value,
-            maxTf: byte.pools.teraflops.maxValue || 100,
+            hp,
+            maxHp,
+            tf,
+            maxTf,
             skills,
             modifiers: {
                 firewallShred: 0,
@@ -121,7 +176,8 @@ class CombatManager {
 
     static getPoolSize(pool) {
         if (typeof pool === 'number') return pool;
-        if (Array.isArray(pool)) return pool.reduce((sum, g) => sum + (g.size || 0), 0);
+        if (Array.isArray(pool))
+            return pool.reduce((sum, g) => sum + (g.size || 0), 0);
         return 0;
     }
 
@@ -131,16 +187,17 @@ class CombatManager {
         if (typeof pool === 'number') {
             for (let i = 0; i < pool; i++) flatDice.push(6);
         } else if (Array.isArray(pool)) {
-            pool.forEach(g => {
-                for (let i = 0; i < (g.size || 0); i++) flatDice.push(g.sides || 6);
+            pool.forEach((g) => {
+                for (let i = 0; i < (g.size || 0); i++)
+                    flatDice.push(g.sides || 6);
             });
         }
         flatDice.sort((a, b) => b - a); // Sort descending to remove largest first
         flatDice = flatDice.slice(shredAmount);
-        
+
         const newPool = [];
-        flatDice.forEach(sides => {
-            const existing = newPool.find(g => g.sides === sides);
+        flatDice.forEach((sides) => {
+            const existing = newPool.find((g) => g.sides === sides);
             if (existing) existing.size++;
             else newPool.push({ size: 1, sides });
         });
@@ -160,10 +217,13 @@ class CombatManager {
         }
 
         // 2. Heal / Shield Check (Compile)
-        if (attacker.hp < attacker.maxHp * 0.5 && this.getPoolSize(attacker.skills.compile) > 0) {
+        if (
+            attacker.hp < attacker.maxHp * 0.5 &&
+            this.getPoolSize(attacker.skills.compile) > 0
+        ) {
             const rolls = LuckManager.rollCustomDice(attacker.skills.compile);
             const successes = LuckManager.countSuccesses(rolls);
-            
+
             if (successes > 0) {
                 const heal = successes * 5;
                 attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
@@ -178,10 +238,13 @@ class CombatManager {
         }
 
         // 3. Ultimate Attack (Override)
-        if (attacker.tf >= 25 && this.getPoolSize(attacker.skills.override) > 0) {
+        if (
+            attacker.tf >= 25 &&
+            this.getPoolSize(attacker.skills.override) > 0
+        ) {
             const rolls = LuckManager.rollCustomDice(attacker.skills.override);
             const successes = LuckManager.countSuccesses(rolls);
-            
+
             if (successes > 0) {
                 attacker.tf -= 25;
                 const dmg = successes * 5 + 10;
@@ -199,7 +262,10 @@ class CombatManager {
         }
 
         // 4. Dodge Check (Spoof vs Scan)
-        const dodgeCheck = LuckManager.opposedRoll(defender.skills.spoof, attacker.skills.scan);
+        const dodgeCheck = LuckManager.opposedRoll(
+            defender.skills.spoof,
+            attacker.skills.scan,
+        );
         if (dodgeCheck.netSuccesses > 0) {
             log.push({
                 actor: attacker.id,
@@ -211,13 +277,25 @@ class CombatManager {
         }
 
         // 5. Debuff / Utility Rolls
-        let activeFirewall = this.applyShredToPool(defender.skills.firewall, defender.modifiers.firewallShred);
+        let activeFirewall = this.applyShredToPool(
+            defender.skills.firewall,
+            defender.modifiers.firewallShred,
+        );
 
-        if (this.getPoolSize(activeFirewall) > 0 && this.getPoolSize(attacker.skills.shred) > 0) {
-            const shredCheck = LuckManager.opposedRoll(attacker.skills.shred, activeFirewall);
+        if (
+            this.getPoolSize(activeFirewall) > 0 &&
+            this.getPoolSize(attacker.skills.shred) > 0
+        ) {
+            const shredCheck = LuckManager.opposedRoll(
+                attacker.skills.shred,
+                activeFirewall,
+            );
             if (shredCheck.netSuccesses > 0) {
                 defender.modifiers.firewallShred += shredCheck.netSuccesses;
-                activeFirewall = this.applyShredToPool(defender.skills.firewall, defender.modifiers.firewallShred);
+                activeFirewall = this.applyShredToPool(
+                    defender.skills.firewall,
+                    defender.modifiers.firewallShred,
+                );
                 log.push({
                     actor: attacker.id,
                     action: 'shred',
@@ -226,9 +304,12 @@ class CombatManager {
                 });
             }
         }
-        
+
         if (this.getPoolSize(attacker.skills.compression) > 0) {
-            const compCheck = LuckManager.opposedRoll(attacker.skills.compression, activeFirewall);
+            const compCheck = LuckManager.opposedRoll(
+                attacker.skills.compression,
+                activeFirewall,
+            );
             // Stun requires overwhelmingly beating the firewall (net success >= 2)
             if (compCheck.netSuccesses >= 2) {
                 defender.modifiers.stunned = true;
@@ -242,10 +323,13 @@ class CombatManager {
         }
 
         // 6. Base Attack (Assault vs Firewall)
-        const assaultCheck = LuckManager.opposedRoll(attacker.skills.assault, activeFirewall);
+        const assaultCheck = LuckManager.opposedRoll(
+            attacker.skills.assault,
+            activeFirewall,
+        );
         // Critical Hit triggers if Scan heavily outmaneuvered Spoof during the Dodge Check
-        const isCrit = dodgeCheck.netSuccesses <= -3; 
-        
+        const isCrit = dodgeCheck.netSuccesses <= -3;
+
         let dmg = Math.max(1, assaultCheck.netSuccesses * 2); // 2 dmg per net success, minimum 1 scratch damage
         if (isCrit) dmg = Math.floor(dmg * 1.5);
 
@@ -261,7 +345,10 @@ class CombatManager {
 
         // 7. Counter-attack Check (Parse)
         if (defender.hp > 0 && this.getPoolSize(defender.skills.parse) > 0) {
-            const parseCheck = LuckManager.opposedRoll(defender.skills.parse, attacker.skills.assault);
+            const parseCheck = LuckManager.opposedRoll(
+                defender.skills.parse,
+                attacker.skills.assault,
+            );
             if (parseCheck.netSuccesses > 0) {
                 const counterDmg = parseCheck.netSuccesses * 2;
                 attacker.hp -= counterDmg;

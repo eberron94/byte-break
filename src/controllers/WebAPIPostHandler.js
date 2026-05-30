@@ -1,5 +1,5 @@
 const CombatManager = require('../managers/CombatManager');
-const  ByteBuilder  = require('../models/ByteBuilder');
+const ByteBuilder = require('../models/ByteBuilder');
 const { getAvatarColors } = require('../util/avatar');
 const ItemManager = require('../managers/ItemManager');
 const LootManager = require('../managers/LootManager');
@@ -12,6 +12,8 @@ const TalentManager = require('../managers/TalentManager');
 const { checkRequirements } = require('../util/requirements');
 const ByteClassManager = require('../managers/ByteClassManager');
 const ActivityManager = require('../managers/ActivityManager');
+const EnemyManager = require('../managers/EnemyManager');
+const Enemy = require('../models/Enemy');
 
 const activeTransactions = new Set();
 const lastCombatMessages = new Map();
@@ -194,7 +196,10 @@ const WebAPIPostHandler = {
                 return res.status(400).json({ error: 'Insufficient bits' });
             }
 
-            const itemStock = shop.stock[itemId] !== undefined ? shop.stock[itemId] : shop.defaultStock;
+            const itemStock =
+                shop.stock[itemId] !== undefined
+                    ? shop.stock[itemId]
+                    : shop.defaultStock;
             if (itemStock !== undefined) {
                 const bought = player.history[`shop_${shop.id}_${itemId}`] || 0;
                 if (bought >= itemStock) {
@@ -349,44 +354,28 @@ const WebAPIPostHandler = {
                 activityId || 'combat_simulation',
             );
             const combatConfig = activity?.combat || {
-                enemyName: 'Training Virus',
-                enemyClass: 'virus',
-                scaleWithPlayer: true,
-                hpMultiplier: 1.0,
-                tfMultiplier: 1.0,
-                winEffects: [{ type: 'loot', table: 'dojo_win_normal' }],
+                enemyId: 'training_virus',
             };
 
-            const eHp = combatConfig.scaleWithPlayer
-                ? Math.max(
-                      1,
-                      Math.floor(
-                          playerByte.pools.integrity.maxValue *
-                              (combatConfig.hpMultiplier || 1),
-                      ),
-                  )
-                : combatConfig.hp || 100;
-            const eTf = combatConfig.scaleWithPlayer
-                ? Math.max(
-                      1,
-                      Math.floor(
-                          playerByte.pools.teraflops.maxValue *
-                              (combatConfig.tfMultiplier || 1),
-                      ),
-                  )
-                : combatConfig.tf || 100;
+            const baseEnemy = EnemyManager.getEnemy(
+                combatConfig.enemyId || 'training_virus',
+            );
+            if (!baseEnemy) {
+                return res.status(400).json({ error: 'Enemy not found' });
+            }
 
-            const enemyByte = ByteBuilder.default(
-                'npc_dummy',
-                combatConfig.enemyName || 'Enemy',
-            )
-                .withByteClass(combatConfig.enemyClass || 'virus')
-                .withPools({
-                    integrity: { value: eHp, maxValue: eHp },
-                    teraflops: { value: eTf, maxValue: eTf },
-                    bits: { value: 0, maxValue: 100 },
-                })
-                .build();
+            const eHp = combatConfig.hp || baseEnemy.hp;
+            const eTf = combatConfig.tf || baseEnemy.tf;
+
+            const enemyByte = new Enemy({
+                id: baseEnemy.id,
+                name: baseEnemy.name,
+                enemyClass: baseEnemy.enemyClass,
+                hp: eHp,
+                tf: eTf,
+                skills: { ...baseEnemy.skills },
+                winEffects: baseEnemy.winEffects,
+            });
 
             if (combatConfig.skills) {
                 for (const [sKey, sVal] of Object.entries(
@@ -400,7 +389,7 @@ const WebAPIPostHandler = {
             const result = CombatManager.simulate(
                 playerByte,
                 enemyByte,
-                combatConfig.winEffects,
+                enemyByte.winEffects,
             );
 
             const initialHp = playerByte.pools.integrity.value;
@@ -447,18 +436,26 @@ const WebAPIPostHandler = {
                         : 'Simulation complete! No rewards extracted.';
                 result.log.push({ action: 'reward', message: rewardMsg });
 
-                player.pendingEvents.push({ event: GameEvents.COMBAT_WIN, args: [userId] });
+                player.pendingEvents.push({
+                    event: GameEvents.COMBAT_WIN,
+                    args: [userId],
+                });
             } else if (result.winner === 'enemy') {
                 combatMsg = `Combat Simulation: ${playerByte.name} was defeated.`;
-                player.pendingEvents.push({ event: GameEvents.COMBAT_LOSS, args: [userId] });
+                player.pendingEvents.push({
+                    event: GameEvents.COMBAT_LOSS,
+                    args: [userId],
+                });
             }
 
             const hpDelta = playerByte.pools.integrity.value - initialHp;
             const tfDelta = playerByte.pools.teraflops.value - initialTf;
 
             const deltas = [];
-            if (hpDelta !== 0) deltas.push(`${hpDelta > 0 ? '+' : ''}${hpDelta} Integrity`);
-            if (tfDelta !== 0) deltas.push(`${tfDelta > 0 ? '+' : ''}${tfDelta} Teraflops`);
+            if (hpDelta !== 0)
+                deltas.push(`${hpDelta > 0 ? '+' : ''}${hpDelta} Integrity`);
+            if (tfDelta !== 0)
+                deltas.push(`${tfDelta > 0 ? '+' : ''}${tfDelta} Teraflops`);
 
             let changesStr = deltas.join(', ');
 
@@ -509,7 +506,7 @@ const WebAPIPostHandler = {
                         userId,
                         activeByte,
                         player,
-                        finalMessage
+                        finalMessage,
                     );
                 } else {
                     await this.botController.sendStasisUI(
@@ -676,7 +673,9 @@ const WebAPIPostHandler = {
     async toggleEquipment(req, res) {
         const { userId, itemId, type, action } = req.body;
         if (activeTransactions.has(userId)) {
-            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
         }
         activeTransactions.add(userId);
         try {
@@ -684,25 +683,36 @@ const WebAPIPostHandler = {
             const player = await this.gameManager.getPlayer(userId);
             const byte = await this.gameManager.getByte(userId);
 
-            if (!player || !byte) return res.status(404).json({ error: 'Not found' });
+            if (!player || !byte)
+                return res.status(404).json({ error: 'Not found' });
 
             if (action === 'equip') {
                 if (!player.hasItem(itemId, 1)) {
-                    return res.status(400).json({ error: 'Item not in inventory' });
+                    return res
+                        .status(400)
+                        .json({ error: 'Item not in inventory' });
                 }
-                const capacity = type === 'hardware' ? byte.getHardwareCapacity(player) : byte.getSoftwareCapacity(player);
+                const capacity =
+                    type === 'hardware'
+                        ? byte.getHardwareCapacity(player)
+                        : byte.getSoftwareCapacity(player);
                 if (!byte.loadout[type]) byte.loadout[type] = [];
                 if (byte.loadout[type].length >= capacity) {
-                    return res.status(400).json({ error: 'No slots available' });
+                    return res
+                        .status(400)
+                        .json({ error: 'No slots available' });
                 }
 
                 player.removeItem(itemId, 1);
                 byte.loadout[type].push(itemId);
             } else if (action === 'unequip') {
-                if (!byte.loadout[type] || !byte.loadout[type].includes(itemId)) {
+                if (
+                    !byte.loadout[type] ||
+                    !byte.loadout[type].includes(itemId)
+                ) {
                     return res.status(400).json({ error: 'Item not equipped' });
                 }
-                
+
                 const idx = byte.loadout[type].indexOf(itemId);
                 byte.loadout[type].splice(idx, 1);
                 player.addItem(itemId, 1, ItemManager);
@@ -715,8 +725,13 @@ const WebAPIPostHandler = {
 
             if (this.botController) {
                 const item = ItemManager.getItem(itemId);
-                const msg = action === 'equip' ? `Equipped ${item.name}!` : `Unequipped ${item.name}!`;
-                this.botController.sendStatusUI(userId, byte, player, msg).catch(console.error);
+                const msg =
+                    action === 'equip'
+                        ? `Equipped ${item.name}!`
+                        : `Unequipped ${item.name}!`;
+                this.botController
+                    .sendStatusUI(userId, byte, player, msg)
+                    .catch(console.error);
             }
 
             res.json({ byte: byte.getStatus(), player: player.inventory });

@@ -76,14 +76,7 @@
         "isWebView": true,
         "isCombat": true,
         "combat": {
-            "enemyName": "Basic Virus",
-            "enemyClass": "virus",
-            "scaleWithPlayer": true,
-            "hpMultiplier": 0.8,
-            "tfMultiplier": 0.8,
-            "winEffects": [
-                { "type": "loot", "table": "dojo_win_easy" }
-            ]
+            "enemyId": "basic_virus"
         }
     },
     {
@@ -100,14 +93,7 @@
         "isWebView": true,
         "isCombat": true,
         "combat": {
-            "enemyName": "Training Virus",
-            "enemyClass": "virus",
-            "scaleWithPlayer": true,
-            "hpMultiplier": 1.0,
-            "tfMultiplier": 1.0,
-            "winEffects": [
-                { "type": "loot", "table": "dojo_win_normal" }
-            ]
+            "enemyId": "training_virus"
         }
     },
     {
@@ -124,18 +110,11 @@
         "isWebView": true,
         "isCombat": true,
         "combat": {
-            "enemyName": "Elite Virus",
-            "enemyClass": "virus",
-            "scaleWithPlayer": true,
-            "hpMultiplier": 1.2,
-            "tfMultiplier": 1.2,
+            "enemyId": "elite_virus",
             "skills": {
                 "assault": 5,
                 "firewall": 5
-            },
-            "winEffects": [
-                { "type": "loot", "table": "dojo_win_hard" }
-            ]
+            }
         }
     },
     {
@@ -318,6 +297,13 @@
             "type": "currency",
             "isConsumed": true
         },
-        "effects": [{ "type": "hediff", "id": "lucky", "action": "escalate", "amount": "Math.max(1, Math.floor(item.cost / 100))" }]
+        "effects": [
+            {
+                "type": "hediff",
+                "id": "lucky",
+                "action": "escalate",
+                "amount": "Math.max(1, Math.floor(item.cost / 100))"
+            }
+        ]
     }
 ]
