@@ -1,5 +1,6 @@
 const dbManager = require('../database/db');
-const { Byte, ByteBuilder } = require('../models/Byte');
+const { Byte } = require('../models/Byte');
+const ByteBuilder = require('../models/ByteBuilder');
 const Player = require('../models/Player');
 const EventEmitter = require('events');
 const GameEvents = require('../util/GameEvents');
@@ -181,6 +182,16 @@ class GameManager extends EventEmitter {
             const bytes = await this.getBytes(userId);
             const byteToDelete = bytes.find((b) => b.id === byteId);
             if (!byteToDelete) throw new Error('Byte not found.');
+
+            // Refund any equipped items
+            const player = await this.getPlayer(userId);
+            const equippedIds = [...(byteToDelete.loadout.hardware || []), ...(byteToDelete.loadout.software || [])];
+            if (equippedIds.length > 0) {
+                for (const itemId of equippedIds) {
+                    player.addItem(itemId, 1);
+                }
+                await this.savePlayer(player);
+            }
 
             await dbManager.deleteByte(byteId);
             this.emit(GameEvents.BYTE_DELETED, userId, byteToDelete);

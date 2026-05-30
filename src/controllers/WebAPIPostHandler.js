@@ -1,5 +1,5 @@
 const CombatManager = require('../managers/CombatManager');
-const { ByteBuilder } = require('../models/Byte');
+const  ByteBuilder  = require('../models/ByteBuilder');
 const { getAvatarColors } = require('../util/avatar');
 const ItemManager = require('../managers/ItemManager');
 const LootManager = require('../managers/LootManager');
@@ -668,6 +668,61 @@ const WebAPIPostHandler = {
         } catch (error) {
             console.error('Mutator API Error:', error);
             res.status(500).json({ error: 'Failed to use mutator.' });
+        } finally {
+            activeTransactions.delete(userId);
+        }
+    },
+
+    async toggleEquipment(req, res) {
+        const { userId, itemId, type, action } = req.body;
+        if (activeTransactions.has(userId)) {
+            return res.status(429).json({ error: 'Transaction in progress. Please wait.' });
+        }
+        activeTransactions.add(userId);
+        try {
+            this.gameManager.recordPlayerActivity(userId).catch(console.error);
+            const player = await this.gameManager.getPlayer(userId);
+            const byte = await this.gameManager.getByte(userId);
+
+            if (!player || !byte) return res.status(404).json({ error: 'Not found' });
+
+            if (action === 'equip') {
+                if (!player.hasItem(itemId, 1)) {
+                    return res.status(400).json({ error: 'Item not in inventory' });
+                }
+                const capacity = type === 'hardware' ? byte.getHardwareCapacity(player) : byte.getSoftwareCapacity(player);
+                if (!byte.loadout[type]) byte.loadout[type] = [];
+                if (byte.loadout[type].length >= capacity) {
+                    return res.status(400).json({ error: 'No slots available' });
+                }
+
+                player.removeItem(itemId, 1);
+                byte.loadout[type].push(itemId);
+            } else if (action === 'unequip') {
+                if (!byte.loadout[type] || !byte.loadout[type].includes(itemId)) {
+                    return res.status(400).json({ error: 'Item not equipped' });
+                }
+                
+                const idx = byte.loadout[type].indexOf(itemId);
+                byte.loadout[type].splice(idx, 1);
+                player.addItem(itemId, 1, ItemManager);
+            } else {
+                return res.status(400).json({ error: 'Invalid action' });
+            }
+
+            await this.gameManager.saveByte(byte);
+            await this.gameManager.savePlayer(player);
+
+            if (this.botController) {
+                const item = ItemManager.getItem(itemId);
+                const msg = action === 'equip' ? `Equipped ${item.name}!` : `Unequipped ${item.name}!`;
+                this.botController.sendStatusUI(userId, byte, player, msg).catch(console.error);
+            }
+
+            res.json({ byte: byte.getStatus(), player: player.inventory });
+        } catch (error) {
+            console.error('Equipment API Error:', error);
+            res.status(500).json({ error: error.message });
         } finally {
             activeTransactions.delete(userId);
         }

@@ -54,7 +54,7 @@ class CombatManager {
             winEffects = JSON.parse(JSON.stringify(winEffectsConfig || []));
 
             // Datamine increases the loot modifier
-            if (p.skills.datamine > 0) {
+            if (this.getPoolSize(p.skills.datamine) > 0) {
                 const rolls = LuckManager.rollCustomDice(p.skills.datamine);
                 const bonusBits = LuckManager.countSuccesses(rolls) * 3;
                 if (bonusBits > 0) {
@@ -62,10 +62,10 @@ class CombatManager {
                 }
             }
 
-            if (p.skills.sync > 0) {
+            if (this.getPoolSize(p.skills.sync) > 0) {
                 const rolls = LuckManager.rollCustomDice(p.skills.sync);
                 const syncSuccesses = LuckManager.countSuccesses(rolls);
-                if (syncSuccesses > 0 && syncSuccesses >= e.skills.firewall) {
+                if (syncSuccesses > 0 && syncSuccesses >= this.getPoolSize(e.skills.firewall)) {
                     pacified = true;
                     log.push({
                         action: 'sync',
@@ -98,6 +98,12 @@ class CombatManager {
     }
 
     static createCombatant(byte, id) {
+        const skills = {};
+        const skillKeys = ['assault', 'firewall', 'compile', 'shred', 'scan', 'parse', 'datamine', 'override', 'sync', 'spoof', 'compression'];
+        skillKeys.forEach(k => {
+            skills[k] = byte.getDicePool ? byte.getDicePool('skill', k) : [{ size: (byte.getSkills ? byte.getSkills()[k] : byte.skills[k]) || 0, sides: 6 }];
+        });
+
         return {
             id,
             name: byte.name,
@@ -105,12 +111,40 @@ class CombatManager {
             maxHp: byte.pools.integrity.maxValue || 100,
             tf: byte.pools.teraflops.value,
             maxTf: byte.pools.teraflops.maxValue || 100,
-            skills: byte.getSkills(),
+            skills,
             modifiers: {
                 firewallShred: 0,
                 stunned: false,
             },
         };
+    }
+
+    static getPoolSize(pool) {
+        if (typeof pool === 'number') return pool;
+        if (Array.isArray(pool)) return pool.reduce((sum, g) => sum + (g.size || 0), 0);
+        return 0;
+    }
+
+    static applyShredToPool(pool, shredAmount) {
+        if (shredAmount <= 0) return pool;
+        let flatDice = [];
+        if (typeof pool === 'number') {
+            for (let i = 0; i < pool; i++) flatDice.push(6);
+        } else if (Array.isArray(pool)) {
+            pool.forEach(g => {
+                for (let i = 0; i < (g.size || 0); i++) flatDice.push(g.sides || 6);
+            });
+        }
+        flatDice.sort((a, b) => b - a); // Sort descending to remove largest first
+        flatDice = flatDice.slice(shredAmount);
+        
+        const newPool = [];
+        flatDice.forEach(sides => {
+            const existing = newPool.find(g => g.sides === sides);
+            if (existing) existing.size++;
+            else newPool.push({ size: 1, sides });
+        });
+        return newPool;
     }
 
     static executeTurn(attacker, defender, log) {
@@ -126,7 +160,7 @@ class CombatManager {
         }
 
         // 2. Heal / Shield Check (Compile)
-        if (attacker.hp < attacker.maxHp * 0.5 && attacker.skills.compile > 0) {
+        if (attacker.hp < attacker.maxHp * 0.5 && this.getPoolSize(attacker.skills.compile) > 0) {
             const rolls = LuckManager.rollCustomDice(attacker.skills.compile);
             const successes = LuckManager.countSuccesses(rolls);
             
@@ -144,7 +178,7 @@ class CombatManager {
         }
 
         // 3. Ultimate Attack (Override)
-        if (attacker.tf >= 25 && attacker.skills.override > 0) {
+        if (attacker.tf >= 25 && this.getPoolSize(attacker.skills.override) > 0) {
             const rolls = LuckManager.rollCustomDice(attacker.skills.override);
             const successes = LuckManager.countSuccesses(rolls);
             
@@ -177,13 +211,13 @@ class CombatManager {
         }
 
         // 5. Debuff / Utility Rolls
-        let activeFirewall = Math.max(0, defender.skills.firewall - defender.modifiers.firewallShred);
+        let activeFirewall = this.applyShredToPool(defender.skills.firewall, defender.modifiers.firewallShred);
 
-        if (activeFirewall > 0 && attacker.skills.shred > 0) {
+        if (this.getPoolSize(activeFirewall) > 0 && this.getPoolSize(attacker.skills.shred) > 0) {
             const shredCheck = LuckManager.opposedRoll(attacker.skills.shred, activeFirewall);
             if (shredCheck.netSuccesses > 0) {
                 defender.modifiers.firewallShred += shredCheck.netSuccesses;
-                activeFirewall = Math.max(0, defender.skills.firewall - defender.modifiers.firewallShred);
+                activeFirewall = this.applyShredToPool(defender.skills.firewall, defender.modifiers.firewallShred);
                 log.push({
                     actor: attacker.id,
                     action: 'shred',
@@ -193,7 +227,7 @@ class CombatManager {
             }
         }
         
-        if (attacker.skills.compression > 0) {
+        if (this.getPoolSize(attacker.skills.compression) > 0) {
             const compCheck = LuckManager.opposedRoll(attacker.skills.compression, activeFirewall);
             // Stun requires overwhelmingly beating the firewall (net success >= 2)
             if (compCheck.netSuccesses >= 2) {
@@ -226,7 +260,7 @@ class CombatManager {
         });
 
         // 7. Counter-attack Check (Parse)
-        if (defender.hp > 0 && defender.skills.parse > 0) {
+        if (defender.hp > 0 && this.getPoolSize(defender.skills.parse) > 0) {
             const parseCheck = LuckManager.opposedRoll(defender.skills.parse, attacker.skills.assault);
             if (parseCheck.netSuccesses > 0) {
                 const counterDmg = parseCheck.netSuccesses * 2;

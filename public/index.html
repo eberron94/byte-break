@@ -28,9 +28,12 @@
 
             <div id="stats"></div>
 
-            <div style="margin: 20px">
-                <button id="btn-upgrades" class="btn" onclick="showUpgrades()">
+            <div style="margin: 20px; display: flex; gap: 10px;">
+                <button id="btn-upgrades" class="btn" style="margin-top: 0; flex: 1;" onclick="showUpgrades()">
                     System Upgrades
+                </button>
+                <button id="btn-equipment" class="btn" style="margin-top: 0; flex: 1; background: #3f51b5;" onclick="showEquipment()">
+                    Architecture
                 </button>
             </div>
         </div>
@@ -212,6 +215,23 @@
                 α
             </p>
             <div id="talent-list" style="margin-bottom: 15px"></div>
+        </div>
+
+        <div id="equipment-view" style="display: none; padding: 20px">
+            <span class="close-btn" onclick="closeWebView()">&times;</span>
+            <h2 style="margin-top: 0; color: #3f51b5">⚙️ Architecture</h2>
+
+            <div class="section-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span>HARDWARE</span>
+                <span id="hardware-slots" style="color: #4caf50;">0 / 1</span>
+            </div>
+            <div id="hardware-grid" class="upgrades-grid" style="margin-bottom: 20px;"></div>
+
+            <div class="section-title" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span>SOFTWARE</span>
+                <span id="software-slots" style="color: #2196f3;">0 / 1</span>
+            </div>
+            <div id="software-grid" class="upgrades-grid" style="margin-bottom: 20px;"></div>
         </div>
 
         <div id="achievements-view" style="display: none; padding: 20px">
@@ -508,6 +528,7 @@
         <script src="js/settings.js"></script>
         <script src="js/player.js"></script>
         <script src="js/debug.js"></script>
+        <script src="js/equipment.js"></script>
         <script>
             function finishCombatAndClose() {
                 fetch('/api/ui/refresh', {

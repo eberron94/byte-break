@@ -191,6 +191,61 @@ const WebAPIPlayerHandler = {
         }
     },
 
+    async getEquipment(req, res) {
+        try {
+            const userId = req.params.id;
+            this.gameManager.recordPlayerActivity(userId).catch(console.error);
+            const player = await this.gameManager.getPlayer(userId);
+            const byte = await this.gameManager.getByte(userId);
+            if (!player || !byte) return res.status(404).json({ error: 'Not found' });
+
+            const equipment = {
+                hardware: [],
+                software: [],
+                hwCap: byte.getHardwareCapacity(player),
+                swCap: byte.getSoftwareCapacity(player)
+            };
+
+            const getDetails = (itemId, isEquipped, amount) => {
+                const item = ItemManager.getItem(itemId);
+                if (!item) return null;
+                const formattedModifiers = item.modifiers && item.modifiers.length > 0 ? GameObjectManager.formatEffectsList(item.modifiers) : null;
+                const formattedTickEffects = item.tickEffects && item.tickEffects.length > 0 ? GameObjectManager.formatEffectsList(item.tickEffects) : null;
+
+                return {
+                    ...item,
+                    isEquipped,
+                    amount,
+                    formattedModifiers,
+                    formattedTickEffects,
+                    rarity: item.rarity || 1
+                };
+            };
+
+            ['hardware', 'software'].forEach(type => {
+                const equipped = byte.loadout[type] || [];
+                equipped.forEach(itemId => {
+                    const details = getDetails(itemId, true, 1);
+                    if (details) equipment[type].push(details);
+                });
+            });
+
+            for (const [itemId, amount] of Object.entries(player.inventory)) {
+                if (amount > 0) {
+                    const item = ItemManager.getItem(itemId);
+                    if (item && (item.type === 'hardware' || item.type === 'software')) {
+                        const details = getDetails(itemId, false, amount);
+                        if (details) equipment[item.type].push(details);
+                    }
+                }
+            }
+
+            res.json(equipment);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    },
+
     async getPlayerLogs(req, res) {
         try {
             const playerId = req.params.id;

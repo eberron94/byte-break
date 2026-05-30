@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { ByteBuilder } = require('../models/Byte');
+const ByteBuilder = require('../models/ByteBuilder');
 const Player = require('../models/Player');
 
 async function dumpUsableVariables() {

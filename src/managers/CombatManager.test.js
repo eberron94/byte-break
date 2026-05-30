@@ -39,20 +39,12 @@ describe('CombatManager', () => {
             integrity: { value: hp, maxValue: hp },
             teraflops: { value: tf, maxValue: tf },
         },
-        getSkills: () => ({
-            assault: 10,
-            firewall: 0,
-            compile: 0,
-            shred: 0,
-            scan: 0,
-            parse: 0,
-            datamine: 0,
-            override: 0,
-            sync: 0,
-            spoof: 0,
-            compression: 0,
-            ...skills,
-        }),
+        getDicePool: (type, key) => {
+            const allSkills = {
+                assault: 10, firewall: 0, compile: 0, shred: 0, scan: 0, parse: 0, datamine: 0, override: 0, sync: 0, spoof: 0, compression: 0, ...skills
+            };
+            return [{ size: allSkills[key] || 0, sides: 6 }];
+        }
     });
 
     beforeEach(() => {
@@ -77,8 +69,8 @@ describe('CombatManager', () => {
             // Both deal 1 damage minimum (due to high firewall), have 1000 HP. Will hit 50 turn cap.
             playerByte.pools.integrity.value = 1000;
             enemyByte.pools.integrity.value = 1000;
-            enemyByte.getSkills = () => ({ assault: 1, firewall: 100 });
-            playerByte.getSkills = () => ({ assault: 1, firewall: 100 });
+            enemyByte.getDicePool = (type, key) => [{ size: { assault: 1, firewall: 100 }[key] || 0, sides: 6 }];
+            playerByte.getDicePool = (type, key) => [{ size: { assault: 1, firewall: 100 }[key] || 0, sides: 6 }];
 
             const result = CombatManager.simulate(playerByte, enemyByte);
 
@@ -93,7 +85,7 @@ describe('CombatManager', () => {
         it('should allow Dodging to completely negate a base attack', () => {
             // Force the enemy to dodge every single attack
             enemyByte = createMockByte('e1', 'Enemy', 100, 100, { spoof: 10, assault: 0 }); // vs Player scan 0 = 10 net success
-            playerByte.getSkills = () => ({ assault: 10, scan: 0 });
+            playerByte.getDicePool = (type, key) => [{ size: { assault: 10, scan: 0 }[key] || 0, sides: 6 }];
 
             const result = CombatManager.simulate(playerByte, enemyByte);
 

@@ -1,4 +1,4 @@
-const { ByteBuilder } = require('../models/Byte');
+const  ByteBuilder  = require('../models/ByteBuilder');
 const dbManager = require('../database/db');
 const GameEvents = require('../util/GameEvents');
 

@@ -1,4 +1,4 @@
-const { ByteBuilder } = require('../models/Byte');
+const ByteBuilder = require('../models/ByteBuilder');
 const dbManager = require('../database/db');
 const GameEvents = require('../util/GameEvents');
 const ByteClassManager = require('./ByteClassManager');
@@ -7,7 +7,7 @@ class MergeManager {
     static getMergeCost(player) {
         if (!player) return 100;
         const talentBonus = player.talents['merge_optimization'] || 0;
-        return Math.max(25, 100 - (talentBonus * 15));
+        return Math.max(25, 100 - talentBonus * 15);
     }
 
     static async mergeBytes(
@@ -18,12 +18,18 @@ class MergeManager {
         newName,
         player = null,
     ) {
-        if (!newName || typeof newName !== 'string' || newName.trim().length === 0) {
+        if (
+            !newName ||
+            typeof newName !== 'string' ||
+            newName.trim().length === 0
+        ) {
             throw new Error('A valid name must be provided for the new Byte.');
         }
         const sanitizedName = newName.trim().replace(/[^a-zA-Z0-9 ]/g, '');
         if (sanitizedName.length === 0 || sanitizedName.length > 32) {
-            throw new Error('Byte name must be 1-32 characters and only contain letters/numbers.');
+            throw new Error(
+                'Byte name must be 1-32 characters and only contain letters/numbers.',
+            );
         }
 
         const bytes = await gameManager.getBytes(userId);
@@ -84,6 +90,20 @@ class MergeManager {
 
         // Deduct energy
         player.energy.decrease(cost);
+
+        // Unequip items from parents to return to inventory
+        const unequipByte = (byte) => {
+            const equippedIds = [
+                ...(byte.loadout.hardware || []),
+                ...(byte.loadout.software || []),
+            ];
+            for (const itemId of equippedIds) {
+                player.addItem(itemId, 1);
+            }
+            byte.loadout = { hardware: [], software: [] };
+        };
+        unequipByte(b1);
+        unequipByte(b2);
 
         // Retire the parents
         b1.isAlive = false;

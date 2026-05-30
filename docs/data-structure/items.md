@@ -12,18 +12,48 @@ The file should contain a single JSON array composed of Item objects.
 | `id`          | String  | Derived from `name`                            | The unique identifier for the item. If omitted, it will automatically lowercase the `name` and replace spaces with underscores (e.g., "Health Potion" -> `health_potion`).      |
 | `shortname`   | String  | `name`                                         | A shorter name used in tight UI spaces, like inline keyboard buttons.                                                                                                           |
 | `description` | String  | `""`                                           | The flavor text and mechanical description of the item shown to players.                                                                                                        |
-| `type`        | String  | `"general"`                                    | The category of the item. Standard values include `"general"`, `"consumable"`, and `"key"`. This is used for shop filtering and determining if an item provides a "Use" button. |
+| `type`        | String  | `"general"`                                    | The category of the item (`"consumable"`, `"hardware"`, `"software"`, `"currency"`, `"key"`, etc.).                                                                             |
 | `maxCount`    | Number  | `Infinity`                                     | The maximum amount of this item a player can hold in their inventory at one time. Any excess amounts gained will be discarded.                                                  |
 | `cost`        | Number  | `undefined`                                    | The base cost of the item in Bits (β). Required if the item is to be sold or bought in a Shop. If omitted, the item cannot be traded.                                           |
 | `isConsumed`  | Boolean | `true` if type is `"consumable"`, else `false` | Determines if 1 quantity of the item is automatically removed from the player's inventory when used.                                                                            |
 | `cooldown`    | Number  | `0`                                            | The number of minutes a player must wait before they are allowed to use this specific item again.                                                                               |
-| `effects`     | Array   | `[]`                                           | An array of effect objects applied to the Byte and Player when the item is used. See Effects Configuration.                                                       |
+| `useEffects`  | Array   | `[]`                                           | An array of effect objects applied to the Byte and Player when the item is used. See Effects Configuration.                                                       |
+
+---
+
+## Equipment Properties
+
+Items with the `type` of `"hardware"` or `"software"` can be equipped to the Byte's Architecture loadout. 
+
+| Property      | Type   | Description                                                                                                             |
+| :------------ | :----- | :---------------------------------------------------------------------------------------------------------------------- |
+| `equipLabel`  | String | A cosmetic label shown in the UI (e.g., `"Payload"`, `"Proxy"`, `"Daemon"`).                                            |
+| `modifiers`   | Array  | An array of modifier objects applied passively while equipped. Supports `type`, `key`, `amount`, and `sides` (for dice).|
+| `tickEffects` | Array  | An array of effect objects applied every global tick while equipped. Supports `ticksPerTrigger`.                        |
 
 ---
 
 ## Examples
 
-### 1. Basic Consumable (Heals Integrity)
+### 1. Offensive Hardware (Payload)
+
+A piece of equipment that grants 3 additional 8-sided dice (3d8) to the Assault pool during combat.
+
+```json
+{
+    "id": "broadsword_exe",
+    "name": "Broadsword.exe",
+    "description": "An aggressive payload designed to brutally execute target processes.",
+    "type": "hardware",
+    "cost": 500,
+    "equipLabel": "Payload",
+    "modifiers": [
+        { "type": "skill", "key": "assault", "amount": 3, "sides": 8 }
+    ]
+}
+```
+
+### 2. Basic Consumable (Heals Integrity)
 
 A simple healing item that restores 50 Integrity, gets consumed on use, and has a 5-minute cooldown.
 
@@ -37,7 +67,7 @@ A simple healing item that restores 50 Integrity, gets consumed on use, and has 
     "cost": 150,
     "maxCount": 10,
     "cooldown": 5,
-    "effects": [{ "type": "integrity", "amount": 50 }]
+    "useEffects": [{ "type": "integrity", "amount": 50 }]
 }
 ```
 

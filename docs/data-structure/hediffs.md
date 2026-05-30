@@ -25,11 +25,12 @@ The file should contain a single JSON array composed of Hediff objects.
 
 Modifiers are passive boosts or penalties applied strictly while the Hediff is active. They are dynamically evaluated on demand without permanently altering the underlying save file.
 
-| Property | Type   | Description                                                                              |
-| :------- | :----- | :--------------------------------------------------------------------------------------- |
-| `type`   | String | The category of the target being modified (`"stat"`, `"skill"`, `"pool"`).               |
-| `key`    | String | The specific target ID (e.g., `"logic"`, `"assault"`).                                   |
-| `amount` | String | A math expression evaluating the modifier amount (e.g., `"-5 * stacks"`).                |
+| Property | Type          | Description                                                                                                   |
+| :------- | :------------ | :------------------------------------------------------------------------------------------------------------ |
+| `type`   | String        | The category of the target being modified (`"stat"`, `"skill"`, `"pool"`).                                    |
+| `key`    | String        | The specific target ID (e.g., `"logic"`, `"assault"`).                                                        |
+| `amount` | Number/String | A math expression evaluating the modifier amount (e.g., `"-5 * stacks"`).                                     |
+| `sides`  | Number/String | _(Optional)_ The number of sides for custom dice added to the pool. Defaults to 6. Supports math expressions. |
 
 ---
 

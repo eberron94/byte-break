@@ -447,6 +447,55 @@ class Byte {
         return modifier;
     }
 
+    getDicePool(type, key) {
+        const diceCounts = { 6: 0 };
+        
+        // 1. Add Base Stats
+        if (type === 'stat' && this.stats[key]) diceCounts[6] += this.stats[key].value;
+        else if (type === 'skill' && this.skills[key]) diceCounts[6] += this.skills[key].value;
+
+        // 2. Add Hediff Modifiers
+        for (const [hId, hData] of Object.entries(this.hediffs)) {
+            const hDef = HediffManager.getHediff(hId);
+            if (hDef && hDef.modifiers) {
+                const relevantMods = hDef.modifiers.filter(m => m.type === type && m.key === key);
+                if (relevantMods.length > 0) {
+                    const context = new GameContext(this, null, { stacks: hData.stacks });
+                    for (const mod of relevantMods) {
+                        const size = evaluateExpression(mod.amount, context);
+                        const sides = mod.sides ? evaluateExpression(mod.sides, context) : 6;
+                        diceCounts[sides] = (diceCounts[sides] || 0) + size;
+                    }
+                }
+            }
+        }
+
+        // 3. Add Equipment Modifiers
+        const ItemManager = require('../managers/ItemManager');
+        const equippedIds = [...(this.loadout.hardware || []), ...(this.loadout.software || [])];
+        
+        for (const itemId of equippedIds) {
+            const item = ItemManager.getItem(itemId);
+            if (item && item.modifiers) {
+                const relevantMods = item.modifiers.filter(m => m.type === type && m.key === key);
+                for (const mod of relevantMods) {
+                    const context = new GameContext(this, null);
+                    const size = evaluateExpression(mod.amount, context);
+                    const sides = mod.sides ? evaluateExpression(mod.sides, context) : 6;
+                    diceCounts[sides] = (diceCounts[sides] || 0) + size;
+                }
+            }
+        }
+
+        const pool = [];
+        for (const [sidesStr, size] of Object.entries(diceCounts)) {
+            if (size > 0) {
+                pool.push({ size, sides: parseInt(sidesStr, 10) });
+            }
+        }
+        return pool;
+    }
+
     // Helper method to extract flat core stats
     getStats() {
         return Object.fromEntries(
@@ -566,129 +615,4 @@ class Byte {
     }
 }
 
-/**
- * Utility builder to construct a new byte cleanly with default starting state.
- */
-class ByteBuilder {
-    constructor() {
-        this.byteData = {};
-    }
-
-    // Initializes a factory configuration for a generic level 1 byte
-    static default(ownerId, name) {
-        const now = new Date().toISOString();
-        return new ByteBuilder()
-            .withOwnerId(ownerId)
-            .withName(name)
-            .withByteClass('demo')
-            .withCharge(50)
-            .withThermal(50)
-            .withDefrag(50)
-            .withTelemetry(50)
-            .withHistory({})
-            .withRoom('charging_station')
-            .withIsAlive(1)
-            .withBirthDate(now)
-            .withLastInteraction(now)
-            .withGeneration(0)
-            .withBufferOverflow(0);
-    }
-
-    withId(id) {
-        this.byteData.id = id;
-        return this;
-    }
-
-    withOwnerId(ownerId) {
-        this.byteData.ownerId = ownerId.toString();
-        return this;
-    }
-
-    withName(name) {
-        this.byteData.name = name;
-        return this;
-    }
-
-    withByteClass(byteClass) {
-        this.byteData.byteClass = byteClass;
-        return this;
-    }
-
-    withCharge(charge) {
-        this.byteData.charge = charge;
-        return this;
-    }
-    withThermal(thermal) {
-        this.byteData.thermal = thermal;
-        return this;
-    }
-    withDefrag(defrag) {
-        this.byteData.defrag = defrag;
-        return this;
-    }
-    withTelemetry(telemetry) {
-        this.byteData.telemetry = telemetry;
-        return this;
-    }
-
-    withStats(stats) {
-        Object.assign(this.byteData, stats);
-        return this;
-    }
-
-    withSkills(skills) {
-        Object.assign(this.byteData, skills);
-        return this;
-    }
-
-    withPools(pools) {
-        Object.assign(this.byteData, pools);
-        return this;
-    }
-
-    withHistory(history) {
-        this.byteData.history = history;
-        return this;
-    }
-
-    withRoom(room) {
-        this.byteData.room = room;
-        return this;
-    }
-
-    withIsAlive(isAlive) {
-        this.byteData.isAlive = isAlive;
-        return this;
-    }
-
-    withLoadout(loadout) {
-        this.byteData.loadout = loadout;
-        return this;
-    }
-
-    withBirthDate(birthDate) {
-        this.byteData.birthDate = birthDate;
-        return this;
-    }
-
-    withLastInteraction(lastInteraction) {
-        this.byteData.lastInteraction = lastInteraction;
-        return this;
-    }
-
-    withGeneration(generation) {
-        this.byteData.generation = generation;
-        return this;
-    }
-
-    withBufferOverflow(bufferOverflow) {
-        this.byteData.bufferOverflow = bufferOverflow;
-        return this;
-    }
-
-    build() {
-        return new Byte(this.byteData);
-    }
-}
-
-module.exports = { Byte, ByteBuilder };
+module.exports = { Byte };

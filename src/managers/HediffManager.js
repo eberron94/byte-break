@@ -1,3 +1,4 @@
+const Hediff = require('../models/Hediff');
 const hediffsData = require('../../data/hediffs.json');
 
 class HediffManager {
@@ -20,7 +21,7 @@ class HediffManager {
                 );
                 return;
             }
-            this.hediffs.set(data.id, data);
+            this.hediffs.set(data.id, new Hediff(data));
         });
     }
 

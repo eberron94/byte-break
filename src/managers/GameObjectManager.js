@@ -150,8 +150,28 @@ class GameObjectManager {
             if (effect.die !== undefined) {
                 prefix = `(1-in-${effect.die} chance) `;
             }
+            if (effect.dicePool !== undefined) {
+                const poolStr = typeof effect.dicePool === 'number' ? effect.dicePool : 'Variable';
+                prefix = `(Roll ${poolStr} Dice) ` + prefix;
+            }
 
-            if (effect.type === 'inventory') {
+            if (effect.type === 'stat' || effect.type === 'skill' || effect.type === 'pool' || effect.type === 'need') {
+                const target = this.getObjectName(effect.key);
+                const amt = effect.amount;
+                let amtStr = amt;
+                if (typeof amt === 'number') {
+                    amtStr = amt > 0 ? `+${amt}` : `${amt}`;
+                } else if (amt !== undefined) {
+                    amtStr = `Variable`;
+                }
+
+                if (effect.sides !== undefined) {
+                    const sidesStr = typeof effect.sides === 'number' ? effect.sides : 'X';
+                    amtStr += ` (d${sidesStr})`;
+                }
+
+                desc = `${amtStr} ${target}`;
+            } else if (effect.type === 'inventory') {
                 const amt = effect.amount;
                 const itemName = this.getObjectName(effect.id);
                 if (typeof amt === 'number') {
@@ -168,9 +188,10 @@ class GameObjectManager {
                 const hediffName = this.getObjectName(effect.id);
                 const action = effect.action || 'escalate';
                 const target = effect.type === 'player_hediff' ? 'Player ' : '';
-                if (action === 'escalate') desc = `Apply/Worsen ${target}${hediffName}`;
-                else if (action === 'reduce') desc = `Recover from ${target}${hediffName}`;
-                else if (action === 'remove') desc = `Cure ${target}${hediffName}`;
+                const amtStr = effect.amount !== undefined ? (typeof effect.amount === 'number' && effect.amount > 1 ? ` (${effect.amount} Stacks)` : (typeof effect.amount === 'string' ? ` (Variable Stacks)` : '')) : '';
+                if (action === 'escalate') desc = `Apply/Worsen ${target}${hediffName}${amtStr}`;
+                else if (action === 'reduce') desc = `Recover from ${target}${hediffName}${amtStr}`;
+                else if (action === 'remove') desc = `Cure ${target}${hediffName}${amtStr}`;
             } else if (effect.type === 'isAsleep') {
                 desc = effect.amount ? `Put Byte to Sleep` : `Wake Byte up`;
             } else if (effect.type) {
