@@ -39,21 +39,6 @@ class Player {
         this.hediffs = data.hediffs || {};
         this.pendingEvents = [];
 
-        for (const itemId of Object.keys(this.inventory)) {
-            const itemDef = ItemManager.getItem(itemId);
-            if (!itemDef) {
-                console.warn(`[Player] Missing item definition for ID: '${itemId}' in player ${this.id}'s inventory.`);
-                if (process.env.PRUNE === 'true') {
-                    delete this.inventory[itemId];
-                    continue;
-                }
-            }
-            if (!this.history[`ever_owned_${itemId}`]) {
-                this.history[`ever_owned_${itemId}`] = 1;
-                this.pendingEvents.push({ event: 'uniqueItemCollected', args: [this.id] });
-            }
-        }
-
         // Handle daily resets (resets shop stock at UTC midnight)
         const today = new Date().toISOString().split('T')[0];
         if (this.history['last_login_date'] !== today) {
@@ -72,6 +57,22 @@ class Player {
                     }
                 }
             }
+
+            for (const itemId of Object.keys(this.inventory)) {
+                const itemDef = ItemManager.getItem(itemId);
+                if (!itemDef) {
+                    console.warn(`[Player] Missing item definition for ID: '${itemId}' in player ${this.id}'s inventory.`);
+                    if (process.env.PRUNE === 'true') {
+                        delete this.inventory[itemId];
+                        continue;
+                    }
+                }
+                if (!this.history[`ever_owned_${itemId}`]) {
+                    this.history[`ever_owned_${itemId}`] = 1;
+                    this.pendingEvents.push({ event: 'uniqueItemCollected', args: [this.id] });
+                }
+            }
+
             this.history['last_login_date'] = today;
         }
     }
