@@ -282,5 +282,16 @@
                 "description": "Collect 30 unique items."
             }
         ]
-    }
+    },
+    {
+    "id": "acquire_network_key",
+    "name": "Access Granted",
+    "description": "Obtain the highly encrypted Network Key from the Network Overlord.",
+    "tiers": [
+        {
+            "requirement": 1,
+            "reward": 5
+        }
+    ]
+}
 ]

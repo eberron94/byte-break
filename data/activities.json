@@ -118,6 +118,29 @@
         }
     },
     {
+        "id": "combat_simulation_boss",
+        "name": "Combat Sim (Boss)",
+        "description": "Enter the arena to battle the Network Overlord.",
+        "requirements": [
+            {
+                "type": "pool",
+                "key": "integrity",
+                "min": 1
+            },
+            {
+                "type": "history",
+                "target": "byte",
+                "key": "hunt_intrusion_proxy_max_streak",
+                "min": 5
+            }
+        ],
+        "isWebView": true,
+        "isCombat": true,
+        "combat": {
+            "enemyId": "network_overlord"
+        }
+    },
+    {
         "id": "debug_refill_all",
         "name": "Refill All",
         "description": "Instantly refills all needs and pools to maximum.",

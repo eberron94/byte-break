@@ -93,5 +93,30 @@
                 "min": 5
             }
         ]
+    },
+    {
+        "id": "network_overlord",
+        "name": "Network Overlord",
+        "enemyClass": "virus",
+        "hp": 800,
+        "tf": 500,
+        "isHuntable": false,
+        "skills": {
+            "assault": 15,
+            "firewall": 10,
+            "override": 25
+        },
+        "winEffects": [{ "type": "bits", "amount": 500 }],
+        "primaryDrop": {
+            "id": "network_key"
+        },
+        "requirements": [
+            {
+                "type": "history",
+                "target": "byte",
+                "key": "hunt_intrusion_proxy_max_streak",
+                "min": 5
+            }
+        ]
     }
 ]

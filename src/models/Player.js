@@ -69,7 +69,7 @@ class Player {
                 }
                 if (!this.history[`ever_owned_${itemId}`]) {
                     this.history[`ever_owned_${itemId}`] = 1;
-                    this.pendingEvents.push({ event: 'uniqueItemCollected', args: [this.id] });
+                    this.pendingEvents.push({ event: 'uniqueItemCollected', args: [this.id, itemId] });
                 }
             }
 
@@ -255,7 +255,7 @@ class Player {
 
         if (!this.history[`ever_owned_${itemId}`]) {
             this.history[`ever_owned_${itemId}`] = 1;
-            this.pendingEvents.push({ event: 'uniqueItemCollected', args: [this.id] });
+            this.pendingEvents.push({ event: 'uniqueItemCollected', args: [this.id, itemId] });
         }
 
         const item = ItemManager.getItem(itemId);

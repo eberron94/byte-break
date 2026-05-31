@@ -28,7 +28,7 @@ class EnemyManager {
                 const dropId = data.primaryDrop.id || `drop_${data.id}`;
                 const dropItem = new Item({
                     id: dropId,
-                    name: data.primaryDrop.name || `Drop from ${data.name}`,
+                    name: data.primaryDrop.name || `Codex [${data.name}]`,
                     description:
                         data.primaryDrop.description ||
                         `A material dropped by ${data.name}.`,

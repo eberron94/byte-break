@@ -83,5 +83,11 @@
         "tickEffects": [
             { "type": "bits", "amount": 5, "ticksPerTrigger": 10 }
         ]
+    },
+    {
+        "id": "network_key",
+        "name": "Network Key",
+        "description": "A highly encrypted access key retrieved from the Network Overlord. It appears to unlock advanced network sectors.",
+        "type": "key"
     }
 ]

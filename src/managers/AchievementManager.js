@@ -45,12 +45,19 @@ class AchievementManager {
                     if (tierData.effects && tierData.effects.length > 0) {
                         if (!byte) byte = await gameManager.getByte(userId);
                         const context = new GameContext(byte, player);
-                        const calculatedEffects = calculateEffects(tierData.effects, context);
-                        const success = applyEffects(calculatedEffects, context);
+                        const calculatedEffects = calculateEffects(
+                            tierData.effects,
+                            context,
+                        );
+                        const success = applyEffects(
+                            calculatedEffects,
+                            context,
+                        );
                         if (success && byte) byteModified = true;
                     }
 
-                    player.history[`ach_unlocked_${ach.id}_tier_${i + 1}`] = new Date().toISOString();
+                    player.history[`ach_unlocked_${ach.id}_tier_${i + 1}`] =
+                        new Date().toISOString();
 
                     gameManager.emit(GameEvents.ACHIEVEMENT_UNLOCKED, userId, {
                         name: ach.name,
@@ -94,20 +101,45 @@ class AchievementManager {
         gameManager.on(GameEvents.GAUNTLET_CLEARED, (userId) =>
             this.processAchievement(gameManager, userId, 'gauntlet_clears'),
         );
-        gameManager.on(GameEvents.UNIQUE_ITEM_COLLECTED, (userId) =>
-            this.processAchievement(gameManager, userId, 'collector'),
-        );
-        gameManager.on(GameEvents.COMBAT_METRICS_RECORDED, (userId, metrics) => {
-            if (metrics.playerDamageDealt > 0) {
-                this.processAchievement(gameManager, userId, 'damage_dealt', metrics.playerDamageDealt);
-            }
-            if (metrics.playerCrits > 0) {
-                this.processAchievement(gameManager, userId, 'critical_hits', metrics.playerCrits);
-            }
-            if (metrics.playerDodges > 0) {
-                this.processAchievement(gameManager, userId, 'attacks_dodged', metrics.playerDodges);
+        gameManager.on(GameEvents.UNIQUE_ITEM_COLLECTED, (userId, itemId) => {
+            this.processAchievement(gameManager, userId, 'collector');
+            if (itemId === 'network_key') {
+                this.processAchievement(
+                    gameManager,
+                    userId,
+                    'acquire_network_key',
+                );
             }
         });
+        gameManager.on(
+            GameEvents.COMBAT_METRICS_RECORDED,
+            (userId, metrics) => {
+                if (metrics.playerDamageDealt > 0) {
+                    this.processAchievement(
+                        gameManager,
+                        userId,
+                        'damage_dealt',
+                        metrics.playerDamageDealt,
+                    );
+                }
+                if (metrics.playerCrits > 0) {
+                    this.processAchievement(
+                        gameManager,
+                        userId,
+                        'critical_hits',
+                        metrics.playerCrits,
+                    );
+                }
+                if (metrics.playerDodges > 0) {
+                    this.processAchievement(
+                        gameManager,
+                        userId,
+                        'attacks_dodged',
+                        metrics.playerDodges,
+                    );
+                }
+            },
+        );
 
         gameManager.on(GameEvents.MINIGAME_END, (userId, minigameId, data) => {
             if (!data) return;

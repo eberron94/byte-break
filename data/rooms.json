@@ -72,5 +72,31 @@
         "name": "The Market",
         "description": "A bustling digital exchange where bits flow freely.",
         "allowedActivities": ["access_shop"]
+    },
+    {
+        "id": "network_throne",
+        "name": "Network Throne",
+        "description": "An imposing domain previously controlled by the Network Overlord. You have full access to its high-end restoration utilities.",
+        "allowedActivities": [
+            "fast_charge",
+            "flush_coolant",
+            "run_defrag",
+            "ping_servers",
+            "patch_code",
+            "sleep_mode"
+        ],
+        "requirements": [
+            {
+                "type": "inventory",
+                "id": "network_key",
+                "min": 1
+            }
+        ],
+        "tickEffects": [
+            { "type": "charge", "amount": 1 },
+            { "type": "thermal", "amount": 1 },
+            { "type": "defrag", "amount": 1 },
+            { "type": "telemetry", "amount": 1 }
+        ]
     }
 ]
