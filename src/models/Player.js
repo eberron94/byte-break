@@ -9,6 +9,12 @@ class Player {
     constructor(data) {
         this.id = data.id.toString();
         this.inventory = data.inventory || {};
+
+        // Scrub legacy "undefined" string keys caused by missing item IDs
+        if (this.inventory.hasOwnProperty('undefined')) {
+            delete this.inventory['undefined'];
+        }
+
         const energyData =
             typeof data.energy === 'object' && data.energy !== null
                 ? data.energy
@@ -32,6 +38,13 @@ class Player {
         this.settings = data.settings || {};
         this.hediffs = data.hediffs || {};
         this.pendingEvents = [];
+
+        for (const itemId of Object.keys(this.inventory)) {
+            if (!this.history[`ever_owned_${itemId}`]) {
+                this.history[`ever_owned_${itemId}`] = 1;
+                this.pendingEvents.push({ event: 'uniqueItemCollected', args: [this.id] });
+            }
+        }
 
         // Handle daily resets (resets shop stock at UTC midnight)
         const today = new Date().toISOString().split('T')[0];
@@ -231,6 +244,11 @@ class Player {
         }
         this.inventory[itemId] += amount;
 
+        if (!this.history[`ever_owned_${itemId}`]) {
+            this.history[`ever_owned_${itemId}`] = 1;
+            this.pendingEvents.push({ event: 'uniqueItemCollected', args: [this.id] });
+        }
+
         const item = ItemManager.getItem(itemId);
         if (item && item.maxCount !== undefined) {
             this.inventory[itemId] = Math.min(
@@ -251,11 +269,54 @@ class Player {
     }
 
     // Logs an activity or event occurrence to the player's historical record
-    recordHistory(id) {
+    recordHistory(id, amount = 1) {
         if (!this.history[id]) {
             this.history[id] = 0;
         }
-        this.history[id]++;
+        this.history[id] += amount;
+    }
+
+    addCombatMetrics(metrics) {
+        const CombatMetrics = require('./CombatMetrics');
+        const current = new CombatMetrics(this.history.combatMetrics);
+        current.add(metrics);
+
+        // Expunge loot to prevent indefinite growth in history storage
+        current.earnedBits = 0;
+        current.earnedItems = {};
+
+        this.history.combatMetrics = current;
+    }
+
+    /**
+     * Buys a talent, consuming achievement points and abiding by requirements.
+     */
+    buyTalent(talentId, byte) {
+        const TalentManager = require('../managers/TalentManager');
+        const GameObjectManager = require('../managers/GameObjectManager');
+        const GameContext = require('./GameContext');
+        const { checkRequirements } = require('../util/requirements');
+
+        const talent = TalentManager.getTalent(talentId);
+        if (!talent) throw new Error('Talent not found');
+
+        const currentLevel = this.talents[talentId] || 0;
+        if (currentLevel >= talent.maxLevel)
+            throw new Error('Talent maxed out');
+        if (this.achievementPoints.available < talent.cost)
+            throw new Error('Not enough α');
+
+        const context = new GameContext(byte, this);
+
+        if (!checkRequirements(talent.requirements, context)) {
+            const reqStr = GameObjectManager.formatRequirementsList(
+                talent.requirements,
+            );
+            throw new Error(`Prerequisites not met.\nRequires:\n• ${reqStr}`);
+        }
+
+        this.talents[talentId] = currentLevel + 1;
+        return true;
     }
 
     /**
@@ -274,6 +335,23 @@ class Player {
         if (!hasInvestments) return false;
 
         this.talents = {};
+        return true;
+    }
+
+    /**
+     * Uses a User Mutator item to refund all invested achievement points.
+     */
+    useMutator() {
+        if (!this.hasItem('user_mutator', 1)) {
+            throw new Error('You do not have a User Mutator.');
+        }
+
+        const success = this.refundAchievementPoints();
+        if (!success) {
+            throw new Error('No talents to refund.');
+        }
+
+        this.removeItem('user_mutator', 1);
         return true;
     }
 

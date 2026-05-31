@@ -178,8 +178,6 @@ These variables are injected into the context of effects when evaluated as strin
 - `player.maxBytes`
 
 ### Strings
-- `player.achievementPoints.id`
-- `player.achievementPoints.name`
 - `player.energy.id`
 - `player.energy.name`
 - `player.history.last_login_date`

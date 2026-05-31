@@ -29,10 +29,10 @@
         ]
     },
     {
-        "id": "repair_bay",
-        "name": "Repair Bay",
-        "description": "An automated workshop equipped to restore structural integrity.",
-        "allowedActivities": ["patch_code"],
+        "id": "workshop",
+        "name": "Workshop",
+        "description": "An automated workshop equipped to restore structural integrity and craft new items.",
+        "allowedActivities": ["patch_code", "access_crafting"],
         "tickEffects": [{ "type": "integrity", "amount": 1 }]
     },
     {
@@ -43,7 +43,8 @@
             "debug_refill_all",
             "combat_simulation_easy",
             "combat_simulation_normal",
-            "combat_simulation_hard"
+            "combat_simulation_hard",
+            "access_hunting"
         ],
         "tickEffects": [{ "type": "bits", "amount": 1 }]
     },

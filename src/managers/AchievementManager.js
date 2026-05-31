@@ -91,6 +91,23 @@ class AchievementManager {
         gameManager.on(GameEvents.COMBAT_LOSS, (userId) =>
             this.processAchievement(gameManager, userId, 'combat_losses'),
         );
+        gameManager.on(GameEvents.GAUNTLET_CLEARED, (userId) =>
+            this.processAchievement(gameManager, userId, 'gauntlet_clears'),
+        );
+        gameManager.on(GameEvents.UNIQUE_ITEM_COLLECTED, (userId) =>
+            this.processAchievement(gameManager, userId, 'collector'),
+        );
+        gameManager.on(GameEvents.COMBAT_METRICS_RECORDED, (userId, metrics) => {
+            if (metrics.playerDamageDealt > 0) {
+                this.processAchievement(gameManager, userId, 'damage_dealt', metrics.playerDamageDealt);
+            }
+            if (metrics.playerCrits > 0) {
+                this.processAchievement(gameManager, userId, 'critical_hits', metrics.playerCrits);
+            }
+            if (metrics.playerDodges > 0) {
+                this.processAchievement(gameManager, userId, 'attacks_dodged', metrics.playerDodges);
+            }
+        });
 
         gameManager.on(GameEvents.MINIGAME_END, (userId, minigameId, data) => {
             if (!data) return;

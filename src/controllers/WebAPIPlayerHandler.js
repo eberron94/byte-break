@@ -5,6 +5,7 @@ const { checkRequirements } = require('../util/requirements');
 const GameContext = require('../models/GameContext');
 const GameObjectManager = require('../managers/GameObjectManager');
 const dbManager = require('../database/db');
+const CombatMetrics = require('../models/CombatMetrics');
 
 /**
  * @mixin WebAPIPlayerHandler
@@ -185,10 +186,29 @@ const WebAPIPlayerHandler = {
                         : 'var(--tg-theme-button-color, #2481cc)',
                 };
             });
-            res.json({ achievements });
+
+            const metricsObj = new CombatMetrics(player.history.combatMetrics);
+
+            res.json({ achievements, combatMetrics: metricsObj.toWeb() });
         } catch (error) {
             res.status(500).json({ error: 'Failed to fetch achievements' });
         }
+    },
+
+    async getAchievementIcon(req, res) {
+        const { name, rank, maxRank } = req.query;
+        if (!name) {
+            return res.status(400).send('Missing name parameter');
+        }
+
+        const { generateAchievementIcon } = require('../util/avatar');
+        const svgString = generateAchievementIcon(
+            name,
+            parseInt(rank, 10) || 0,
+            parseInt(maxRank, 10) || 1,
+        );
+        res.setHeader('Content-Type', 'image/svg+xml');
+        res.send(svgString);
     },
 
     async getEquipment(req, res) {
@@ -258,6 +278,96 @@ const WebAPIPlayerHandler = {
         } catch (error) {
             console.error('Failed to fetch player logs:', error);
             res.status(500).json({ error: 'Failed to fetch logs' });
+        }
+    },
+
+    async buyTalent(req, res) {
+        const { userId, talentId } = req.body;
+        if (this.gameManager.hasTransaction(userId)) {
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
+        }
+        this.gameManager.addTransaction(userId);
+        try {
+            this.gameManager.recordPlayerActivity(userId).catch(console.error);
+            const player = await this.gameManager.getPlayer(userId);
+            const byte = await this.gameManager.getByte(userId);
+            
+            if (!player)
+                return res.status(404).json({ error: 'Not found' });
+
+            try {
+                player.buyTalent(talentId, byte);
+            } catch (err) {
+                return res.status(400).json({ error: err.message });
+            }
+
+            await this.gameManager.savePlayer(player);
+            res.json({
+                availableAchievementPoints: player.achievementPoints.available,
+                maxAchievementPoints: player.achievementPoints.value,
+                talents: player.talents,
+            });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        } finally {
+            this.gameManager.deleteTransaction(userId);
+        }
+    },
+
+    async useMutator(req, res) {
+        const { userId } = req.body;
+        if (this.gameManager.hasTransaction(userId)) {
+            return res
+                .status(429)
+                .json({ error: 'Transaction in progress. Please wait.' });
+        }
+        this.gameManager.addTransaction(userId);
+        try {
+            this.gameManager.recordPlayerActivity(userId).catch(console.error);
+            const player = await this.gameManager.getPlayer(userId);
+
+            if (!player)
+                return res.status(404).json({ error: 'Player not found' });
+
+            try {
+                player.useMutator();
+            } catch (err) {
+                return res.status(400).json({ error: err.message });
+            }
+
+            await this.gameManager.savePlayer(player);
+
+            res.json({
+                availableAchievementPoints: player.achievementPoints.available,
+                maxAchievementPoints: player.achievementPoints.value,
+                talents: player.talents,
+            });
+        } catch (error) {
+            console.error('Mutator API Error:', error);
+            res.status(500).json({ error: 'Failed to use mutator.' });
+        } finally {
+            this.gameManager.deleteTransaction(userId);
+        }
+    },
+
+    async updateSettings(req, res) {
+        const { userId, settings } = req.body;
+        try {
+            this.gameManager.recordPlayerActivity(userId).catch(console.error);
+            const player = await this.gameManager.getPlayer(userId);
+
+            if (!player)
+                return res.status(404).json({ error: 'Player not found' });
+
+            player.settings = settings;
+            await this.gameManager.savePlayer(player);
+
+            res.json({ success: true });
+        } catch (error) {
+            console.error('Settings Update API Error:', error);
+            res.status(500).json({ error: 'Failed to update settings.' });
         }
     },
 };

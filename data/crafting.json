@@ -1,0 +1,44 @@
+[
+    {
+        "id": "craft_patch_kit",
+        "name": "Basic Patch",
+        "description": "Combine basic virus drops into a healing patch.",
+        "ingredients": [{ "id": "drop_basic_virus", "amount": 3 }],
+        "outcome": [{ "id": "patch_kit", "amount": 1 }],
+        "extraOutcome": {
+            "diceCheck": {
+                "pool": "byte.stats.syntax.value",
+                "successes": 4
+            },
+            "outcome": [{ "id": "patch_kit", "amount": 1 }]
+        }
+    },
+    {
+        "id": "craft_mystery_cache",
+        "name": "Mystery Cache",
+        "description": "Assemble training data drops into a mystery loot box. Requires sufficient Combat Training.",
+        "requirements": [
+            {
+                "type": "achievement",
+                "id": "dojo_wins",
+                "rank": 2
+            }
+        ],
+        "ingredients": [{ "id": "drop_training_virus", "amount": 5 }],
+        "outcome": [{ "id": "mystery_cache", "amount": 1 }]
+    },
+    {
+        "id": "craft_advanced_payload",
+        "name": "Broadsword.exe",
+        "description": "Craft an aggressive payload. Requires a VIP Passcard to decrypt the recipe schema.",
+        "requirements": [
+            {
+                "type": "inventory",
+                "id": "vip_passcard",
+                "min": 1
+            }
+        ],
+        "ingredients": [{ "id": "drop_elite_virus", "amount": 2 }],
+        "outcome": [{ "id": "broadsword_exe", "amount": 1 }]
+    }
+]

@@ -8,7 +8,10 @@
         "skills": {
             "assault": 3
         },
-        "winEffects": [{ "type": "loot", "table": "dojo_win_easy" }]
+        "winEffects": [{ "type": "loot", "table": "dojo_win_easy" }],
+        "primaryDrop": {
+            "cost": 5
+        }
     },
     {
         "id": "training_virus",
@@ -19,7 +22,10 @@
         "skills": {
             "assault": 5
         },
-        "winEffects": [{ "type": "loot", "table": "dojo_win_normal" }]
+        "winEffects": [{ "type": "loot", "table": "dojo_win_normal" }],
+        "primaryDrop": {
+            "cost": 10
+        }
     },
     {
         "id": "elite_virus",
@@ -28,6 +34,17 @@
         "hp": 120,
         "tf": 120,
         "skills": { "assault": 5, "firewall": 5 },
-        "winEffects": [{ "type": "loot", "table": "dojo_win_hard" }]
+        "winEffects": [{ "type": "loot", "table": "dojo_win_hard" }],
+        "primaryDrop": {
+            "name": "Elite Virus Core",
+            "cost": 25
+        },
+        "requirements": [
+            {
+                "type": "pool",
+                "key": "integrity",
+                "maxValueMin": 120
+            }
+        ]
     }
 ]

@@ -13,6 +13,9 @@ class GameEvents {
     static DEBUG_ACTION = 'debugAction';
     static MINIGAME_START = 'minigameStart';
     static MINIGAME_END = 'minigameEnd';
+    static GAUNTLET_CLEARED = 'gauntletCleared';
+    static COMBAT_METRICS_RECORDED = 'combatMetricsRecorded';
+    static UNIQUE_ITEM_COLLECTED = 'uniqueItemCollected';
 }
 
 module.exports = GameEvents;

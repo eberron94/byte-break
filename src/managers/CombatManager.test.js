@@ -1,5 +1,6 @@
 const CombatManager = require('./CombatManager');
 const LuckManager = require('./LuckManager');
+const LootManager = require('./LootManager');
 
 // Mock the LuckManager so we can deterministically control the RNG flow of battle
 jest.mock('./LuckManager', () => ({
@@ -44,7 +45,9 @@ describe('CombatManager', () => {
                 assault: 10, firewall: 0, compile: 0, shred: 0, scan: 0, parse: 0, datamine: 0, override: 0, sync: 0, spoof: 0, compression: 0, ...skills
             };
             return [{ size: allSkills[key] || 0, sides: 6 }];
-        }
+        },
+        recordHistory: jest.fn(),
+        addCombatMetrics: jest.fn()
     });
 
     beforeEach(() => {
@@ -172,6 +175,142 @@ describe('CombatManager', () => {
                 type: 'bits',
                 amount: 30,
             });
+        });
+    });
+
+    describe('simulateGauntlet', () => {
+        let mockPlayer;
+        let baseEnemy;
+
+        beforeEach(() => {
+            playerByte = createMockByte('p1', 'Player', 100, 100, { assault: 10 });
+            baseEnemy = {
+                id: 'e1',
+                name: 'Enemy',
+                enemyClass: 'virus',
+                hp: 10,
+                tf: 10,
+                skills: { assault: 1 },
+                winEffects: [{ type: 'bits', amount: 10 }],
+                primaryDrop: { id: 'enemy_core' }
+            };
+
+            mockPlayer = {
+                id: 'player1',
+                inventory: {},
+                energy: { decrease: jest.fn() },
+                addItem: jest.fn((id, amt) => {
+                    mockPlayer.inventory[id] = (mockPlayer.inventory[id] || 0) + amt;
+                }),
+                pendingEvents: [],
+                recordHistory: jest.fn(),
+                addCombatMetrics: jest.fn()
+            };
+        });
+
+        it('should correctly accumulate wins and stats over multiple battles', () => {
+            const result = CombatManager.simulateGauntlet(playerByte, mockPlayer, baseEnemy, 3);
+            
+            expect(result.wins).toBe(3);
+            expect(result.losses).toBe(0);
+            expect(result.draws).toBe(0);
+            expect(result.totalHpLost).toBe(0);
+            expect(result.allGrantedLoot.bits).toBe(30);
+            expect(result.allGrantedLoot.items['enemy_core']).toBe(3);
+            expect(result.totalEnergyLost).toBeGreaterThan(0);
+            
+            expect(mockPlayer.pendingEvents.length).toBe(4); 
+            expect(mockPlayer.pendingEvents[0].event).toBe('combatWin');
+
+            expect(mockPlayer.recordHistory).toHaveBeenCalledWith('combat_wins', 3);
+            expect(playerByte.recordHistory).toHaveBeenCalledWith('combat_wins', 3);
+            expect(mockPlayer.recordHistory).toHaveBeenCalledWith('gauntlet_rounds_won', 3);
+        });
+
+        it('should halt early if player HP drops to 0', () => {
+            baseEnemy.hp = 100;
+            baseEnemy.skills = { assault: 50 }; 
+            
+            const result = CombatManager.simulateGauntlet(playerByte, mockPlayer, baseEnemy, 5);
+            
+            expect(result.wins).toBe(0);
+            expect(result.losses).toBe(1);
+            expect(result.totalHpLost).toBe(100);
+            expect(result.draws).toBe(0);
+            
+            expect(mockPlayer.pendingEvents.length).toBe(1);
+            expect(mockPlayer.pendingEvents[0].event).toBe('combatLoss');
+        });
+        
+        it('should aggregate loot correctly across multiple matches', () => {
+            jest.spyOn(LootManager, 'processLoot').mockReturnValue({
+                bits: 15,
+                items: [{ id: 'extra_item', amount: 2 }]
+            });
+
+            const result = CombatManager.simulateGauntlet(playerByte, mockPlayer, baseEnemy, 2);
+            
+            expect(result.allGrantedLoot.bits).toBe(30);
+            expect(result.allGrantedLoot.items['extra_item']).toBe(4);
+            expect(result.allGrantedLoot.items['enemy_core']).toBe(2);
+            
+            expect(mockPlayer.addItem).toHaveBeenCalledWith('enemy_core', 1);
+        });
+    });
+
+    describe('runSingleMatch', () => {
+        let mockPlayer;
+        let baseEnemy;
+
+        beforeEach(() => {
+            playerByte = createMockByte('p1', 'Player', 100, 100, { assault: 10 });
+            baseEnemy = {
+                id: 'e1',
+                name: 'Enemy',
+                enemyClass: 'virus',
+                hp: 10,
+                tf: 10,
+                skills: { assault: 1 },
+                winEffects: [{ type: 'bits', amount: 10 }],
+                primaryDrop: { id: 'enemy_core' }
+            };
+
+            const EnemyManager = require('./EnemyManager');
+            EnemyManager.getEnemy = jest.fn(() => baseEnemy);
+
+            mockPlayer = {
+                id: 'player1',
+                inventory: {},
+                addItem: jest.fn((id, amt) => {
+                    mockPlayer.inventory[id] = (mockPlayer.inventory[id] || 0) + amt;
+                }),
+                pendingEvents: [],
+                recordHistory: jest.fn(),
+                addCombatMetrics: jest.fn()
+            };
+        });
+
+        it('should throw an error if byte lacks integrity', () => {
+            playerByte.pools.integrity.value = 0;
+            expect(() => {
+                CombatManager.runSingleMatch(playerByte, mockPlayer, { enemyId: 'e1' });
+            }).toThrow('Byte lacks sufficient Integrity to fight.');
+        });
+
+        it('should correctly process a single match victory', () => {
+            jest.spyOn(LootManager, 'processLoot').mockReturnValue({
+                bits: 10,
+                items: []
+            });
+
+            const matchData = CombatManager.runSingleMatch(playerByte, mockPlayer, { enemyId: 'e1' });
+            
+            expect(matchData.result.winner).toBe('player');
+            expect(matchData.grantedLoot.bits).toBe(10);
+            expect(matchData.grantedLoot.items[0].id).toBe('enemy_core');
+            expect(mockPlayer.addItem).toHaveBeenCalledWith('enemy_core', 1);
+            expect(mockPlayer.pendingEvents[0].event).toBe('combatWin');
+            expect(mockPlayer.pendingEvents[1].event).toBe('combatMetricsRecorded');
         });
     });
 });

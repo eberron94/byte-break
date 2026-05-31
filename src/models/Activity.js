@@ -92,10 +92,7 @@ class Activity {
             (calculatedEffects.inventory &&
                 Object.keys(calculatedEffects.inventory).length > 0)
         ) {
-            grantedLoot = LootManager.processLoot(
-                calculatedEffects,
-                context,
-            );
+            grantedLoot = LootManager.processLoot(calculatedEffects, context);
         }
 
         const success = applyEffects(calculatedEffects, context);
@@ -108,8 +105,11 @@ class Activity {
                 if (item && context.player.hasItem(selectedItemId, 1)) {
                     try {
                         const result = item.use(context);
-                        
-                        const shouldConsume = this.itemSelect.isConsumed !== undefined ? this.itemSelect.isConsumed : item.isConsumed;
+
+                        const shouldConsume =
+                            this.itemSelect.isConsumed !== undefined
+                                ? this.itemSelect.isConsumed
+                                : item.isConsumed;
                         if (result && result.success && shouldConsume) {
                             context.player.removeItem(selectedItemId, 1);
                         }
@@ -123,6 +123,26 @@ class Activity {
             }
         }
         return { success, grantedLoot, calculatedEffects };
+    }
+
+    /**
+     * Formats the activity for frontend rendering.
+     */
+    toWeb(context) {
+        const GameObjectManager = require('../managers/GameObjectManager');
+        return {
+            id: this.id,
+            name: this.name,
+            description: this.description,
+            isWebView: this.isWebView,
+            isMinigame: this.isMinigame,
+            isCombat: this.isCombat,
+            canPerform: this.canPerform(context),
+            formattedRequirements: GameObjectManager.formatRequirementsList(
+                this.requirements,
+            ),
+            formattedEffects: GameObjectManager.formatEffectsList(this.effects),
+        };
     }
 }
 

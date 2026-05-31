@@ -39,5 +39,12 @@ class ItemManager {
     getAllItems() {
         return Array.from(this.items.values());
     }
+
+    // Allows external systems (like EnemyManager) to register dynamically generated items
+    registerItem(item) {
+        if (item instanceof Item) {
+            this.items.set(item.id, item);
+        }
+    }
 }
 module.exports = new ItemManager();

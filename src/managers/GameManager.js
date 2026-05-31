@@ -13,6 +13,8 @@ class GameManager extends EventEmitter {
     constructor() {
         super();
 
+        this.activeTransactions = new Set();
+
         // Centralize console logging for all GameEvents
         Object.values(GameEvents).forEach((eventName) => {
             if (typeof eventName === 'string') {
@@ -73,6 +75,18 @@ class GameManager extends EventEmitter {
         });
     
         await dbManager.logEvent(eventName, playerId, byteId, sanitizedArgs);
+    }
+
+    hasTransaction(userId) {
+        return this.activeTransactions.has(userId.toString());
+    }
+
+    addTransaction(userId) {
+        this.activeTransactions.add(userId.toString());
+    }
+
+    deleteTransaction(userId) {
+        this.activeTransactions.delete(userId.toString());
     }
 
     // Factory method to initialize the database before creating the manager

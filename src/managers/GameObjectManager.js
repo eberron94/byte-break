@@ -8,6 +8,7 @@ const shopsData = require('../../data/shops.json');
 const classesData = require('../../data/classes.json');
 const skillsData = require('../../data/skills.json');
 const enemiesData = require('../../data/enemies.json');
+const craftingData = require('../../data/crafting.json');
 
 class GameObjectManager {
     constructor() {
@@ -42,6 +43,21 @@ class GameObjectManager {
         registerData(classesData, 'class');
         registerData(skillsData, 'skill');
         registerData(enemiesData, 'enemy');
+        registerData(craftingData, 'recipe');
+
+        if (Array.isArray(enemiesData)) {
+            enemiesData.forEach((enemy) => {
+                if (enemy.primaryDrop) {
+                    const dropId = enemy.primaryDrop.id || `drop_${enemy.id || enemy.name.toLowerCase().replace(/\s+/g, '_')}`;
+                    this.catalog.set(dropId, {
+                        id: dropId,
+                        name: enemy.primaryDrop.name || `Drop from ${enemy.name}`,
+                        description: enemy.primaryDrop.description || `A material dropped by ${enemy.name}.`,
+                        type: 'item',
+                    });
+                }
+            });
+        }
     }
 
     getObjectName(id, fallback = '') {

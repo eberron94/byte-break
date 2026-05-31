@@ -62,10 +62,14 @@ const TelegramUIBuilders = {
         let text = ` **Room:** ${roomName}\n`;
 
         if (player.hediffs && Object.keys(player.hediffs).length > 0) {
-            const phStrings = Object.entries(player.hediffs).map(([hId, hData]) => {
-                const name = GameObjectManager.getObjectName(hId);
-                return hData.stacks > 1 ? `${name} (x${hData.stacks})` : name;
-            });
+            const phStrings = Object.entries(player.hediffs).map(
+                ([hId, hData]) => {
+                    const name = GameObjectManager.getObjectName(hId);
+                    return hData.stacks > 1
+                        ? `${name} (x${hData.stacks})`
+                        : name;
+                },
+            );
             text += `👤 **Player Status:** ${phStrings.join(', ')}\n`;
         }
 
@@ -175,11 +179,23 @@ const TelegramUIBuilders = {
         if (room && room.allowedActivities) {
             const buttons = [];
             for (const actId of room.allowedActivities) {
+                if (actId === 'access_hunting') {
+                    buttons.push({
+                        text: '⚔️ Hunting Board',
+                        callback_data: 'nav_hunting',
+                    });
+                    continue;
+                }
                 const activity = ActivityManager.getActivity(actId);
                 if (activity) {
                     const context = new GameContext(byte, player);
                     if (activity.canPerform(context)) {
-                        buttons.push(ActivityManager.getActivityButton(activity, context));
+                        buttons.push(
+                            ActivityManager.getActivityButton(
+                                activity,
+                                context,
+                            ),
+                        );
                     }
                 }
             }
@@ -196,20 +212,37 @@ const TelegramUIBuilders = {
         if (webAppUrl) {
             const separator = webAppUrl.includes('?') ? '&' : '?';
             inline_keyboard.push([
-                { text: '👤 Player Profile', web_app: { url: `${webAppUrl}${separator}view=player` } },
+                {
+                    text: '👤 Player Profile',
+                    web_app: { url: `${webAppUrl}${separator}view=player` },
+                },
                 { text: '📱 Byte Specification', web_app: { url: webAppUrl } },
             ]);
             inline_keyboard.push([
-                { text: '🧬 Talents', web_app: { url: `${webAppUrl}${separator}view=talents` } },
-                { text: '⬆️ Upgrades', web_app: { url: `${webAppUrl}${separator}view=upgrades` } },
+                {
+                    text: '🧬 Talents',
+                    web_app: { url: `${webAppUrl}${separator}view=talents` },
+                },
+                {
+                    text: '⬆️ Upgrades',
+                    web_app: { url: `${webAppUrl}${separator}view=upgrades` },
+                },
             ]);
             inline_keyboard.push([
                 { text: '📦 Inventory', callback_data: 'nav_inventory' },
-                { text: '🏆 Achievements', web_app: { url: `${webAppUrl}${separator}view=achievements` } },
+                {
+                    text: '🏆 Achievements',
+                    web_app: {
+                        url: `${webAppUrl}${separator}view=achievements`,
+                    },
+                },
             ]);
             inline_keyboard.push([
                 { text: '🔄 Refresh Status', callback_data: 'nav_status' },
-                { text: '⚙️ Settings', web_app: { url: `${webAppUrl}${separator}view=settings` } },
+                {
+                    text: '⚙️ Settings',
+                    web_app: { url: `${webAppUrl}${separator}view=settings` },
+                },
             ]);
         } else {
             inline_keyboard.push([
@@ -265,7 +298,7 @@ const TelegramUIBuilders = {
         const item = ItemManager.getItem(itemId);
         const amount = player.inventory[itemId] || 0;
         let text = `📦 **Item Details** 📦\n\n**${item.name}** (x${amount})\n_${item.description}_\n`;
-        
+
         if (item.useEffects && item.useEffects.length > 0) {
             text += `\n✨ **Effects:**\n• ${GameObjectManager.formatEffectsList(item.useEffects)}\n`;
         }
@@ -469,6 +502,67 @@ const TelegramUIBuilders = {
         inline_keyboard.push([
             { text: '🔙 Cancel', callback_data: 'nav_status' },
         ]);
+        const options = {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard },
+        };
+        return { text, options };
+    },
+
+    getHuntingBoardDisplay(byte, player, enemyManager) {
+        const context = new GameContext(byte, player);
+        const unlocked = enemyManager.getUnlockedEnemies(context);
+
+        let text = `⚔️ **Hunting Board** ⚔️\n\nSelect a target for your gauntlet:`;
+        const inline_keyboard = [];
+
+        unlocked.forEach((e) => {
+            inline_keyboard.push([
+                {
+                    text: `🎯 ${e.name} (HP: ${e.hp} | TF: ${e.tf})`,
+                    callback_data: `hunt_target_${e.id}`,
+                },
+            ]);
+        });
+
+        inline_keyboard.push([
+            { text: '🔙 Back to Status', callback_data: 'nav_status' },
+        ]);
+
+        const options = {
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard },
+        };
+        return { text, options };
+    },
+
+    getHuntingCountDisplay(player, enemyManager, enemyId) {
+        const target = enemyManager.getEnemy(enemyId);
+        const talentLevel = player.talents['hunting_endurance'] || 0;
+
+        let text = `⚔️ **Hunting Board** ⚔️\n\nTarget: **${target.name}**\n\nSelect the number of consecutive battles to queue:`;
+        const inline_keyboard = [];
+
+        const allOptions = [1, 3, 5, 8, 10, 15, 20, 25, 50, 100];
+        const optionsToShow = allOptions.slice(0, 3 + talentLevel);
+
+        let currentRow = [];
+        for (const count of optionsToShow) {
+            currentRow.push({
+                text: `${count}`,
+                callback_data: `hunt_start_${enemyId}_${count}`,
+            });
+            if (currentRow.length === 5) {
+                inline_keyboard.push(currentRow);
+                currentRow = [];
+            }
+        }
+        if (currentRow.length > 0) inline_keyboard.push(currentRow);
+
+        inline_keyboard.push([
+            { text: '🔙 Back to Targets', callback_data: 'nav_hunting' },
+        ]);
+
         const options = {
             parse_mode: 'Markdown',
             reply_markup: { inline_keyboard },

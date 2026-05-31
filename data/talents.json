@@ -47,5 +47,22 @@
             { "type": "talent", "id": "genetic_memory", "level": 2 },
             { "type": "achievement", "id": "bytes_merged", "rank": 2 }
         ]
+    },
+    {
+        "id": "hunting_endurance",
+        "name": "Hunting Endurance",
+        "description": "Unlocks higher consecutive battle queues in the Hunting Gauntlet (up to 100 rounds).",
+        "cost": 5,
+        "maxLevel": 7
+    },
+    {
+        "id": "hunting_recovery",
+        "name": "Teraflop Reclamation",
+        "description": "Restores 5% of maximum Teraflops between hunting rounds per rank.",
+        "cost": 3,
+        "maxLevel": 5,
+        "requirements": [
+            { "type": "achievement", "id": "gauntlet_clears", "rank": 1 }
+        ]
     }
 ]

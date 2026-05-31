@@ -256,11 +256,23 @@ class Byte {
     }
 
     // Logs an activity or event occurrence to the pet's condensed historical record
-    recordHistory(id) {
+    recordHistory(id, amount = 1) {
         if (!this.history[id]) {
             this.history[id] = 0;
         }
-        this.history[id]++;
+        this.history[id] += amount;
+    }
+
+    addCombatMetrics(metrics) {
+        const CombatMetrics = require('./CombatMetrics');
+        const current = new CombatMetrics(this.history.combatMetrics);
+        current.add(metrics);
+
+        // Expunge loot to prevent indefinite growth in history storage
+        current.earnedBits = 0;
+        current.earnedItems = {};
+
+        this.history.combatMetrics = current;
     }
 
     /**
@@ -386,6 +398,63 @@ class Byte {
     }
 
     /**
+     * Attempts to upgrade a stat or skill, consuming bits from the overflow buffer and bits pool.
+     * @param {string} upgradeKey - The key of the stat/skill to upgrade.
+     * @returns {boolean} True if successful.
+     */
+    upgrade(upgradeKey) {
+        if (!this.isAlive) throw new Error('Byte is not alive.');
+
+        const byteClass = ByteClassManager.getClass(this.byteClass);
+        if (!byteClass) throw new Error('Invalid byte class.');
+
+        const cost = byteClass.investmentRates[upgradeKey];
+        if (cost === undefined) throw new Error('Invalid upgrade key.');
+
+        if (!this.skills[upgradeKey] && !this.pools[upgradeKey]) {
+            throw new Error('Upgrade key not found on Byte.');
+        }
+
+        const totalBits = this.pools.bits.value + (this.bufferOverflow || 0);
+        if (totalBits < cost) throw new Error('Not enough Bits.');
+
+        const previousLevel = this.level;
+
+        // Deduct Bits safely
+        if (this.bufferOverflow && this.bufferOverflow > 0) {
+            if (this.bufferOverflow >= cost) {
+                this.bufferOverflow -= cost;
+            } else {
+                const remaining = cost - this.bufferOverflow;
+                this.bufferOverflow = 0;
+                this.pools.bits.decrease(remaining);
+            }
+        } else {
+            this.pools.bits.decrease(cost);
+        }
+
+        // Apply the upgrade
+        if (this.skills[upgradeKey]) {
+            this.skills[upgradeKey].investedValue += 1;
+        } else if (this.pools[upgradeKey]) {
+            this.pools[upgradeKey].investedValue += 1;
+            this.pools[upgradeKey].increase(1); // Heal the newly gained capacity immediately
+        }
+
+        const newLevel = this.level;
+
+        if (newLevel > previousLevel) {
+            this.pendingEvents.push({
+                event: 'levelUp',
+                args: [this.ownerId, newLevel, this.name],
+            });
+        }
+
+        this.updateLastInteraction();
+        return true;
+    }
+
+    /**
      * Refunds all invested bits back into the buffer overflow.
      * @returns {number} The total bits refunded.
      */
@@ -408,6 +477,59 @@ class Byte {
         }
 
         return refundedBits;
+    }
+
+    /**
+     * Uses a Byte Rebooter item to refund all invested bits back into the buffer overflow.
+     * @param {Player} player - The player attempting to use the rebooter.
+     * @returns {boolean} True if successful.
+     */
+    useRebooter(player) {
+        if (!player.hasItem('byte_rebooter', 1)) {
+            throw new Error('You do not have a Byte Rebooter.');
+        }
+
+        const refundedBits = this.refundBits();
+        if (refundedBits <= 0) {
+            throw new Error('No upgrades to refund.');
+        }
+
+        player.removeItem('byte_rebooter', 1);
+        return true;
+    }
+
+    /**
+     * Equips or unequips an item to the Byte's loadout.
+     * @param {Player} player - The player owning the byte.
+     * @param {string} itemId - The ID of the item.
+     * @param {string} type - The equipment type ('hardware' or 'software').
+     * @param {string} action - The action to perform ('equip' or 'unequip').
+     * @returns {boolean} True if successful.
+     */
+    toggleEquipment(player, itemId, type, action) {
+        if (action === 'equip') {
+            if (!player.hasItem(itemId, 1)) {
+                throw new Error('Item not in inventory');
+            }
+            const capacity = type === 'hardware' ? this.getHardwareCapacity(player) : this.getSoftwareCapacity(player);
+            if (!this.loadout[type]) this.loadout[type] = [];
+            if (this.loadout[type].length >= capacity) {
+                throw new Error('No slots available');
+            }
+
+            player.removeItem(itemId, 1);
+            this.loadout[type].push(itemId);
+        } else if (action === 'unequip') {
+            if (!this.loadout[type] || !this.loadout[type].includes(itemId)) {
+                throw new Error('Item not equipped');
+            }
+            const idx = this.loadout[type].indexOf(itemId);
+            this.loadout[type].splice(idx, 1);
+            player.addItem(itemId, 1);
+        } else {
+            throw new Error('Invalid action');
+        }
+        return true;
     }
 
     getHediffModifier(type, key) {

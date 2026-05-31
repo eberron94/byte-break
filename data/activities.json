@@ -305,5 +305,16 @@
                 "amount": "Math.max(1, Math.floor(item.cost / 100))"
             }
         ]
+    },
+    {
+        "id": "access_crafting",
+        "name": "Craft Workbench",
+        "description": "Combine items and materials to create new payloads and patches.",
+        "isWebView": true
+    },
+    {
+        "id": "access_hunting",
+        "name": "Hunting Board",
+        "description": "Select specific targets and fight them consecutively in a high-speed gauntlet."
     }
 ]

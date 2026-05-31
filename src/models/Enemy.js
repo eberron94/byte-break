@@ -1,3 +1,5 @@
+const { checkRequirements } = require('../util/requirements');
+
 class Enemy {
     constructor(data) {
         this.id = data.id;
@@ -7,6 +9,14 @@ class Enemy {
         this.tf = data.tf || 100;
         this.skills = data.skills || {};
         this.winEffects = data.winEffects || [];
+        
+        if (data.primaryDrop) {
+            this.primaryDrop = { ...data.primaryDrop };
+            if (!this.primaryDrop.id) this.primaryDrop.id = `drop_${this.id}`;
+        } else {
+            this.primaryDrop = null;
+        }
+        this.requirements = data.requirements || [];
     }
 
     getDicePool(type, key) {
@@ -14,6 +24,10 @@ class Enemy {
             return [{ size: this.skills[key] || 0, sides: 6 }];
         }
         return [];
+    }
+
+    isUnlocked(context) {
+        return checkRequirements(this.requirements, context);
     }
 }
 

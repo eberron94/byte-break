@@ -10,8 +10,43 @@ async function renderAchievements() {
         if (!res.ok) throw new Error('Failed to fetch achievements');
         const data = await res.json();
 
-        let html =
-            '<div class="upgrades-grid" style="grid-template-columns: 1fr;">';
+        let html = '';
+
+        if (data.combatMetrics && data.combatMetrics.matches > 0) {
+            const cm = data.combatMetrics;
+            html += `
+            <div class="section-title">LIFETIME COMBAT METRICS</div>
+            <div class="upgrades-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+                <div class="upgrade-item" style="border: 1px solid #4d4d73; padding: 10px;">
+                    <div style="font-size: 11px; color: #aaa;">Total Matches</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #fff;">${cm.matches}</div>
+                </div>
+                <div class="upgrade-item" style="border: 1px solid #4d4d73; padding: 10px;">
+                    <div style="font-size: 11px; color: #aaa;">Total Turns</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #fff;">${cm.turns}</div>
+                </div>
+                <div class="upgrade-item" style="border: 1px solid #4d4d73; padding: 10px;">
+                    <div style="font-size: 11px; color: #aaa;">Damage Dealt</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #f44336;">${cm.playerDamageDealt} <span style="font-size: 10px; color: #888;">(${cm.avgPlayerDamagePerTurn}/turn)</span></div>
+                </div>
+                <div class="upgrade-item" style="border: 1px solid #4d4d73; padding: 10px;">
+                    <div style="font-size: 11px; color: #aaa;">Damage Taken</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #ff9800;">${cm.enemyDamageDealt} <span style="font-size: 10px; color: #888;">(${cm.avgEnemyDamagePerTurn}/turn)</span></div>
+                </div>
+                <div class="upgrade-item" style="border: 1px solid #4d4d73; padding: 10px;">
+                    <div style="font-size: 11px; color: #aaa;">Crit / Dodge</div>
+                    <div style="font-size: 14px; font-weight: bold; color: #fff;"><span style="color:#ffeb3b">${cm.playerCrits}</span> / <span style="color:#4caf50">${cm.playerDodges}</span></div>
+                </div>
+                <div class="upgrade-item" style="border: 1px solid #4d4d73; padding: 10px;">
+                    <div style="font-size: 11px; color: #aaa;">Accuracy</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #2196f3;">${cm.playerAccuracy}%</div>
+                </div>
+            </div>
+            <div class="section-title">ACHIEVEMENTS</div>
+            `;
+        }
+
+        html += '<div class="upgrades-grid" style="grid-template-columns: 1fr;">';
         for (const ach of data.achievements) {
             let checkboxesHtml = '';
             for (let i = 0; i < ach.tiers.length; i++) {

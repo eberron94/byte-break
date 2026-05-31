@@ -1,5 +1,6 @@
 const { checkRequirements } = require('../util/requirements');
 const GameObjectManager = require('../managers/GameObjectManager');
+const GameContext = require('./GameContext');
 
 class Shop {
     constructor(data) {
@@ -48,6 +49,103 @@ class Shop {
         );
     }
 
+    buyItem(byte, player, item) {
+        const context = new GameContext(byte, player);
+
+        if (!this.canAppear(context)) {
+            throw new Error('Shop is currently closed');
+        }
+        if (!this.acceptsItem(item)) {
+            throw new Error('Shop does not trade this item');
+        }
+
+        if (item.cost === undefined) {
+            throw new Error('Item is not for sale');
+        }
+
+        const calculatedCost = Math.ceil(item.cost * this.priceMultiplier);
+
+        const totalBits = byte.pools.bits.value + (byte.bufferOverflow || 0);
+        if (totalBits < calculatedCost) {
+            throw new Error('Insufficient bits');
+        }
+
+        const itemStock =
+            this.stock[item.id] !== undefined
+                ? this.stock[item.id]
+                : this.defaultStock;
+        if (itemStock !== undefined) {
+            const bought = player.history[`shop_${this.id}_${item.id}`] || 0;
+            if (bought >= itemStock) {
+                throw new Error('Item is sold out');
+            }
+        }
+
+        if (
+            item.maxCount !== undefined &&
+            (player.inventory[item.id] || 0) >= item.maxCount
+        ) {
+            throw new Error('Inventory full for this item');
+        }
+
+        if (item.type === 'key' && player.hasItem(item.id, 1)) {
+            throw new Error('You already own this key');
+        }
+
+        // Deduct cost and add item
+        if (byte.bufferOverflow && byte.bufferOverflow > 0) {
+            if (byte.bufferOverflow >= calculatedCost) {
+                byte.bufferOverflow -= calculatedCost;
+            } else {
+                const remainingCost = calculatedCost - byte.bufferOverflow;
+                byte.bufferOverflow = 0;
+                byte.pools.bits.decrease(remainingCost);
+            }
+        } else {
+            byte.pools.bits.decrease(calculatedCost);
+        }
+        player.addItem(item.id, 1);
+
+        if (itemStock !== undefined) {
+            player.recordHistory(`shop_${this.id}_${item.id}`);
+        }
+
+        return calculatedCost;
+    }
+
+    sellItem(byte, player, item) {
+        const context = new GameContext(byte, player);
+
+        if (!this.canAppear(context)) {
+            throw new Error('Shop is currently closed');
+        }
+        if (!this.acceptsItem(item)) {
+            throw new Error('Shop does not trade this item');
+        }
+
+        if (!player.hasItem(item.id, 1)) {
+            throw new Error('Item not in inventory');
+        }
+
+        if (item.cost === undefined) {
+            throw new Error('Item cannot be sold');
+        }
+
+        const sellPrice = Math.floor(item.cost * this.sellMultiplier);
+
+        const wasFull = byte.pools.bits.value >= byte.pools.bits.maxValue;
+        player.removeItem(item.id, 1);
+        byte.pools.bits.increase(sellPrice);
+        if (!wasFull && byte.pools.bits.value >= byte.pools.bits.maxValue) {
+            byte.pendingEvents.push({
+                event: 'BIT_BUFFER_FULL',
+                args: [player.id, byte],
+            });
+        }
+
+        return sellPrice;
+    }
+
     // Finds all items valid for this shop and applies the price multiplier
     getAvailableItems(itemManager, player) {
         const allItems = itemManager.getAllItems();
@@ -60,7 +158,10 @@ class Shop {
             })
             .map((item) => {
                 let remainingStock = undefined;
-                const itemStock = this.stock[item.id] !== undefined ? this.stock[item.id] : this.defaultStock;
+                const itemStock =
+                    this.stock[item.id] !== undefined
+                        ? this.stock[item.id]
+                        : this.defaultStock;
                 if (itemStock !== undefined) {
                     const bought =
                         player && player.history
@@ -78,6 +179,16 @@ class Shop {
                             : null,
                 };
             });
+    }
+
+    toWeb(player) {
+        const ItemManager = require('../managers/ItemManager');
+        return {
+            id: this.id,
+            name: this.name,
+            description: this.description,
+            items: this.getAvailableItems(ItemManager, player),
+        };
     }
 }
 

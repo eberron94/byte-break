@@ -158,7 +158,10 @@ async function loadByte() {
                 `hsl(${byte.colors.finalHue}, 25%, 16%)`,
             );
             root.style.setProperty('--tg-theme-text-color', '#ffffff');
-        root.style.setProperty('--tg-theme-button-text-color', byte.colors.buttonText || '#ffffff');
+            root.style.setProperty(
+                '--tg-theme-button-text-color',
+                byte.colors.buttonText || '#ffffff',
+            );
             root.style.setProperty(
                 '--header-end-color',
                 `hsl(${byte.colors.finalHue}, 75%, 40%)`,
@@ -166,13 +169,16 @@ async function loadByte() {
         }
 
         document.getElementById('byte-name').innerText = byte.name;
-        document.getElementById('byte-name').style.color = byte.colors.buttonText || '#ffffff';
+        document.getElementById('byte-name').style.color =
+            byte.colors.buttonText || '#ffffff';
         document.getElementById('byte-class').innerText =
             `Class: ${byte.byteClass}`;
-        document.getElementById('byte-class').style.color = byte.colors.buttonText || '#ffffff';
+        document.getElementById('byte-class').style.color =
+            byte.colors.buttonText || '#ffffff';
         document.getElementById('byte-level').innerText =
             `GEN.LVL ${byte.generation}.${byte.level}`;
-        document.getElementById('byte-level').style.color = byte.colors.buttonText || '#ffffff';
+        document.getElementById('byte-level').style.color =
+            byte.colors.buttonText || '#ffffff';
 
         const mainAvatar = document.getElementById('main-avatar');
         mainAvatar.src = `/api/avatar?name=${encodeURIComponent(byte.name)}&class=${byte.byteClass}&level=${byte.level}&generation=${byte.generation}`;
@@ -190,17 +196,32 @@ async function loadByte() {
         document.getElementById('loading-screen').style.display = 'none';
         document.getElementById('main-view').style.display = 'block';
 
-        if (window.location.href.includes('view=upgrades')) showUpgrades();
-        else if (window.location.href.includes('view=player')) {
+        const href = window.location.href;
+        if (href.includes('view=upgrades')) {
+            if (typeof showUpgrades === 'function') showUpgrades();
+        } else if (href.includes('view=player')) {
             if (typeof showPlayer === 'function') showPlayer();
-        }
-        if (
+        } else if (href.includes('view=talents')) {
+            if (typeof showTalents === 'function') showTalents();
+        } else if (href.includes('view=achievements')) {
+            if (typeof showAchievements === 'function') showAchievements();
+        } else if (href.includes('view=settings')) {
+            if (typeof showSettings === 'function') showSettings();
+        } else if (href.includes('view=merge')) {
+            if (typeof showMerge === 'function') showMerge();
+        } else if (
+            href.includes('activity=access_crafting') ||
+            href.includes('view=crafting')
+        ) {
+            if (typeof showCrafting === 'function') showCrafting();
+        } else if (href.includes('activity=access_shop') || href.includes('view=shop')) {
+            if (typeof showShop === 'function') showShop();
+        } else if (
             byte.room === 'dojo' &&
-            window.location.href.includes('activity=combat_simulation')
-        )
-            startCombat();
-        else if (window.location.href.includes('activity=access_shop'))
-            showShop();
+            href.includes('activity=combat_simulation')
+        ) {
+            if (typeof startCombat === 'function') startCombat();
+        }
     } catch (err) {
         document.getElementById('loading-screen').style.display = 'none';
         document.getElementById('error-message').style.display = 'block';

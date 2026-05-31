@@ -1,8 +1,11 @@
-const WebAPIGetHandler = require('./WebAPIGetHandler');
-const WebAPIPostHandler = require('./WebAPIPostHandler');
 const WebAPIDebugHandler = require('./WebAPIDebugHandler');
 const WebAPIPlayerHandler = require('./WebAPIPlayerHandler');
 const WebAPIShopHandler = require('./WebAPIShopHandler');
+const WebAPIByteHandler = require('./WebAPIByteHandler');
+const WebAPICraftingHandler = require('./WebAPICraftingHandler');
+const WebAPICombatHandler = require('./WebAPICombatHandler');
+const WebAPIUIHandler = require('./WebAPIUIHandler');
+const WebAPIRoomHandler = require('./WebAPIRoomHandler');
 const crypto = require('crypto');
 
 /**
@@ -17,16 +20,21 @@ class WebApiController {
         this.gameManager = gameManager;
         this.botController = botController;
 
+        this.lastCombatMessages = new Map();
+
         // --- Mixin Pattern ---
         // The `Object.assign` method is used to "mix in" the methods from the
         // handler files. This allows us to keep the route logic in separate,
         // more manageable files while still having access to the controller's
         // `this` context (e.g., `this.gameManager`).
-        Object.assign(this, WebAPIGetHandler);
-        Object.assign(this, WebAPIPostHandler);
         Object.assign(this, WebAPIDebugHandler);
         Object.assign(this, WebAPIPlayerHandler);
         Object.assign(this, WebAPIShopHandler);
+        Object.assign(this, WebAPIByteHandler);
+        Object.assign(this, WebAPICraftingHandler);
+        Object.assign(this, WebAPICombatHandler);
+        Object.assign(this, WebAPIUIHandler);
+        Object.assign(this, WebAPIRoomHandler);
     }
 
     authenticateWebAppRequest(req, res, next) {
@@ -45,11 +53,9 @@ class WebApiController {
         // Only enforce strict validation on routes dealing with specific user data
         if (botToken && requestedId) {
             if (!initDataString) {
-                return res
-                    .status(403)
-                    .json({
-                        error: 'Unauthorized. Missing Telegram signature.',
-                    });
+                return res.status(403).json({
+                    error: 'Unauthorized. Missing Telegram signature.',
+                });
             }
 
             try {
@@ -72,20 +78,16 @@ class WebApiController {
                     .digest('hex');
 
                 if (calculatedHash !== hash) {
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'Unauthorized. Data signature mismatch.',
-                        });
+                    return res.status(403).json({
+                        error: 'Unauthorized. Data signature mismatch.',
+                    });
                 }
 
                 const validUser = JSON.parse(urlParams.get('user'));
                 if (requestedId.toString() !== validUser.id.toString()) {
-                    return res
-                        .status(403)
-                        .json({
-                            error: 'Unauthorized. User identity mismatch.',
-                        });
+                    return res.status(403).json({
+                        error: 'Unauthorized. User identity mismatch.',
+                    });
                 }
             } catch (err) {
                 return res
@@ -103,14 +105,17 @@ class WebApiController {
         this.app.get('/api/byte/:id', this.getByte.bind(this));
         this.app.get('/api/bytes/:id', this.getBytes.bind(this));
         this.app.get('/api/player/:id', this.getPlayer.bind(this));
+        this.app.get('/api/rooms/:id', this.getRooms.bind(this));
         this.app.post('/api/combat/simulate', this.simulateCombat.bind(this));
         this.app.get('/api/avatar', this.getAvatar.bind(this));
         this.app.get('/api/class/:id', this.getClass.bind(this));
         this.app.post('/api/byte/upgrade', this.upgradeByte.bind(this));
         this.app.get('/api/inventory/:id', this.getInventory.bind(this));
         this.app.get('/api/shops', this.handleGetShops.bind(this));
+        this.app.get('/api/crafting/:id', this.getCraftingRecipes.bind(this));
         this.app.post('/api/shop/buy', this.handleBuyItem.bind(this));
         this.app.post('/api/shop/sell', this.handleSellItem.bind(this));
+        this.app.post('/api/crafting/craft', this.craftRecipe.bind(this));
         this.app.get('/api/equipment/:id', this.getEquipment.bind(this));
         this.app.post('/api/equipment/toggle', this.toggleEquipment.bind(this));
         this.app.post('/api/settings/update', this.updateSettings.bind(this));

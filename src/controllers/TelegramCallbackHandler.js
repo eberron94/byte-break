@@ -23,9 +23,20 @@ async function handleCallbackQuery(query) {
         if (!calculatedEffects) return '';
         const changes = [];
         for (const [key, val] of Object.entries(calculatedEffects)) {
-            if (['inventory', 'loot', 'hediffs', 'player_hediffs', 'bits'].includes(key)) continue;
+            if (
+                [
+                    'inventory',
+                    'loot',
+                    'hediffs',
+                    'player_hediffs',
+                    'bits',
+                ].includes(key)
+            )
+                continue;
             if (typeof val === 'number' && val !== 0) {
-                changes.push(`${val > 0 ? '+' : ''}${val} ${key.charAt(0).toUpperCase() + key.slice(1)}`);
+                changes.push(
+                    `${val > 0 ? '+' : ''}${val} ${key.charAt(0).toUpperCase() + key.slice(1)}`,
+                );
             }
         }
         return changes.join(', ');
@@ -34,7 +45,11 @@ async function handleCallbackQuery(query) {
     this.game.recordPlayerActivity(chatId).catch(console.error);
     console.log(`[Callback] Action '${action}' from chat ${chatId}`);
 
-    if (this.lastMinigameMessages && this.lastMinigameMessages.has(chatId) && action !== 'nav_status') {
+    if (
+        this.lastMinigameMessages &&
+        this.lastMinigameMessages.has(chatId) &&
+        action !== 'nav_status'
+    ) {
         this.lastMinigameMessages.delete(chatId);
     }
 
@@ -68,7 +83,11 @@ async function handleCallbackQuery(query) {
         if (action === 'act_cancel' || action === 'nav_status') {
             this.userStates.delete(chatId);
             let statusMessage = null;
-            if (action === 'nav_status' && this.lastMinigameMessages && this.lastMinigameMessages.has(chatId)) {
+            if (
+                action === 'nav_status' &&
+                this.lastMinigameMessages &&
+                this.lastMinigameMessages.has(chatId)
+            ) {
                 statusMessage = this.lastMinigameMessages.get(chatId).msg;
                 this.lastMinigameMessages.delete(chatId);
             }
@@ -194,6 +213,80 @@ async function handleCallbackQuery(query) {
                 page,
             );
             await this.updateMessageDisplay(query, text, options);
+        } else if (action === 'nav_hunting') {
+            const EnemyManager = require('../managers/EnemyManager');
+            const { text, options } = this.getHuntingBoardDisplay(
+                byte,
+                player,
+                EnemyManager,
+            );
+            await this.updateMessageDisplay(query, text, options);
+        } else if (action.startsWith('hunt_target_')) {
+            const enemyId = action.replace('hunt_target_', '');
+            const EnemyManager = require('../managers/EnemyManager');
+            const { text, options } = this.getHuntingCountDisplay(
+                player,
+                EnemyManager,
+                enemyId,
+            );
+            await this.updateMessageDisplay(query, text, options);
+        } else if (action.startsWith('hunt_start_')) {
+            const parts = action.split('_');
+            const count = parseInt(parts.pop(), 10);
+            const enemyId = parts.slice(2).join('_');
+
+            if (byte.pools.integrity.value <= 0) {
+                alertMessage = 'Byte lacks sufficient Integrity.';
+                showAlert = true;
+            } else if (player.energy.value <= 0) {
+                alertMessage = 'You lack sufficient Energy.';
+                showAlert = true;
+            } else {
+                const EnemyManager = require('../managers/EnemyManager');
+                const CombatManager = require('../managers/CombatManager');
+
+                const baseEnemy = EnemyManager.getEnemy(enemyId);
+
+                const gauntletResult = CombatManager.simulateGauntlet(
+                    byte,
+                    player,
+                    baseEnemy,
+                    count,
+                );
+
+                const combinedLootArray = {
+                    bits: gauntletResult.allGrantedLoot.bits,
+                    items: Object.entries(
+                        gauntletResult.allGrantedLoot.items,
+                    ).map(([id, amount]) => ({ id, amount })),
+                };
+                const lootStr =
+                    GameObjectManager.formatLootString(combinedLootArray);
+
+                const summaryMsg =
+                    `Gauntlet Finished! ${gauntletResult.wins}W / ${gauntletResult.losses}L / ${gauntletResult.draws}D\n` +
+                    `Lost ${gauntletResult.totalHpLost} Integrity, ${gauntletResult.totalTfLost} Teraflops, ${gauntletResult.totalEnergyLost} Energy.\n` +
+                    (lootStr ? `Loot: ${lootStr}` : 'No loot gained.');
+
+                this.game.emit(
+                    'ACTIVITY_LOG',
+                    chatId,
+                    `*Hunting Gauntlet (${baseEnemy.name})*\n${summaryMsg}`,
+                );
+
+                this.game.emit(GameEvents.GAUNTLET_CLEARED, chatId);
+
+                await this.game.saveByte(byte);
+                await this.game.savePlayer(player);
+
+                await this.sendStatusUI(
+                    chatId,
+                    byte,
+                    player,
+                    `Hunting complete: ${gauntletResult.wins} Wins.\n${lootStr ? 'Rewards extracted!' : ''}`,
+                );
+                return;
+            }
         } else if (action.startsWith('nav_move_')) {
             const newRoomId = action.replace('nav_move_', '');
             const room = RoomManager.getRoom(newRoomId);
@@ -204,8 +297,13 @@ async function handleCallbackQuery(query) {
             let statusMessage = '';
             if (room && (room.id !== 'debug_room' || isAdmin)) {
                 if (!room.canEnter(new GameContext(byte, player))) {
-                    alertMessage = `Cannot enter ${room.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(room.requirements);
-                    if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
+                    alertMessage =
+                        `Cannot enter ${room.name}. Requires:\n• ` +
+                        GameObjectManager.formatRequirementsList(
+                            room.requirements,
+                        );
+                    if (alertMessage.length > 200)
+                        alertMessage = alertMessage.substring(0, 197) + '...';
                     showAlert = true;
                 } else if (byte.room !== newRoomId) {
                     byte.room = newRoomId;
@@ -242,8 +340,13 @@ async function handleCallbackQuery(query) {
             if (!activity) {
                 alertMessage = 'Activity not found!';
             } else if (!activity.canPerform(new GameContext(byte, player))) {
-                alertMessage = `Cannot perform ${activity.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(activity.requirements);
-                if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
+                alertMessage =
+                    `Cannot perform ${activity.name}. Requires:\n• ` +
+                    GameObjectManager.formatRequirementsList(
+                        activity.requirements,
+                    );
+                if (alertMessage.length > 200)
+                    alertMessage = alertMessage.substring(0, 197) + '...';
                 showAlert = true;
             } else {
                 const item = ItemManager.getItem(itemId);
@@ -259,8 +362,12 @@ async function handleCallbackQuery(query) {
                         await this.game.savePlayer(player);
                         statusMessage = `Performed ${activity.name} with ${item.shortname}!`;
 
-                        const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
-                        const changesStr = getChangesString(result.calculatedEffects);
+                        const lootStr = GameObjectManager.formatLootString(
+                            result.grantedLoot,
+                        );
+                        const changesStr = getChangesString(
+                            result.calculatedEffects,
+                        );
 
                         if (changesStr) statusMessage += `\n📊 ${changesStr}`;
                         if (lootStr) statusMessage += `\n🎁 ${lootStr}`;
@@ -285,9 +392,16 @@ async function handleCallbackQuery(query) {
                 const activity = ActivityManager.getActivity(actId);
                 if (!activity) {
                     alertMessage = 'Activity not found!';
-                } else if (!activity.canPerform(new GameContext(byte, player))) {
-                    alertMessage = `Cannot perform ${activity.name}. Requires:\n• ` + GameObjectManager.formatRequirementsList(activity.requirements);
-                    if (alertMessage.length > 200) alertMessage = alertMessage.substring(0, 197) + '...';
+                } else if (
+                    !activity.canPerform(new GameContext(byte, player))
+                ) {
+                    alertMessage =
+                        `Cannot perform ${activity.name}. Requires:\n• ` +
+                        GameObjectManager.formatRequirementsList(
+                            activity.requirements,
+                        );
+                    if (alertMessage.length > 200)
+                        alertMessage = alertMessage.substring(0, 197) + '...';
                     showAlert = true;
                 } else if (activity.itemSelect) {
                     const { text, options } = this.getActivityItemSelectDisplay(
@@ -298,10 +412,15 @@ async function handleCallbackQuery(query) {
                     await this.updateMessageDisplay(query, text, options);
                     return;
                 } else if (activity.isMinigame) {
-                    const minigame = minigameManager.getMinigame(activity.minigameId);
+                    const minigame = minigameManager.getMinigame(
+                        activity.minigameId,
+                    );
                     if (minigame) {
                         const result = await minigame.start(
-                            chatId, this.game, new GameContext(byte, player), activity
+                            chatId,
+                            this.game,
+                            new GameContext(byte, player),
+                            activity,
                         );
                         if (result.error) {
                             alertMessage = result.error;
@@ -318,32 +437,36 @@ async function handleCallbackQuery(query) {
                     }
                     return;
                 } else {
-                const context = new GameContext(byte, player);
-                const result = activity.perform(context);
-                if (result && result.success) {
-                    await this.game.saveByte(byte);
-                    await this.game.savePlayer(player);
-                    statusMessage = `Performed ${activity.name}!`;
+                    const context = new GameContext(byte, player);
+                    const result = activity.perform(context);
+                    if (result && result.success) {
+                        await this.game.saveByte(byte);
+                        await this.game.savePlayer(player);
+                        statusMessage = `Performed ${activity.name}!`;
 
-                    const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
-                    const changesStr = getChangesString(result.calculatedEffects);
+                        const lootStr = GameObjectManager.formatLootString(
+                            result.grantedLoot,
+                        );
+                        const changesStr = getChangesString(
+                            result.calculatedEffects,
+                        );
 
-                    if (changesStr) statusMessage += `\n📊 ${changesStr}`;
-                    if (lootStr) statusMessage += `\n🎁 ${lootStr}`;
+                        if (changesStr) statusMessage += `\n📊 ${changesStr}`;
+                        if (lootStr) statusMessage += `\n🎁 ${lootStr}`;
 
-                    if (byte.isAsleep) {
-                        const bytes = await this.game.getBytes(chatId);
-                        await this.sendStasisUI(chatId, bytes, player);
-                        return;
+                        if (byte.isAsleep) {
+                            const bytes = await this.game.getBytes(chatId);
+                            await this.sendStasisUI(chatId, bytes, player);
+                            return;
+                        }
+
+                        let logMsg = `*${activity.name}*\n`;
+                        if (changesStr) logMsg += `📊 ${changesStr}\n`;
+                        if (lootStr) logMsg += `🎁 ${lootStr}`;
+                        this.game.emit('ACTIVITY_LOG', chatId, logMsg);
+                    } else {
+                        alertMessage = `Failed to perform ${activity.name}.`;
                     }
-
-                    let logMsg = `*${activity.name}*\n`;
-                    if (changesStr) logMsg += `📊 ${changesStr}\n`;
-                    if (lootStr) logMsg += `🎁 ${lootStr}`;
-                    this.game.emit('ACTIVITY_LOG', chatId, logMsg);
-                } else {
-                    alertMessage = `Failed to perform ${activity.name}.`;
-                }
                 }
             }
             await this.sendStatusUI(chatId, byte, player, statusMessage);
@@ -379,19 +502,18 @@ async function handleCallbackQuery(query) {
                         await this.game.savePlayer(player);
 
                         let msg = `Used ${item.name}!`;
-                        const lootStr = GameObjectManager.formatLootString(result.grantedLoot);
-                        const changesStr = getChangesString(result.calculatedEffects);
+                        const lootStr = GameObjectManager.formatLootString(
+                            result.grantedLoot,
+                        );
+                        const changesStr = getChangesString(
+                            result.calculatedEffects,
+                        );
 
                         if (changesStr) msg += `\n📊 ${changesStr}`;
                         if (lootStr) msg += `\n🎁 ${lootStr}`;
 
-                        await this.sendStatusUI(
-                            chatId,
-                            byte,
-                            player,
-                            msg,
-                        );
-                        
+                        await this.sendStatusUI(chatId, byte, player, msg);
+
                         let logMsg = `*Used ${item.name}*\n`;
                         if (changesStr) logMsg += `📊 ${changesStr}\n`;
                         if (lootStr) logMsg += `🎁 ${lootStr}`;
@@ -440,7 +562,10 @@ async function handleCallbackQuery(query) {
             if (minigame) {
                 const display = await minigame.handleInput(
                     cmd,
-                    userState, this.game, chatId, new GameContext(byte, player)
+                    userState,
+                    this.game,
+                    chatId,
+                    new GameContext(byte, player),
                 );
                 if (display) {
                     if (display.alert) {
