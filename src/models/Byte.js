@@ -39,6 +39,24 @@ class Byte {
         this.hediffs = data.hediffs || {};
         this.loadout = data.loadout || { hardware: [], software: [] };
 
+        const ItemManager = require('../managers/ItemManager');
+        for (const type of ['hardware', 'software']) {
+            if (Array.isArray(this.loadout[type])) {
+                const validLoadout = [];
+                for (const itemId of this.loadout[type]) {
+                    const itemDef = ItemManager.getItem(itemId);
+                    if (!itemDef) {
+                        console.warn(`[Byte] Missing item definition for equipped ID: '${itemId}' in byte ${this.id}'s loadout.`);
+                        if (process.env.PRUNE === 'true') {
+                            continue;
+                        }
+                    }
+                    validLoadout.push(itemId);
+                }
+                this.loadout[type] = validLoadout;
+            }
+        }
+
         // Needs automatically decay over time
         this.needs = {
             charge: new Charge(data.charge, this),
