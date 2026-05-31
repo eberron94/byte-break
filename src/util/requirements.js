@@ -1,9 +1,7 @@
 const AchievementManager = require('../managers/AchievementManager');
 const { evaluateExpression } = require('./effects');
 
-function checkRequirements(
-    requirements, context
-) {
+function checkRequirements(requirements, context) {
     if (
         !requirements ||
         !Array.isArray(requirements) ||
@@ -81,8 +79,31 @@ function checkRequirements(
                     return false;
                 break;
             case 'history':
-                if (!byte || !byte.history) return false;
-                const histVal = byte.history[req.key] || 0;
+                let histVal = 0;
+                if (req.target === 'player') {
+                    if (player && player.history && player.history[req.key] !== undefined) {
+                        histVal = player.history[req.key];
+                    }
+                } else if (req.target === 'byte') {
+                    if (byte && byte.history && byte.history[req.key] !== undefined) {
+                        histVal = byte.history[req.key];
+                    }
+                } else {
+                    if (
+                        player &&
+                        player.history &&
+                        player.history[req.key] !== undefined
+                    ) {
+                        histVal = player.history[req.key];
+                    } else if (
+                        byte &&
+                        byte.history &&
+                        byte.history[req.key] !== undefined
+                    ) {
+                        histVal = byte.history[req.key];
+                    }
+                }
+
                 const hMin =
                     req.min !== undefined
                         ? evaluateExpression(req.min, context)
@@ -120,7 +141,8 @@ function checkRequirements(
                 const progress = player.achievementPoints.progress[req.id] || 0;
                 let currentRank = 0;
                 for (let i = 0; i < ach.tiers.length; i++) {
-                    if (progress >= ach.tiers[i].requirement) currentRank = i + 1;
+                    if (progress >= ach.tiers[i].requirement)
+                        currentRank = i + 1;
                 }
                 const aRank =
                     req.rank !== undefined
@@ -144,9 +166,7 @@ function checkRequirements(
 
                 const sMin =
                     req.minStacks !== undefined
-                        ? evaluateExpression(
-                              req.minStacks, context
-                          )
+                        ? evaluateExpression(req.minStacks, context)
                         : undefined;
                 const sMax =
                     req.maxStacks !== undefined
@@ -171,6 +191,19 @@ function checkRequirements(
                         : undefined;
                 if (phMin !== undefined && phData.stacks < phMin) return false;
                 if (phMax !== undefined && phData.stacks > phMax) return false;
+                break;
+            case 'property':
+                const propTarget = req.target === 'player' ? player : byte;
+                if (!propTarget || propTarget[req.key] === undefined) return false;
+
+                const expectedValue = req.value !== undefined ? evaluateExpression(req.value, context) : undefined;
+                if (expectedValue !== undefined) {
+                    let actual = propTarget[req.key];
+                    let expected = expectedValue;
+                    if (typeof actual === 'boolean') actual = actual ? 1 : 0;
+                    if (typeof expected === 'boolean') expected = expected ? 1 : 0;
+                    if (actual != expected) return false;
+                }
                 break;
             case 'timePhase':
                 if (

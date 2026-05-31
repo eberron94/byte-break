@@ -278,11 +278,15 @@ class Player {
     }
 
     // Logs an activity or event occurrence to the player's historical record
-    recordHistory(id, amount = 1) {
+    recordHistory(id, amount = 1, mode = 'add') {
         if (!this.history[id]) {
             this.history[id] = 0;
         }
-        this.history[id] += amount;
+        if (mode === 'max') {
+            this.history[id] = Math.max(this.history[id], amount);
+        } else {
+            this.history[id] += amount;
+        }
     }
 
     addCombatMetrics(metrics) {

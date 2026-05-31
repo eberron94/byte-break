@@ -225,6 +225,8 @@ describe('CombatManager', () => {
             expect(mockPlayer.recordHistory).toHaveBeenCalledWith('combat_wins', 3);
             expect(playerByte.recordHistory).toHaveBeenCalledWith('combat_wins', 3);
             expect(mockPlayer.recordHistory).toHaveBeenCalledWith('gauntlet_rounds_won', 3);
+            expect(playerByte.recordHistory).toHaveBeenCalledWith('gauntlet_rounds_won', 3);
+            expect(playerByte.recordHistory).toHaveBeenCalledWith('hunt_e1_max_streak', 3, 'max');
         });
 
         it('should halt early if player HP drops to 0', () => {
@@ -240,6 +242,9 @@ describe('CombatManager', () => {
             
             expect(mockPlayer.pendingEvents.length).toBe(1);
             expect(mockPlayer.pendingEvents[0].event).toBe('combatLoss');
+            
+            // Should still track that the current run ended with a streak of 0
+            expect(playerByte.recordHistory).toHaveBeenCalledWith('hunt_e1_max_streak', 0, 'max');
         });
         
         it('should aggregate loot correctly across multiple matches', () => {

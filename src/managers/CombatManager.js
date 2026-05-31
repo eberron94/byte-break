@@ -209,6 +209,8 @@ class CombatManager {
         byte.addCombatMetrics(gauntletMetrics);
         player.addCombatMetrics(gauntletMetrics);
 
+        byte.recordHistory(`hunt_${baseEnemy.id}_max_streak`, wins, 'max');
+
         player.pendingEvents.push({
             event: GameEvents.COMBAT_METRICS_RECORDED,
             args: [player.id, gauntletMetrics],
@@ -218,6 +220,7 @@ class CombatManager {
             byte.recordHistory('combat_wins', wins);
             player.recordHistory('combat_wins', wins);
             player.recordHistory('gauntlet_rounds_won', wins);
+            byte.recordHistory('gauntlet_rounds_won', wins);
         }
         if (losses > 0) {
             byte.recordHistory('combat_losses', losses);

@@ -44,6 +44,53 @@
                 "type": "pool",
                 "key": "integrity",
                 "maxValueMin": 120
+            },
+            {
+                "type": "history",
+                "target": "byte",
+                "key": "hunt_training_virus_max_streak",
+                "min": 5
+            }
+        ]
+    },
+    {
+        "id": "data_scavenger",
+        "name": "Data Scavenger",
+        "enemyClass": "virus",
+        "hp": 150,
+        "tf": 100,
+        "skills": {
+            "assault": 8,
+            "datamine": 5
+        },
+        "winEffects": [{ "type": "bits", "amount": 25 }],
+        "requirements": [
+            {
+                "type": "history",
+                "target": "byte",
+                "key": "hunt_elite_virus_max_streak",
+                "min": 5
+            }
+        ]
+    },
+    {
+        "id": "intrusion_proxy",
+        "name": "Intrusion Proxy",
+        "enemyClass": "virus",
+        "hp": 300,
+        "tf": 100,
+        "skills": {
+            "assault": 10,
+            "shred": 5,
+            "firewall": 5
+        },
+        "winEffects": [{ "type": "bits", "amount": 80 }],
+        "requirements": [
+            {
+                "type": "history",
+                "target": "byte",
+                "key": "hunt_data_scavenger_max_streak",
+                "min": 5
             }
         ]
     }

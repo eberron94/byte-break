@@ -73,7 +73,7 @@ An activity that requires the Byte to be awake, costs no energy, and puts the By
     "id": "power_down",
     "name": "Power Down",
     "description": "Puts the Byte into stasis, restoring core needs over time.",
-    "requirements": [{ "type": "stat", "key": "isAsleep", "max": 0 }],
+    "requirements": [{ "type": "property", "key": "isAsleep", "value": false }],
     "effects": [{ "type": "isAsleep", "amount": 1 }]
 }
 ```

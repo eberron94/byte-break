@@ -94,7 +94,6 @@ class GameObjectManager {
                 case 'skill':
                 case 'need':
                 case 'pool':
-                case 'history':
                     const targetName = this.getObjectName(req.key);
                     const conditions = [];
                     if (req.min !== undefined)
@@ -106,6 +105,21 @@ class GameObjectManager {
                     if (req.maxValueMax !== undefined)
                         conditions.push(`Capacity <= ${req.maxValueMax}`);
                     desc = `${targetName} (${conditions.join(', ')})`;
+                    break;
+                case 'history':
+                    const histTargetName = this.getObjectName(req.key);
+                    const histConditions = [];
+                    if (req.min !== undefined)
+                        histConditions.push(`Min ${req.min}`);
+                    if (req.max !== undefined)
+                        histConditions.push(`Max ${req.max}`);
+                    let histPrefix = '';
+                    if (req.target === 'player') {
+                        histPrefix = 'Player ';
+                    } else if (req.target === 'byte') {
+                        histPrefix = 'Byte ';
+                    }
+                    desc = `${histPrefix}${histTargetName} (${histConditions.join(', ')})`;
                     break;
                 case 'energy':
                     const eCond = [];
@@ -144,6 +158,11 @@ class GameObjectManager {
                     if (req.maxStacks !== undefined)
                         psCond.push(`Max ${req.maxStacks} Stacks`);
                     if (psCond.length > 0) desc += ` (${psCond.join(', ')})`;
+                    break;
+                case 'property':
+                    const propPrefix = req.target === 'player' ? 'Player ' : 'Byte ';
+                    const expectedStr = req.value !== undefined ? req.value : 'True';
+                    desc = `${propPrefix}${req.key} must be ${expectedStr}`;
                     break;
                 case 'timePhase':
                     desc = `Time: ${req.phases

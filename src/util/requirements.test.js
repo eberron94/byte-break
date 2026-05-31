@@ -95,4 +95,27 @@ describe('Requirements Utility', () => {
             expect(checkRequirements(failReq, mockContext)).toBe(false);
         });
     });
+
+    describe('History Evaluation', () => {
+        it('should correctly fallback to byte history if not in player history', () => {
+            mockContext.byte.history = { 'battle_wins': 5 };
+            mockContext.player.history = {};
+            const req = [{ type: 'history', key: 'battle_wins', min: 5 }];
+            expect(checkRequirements(req, mockContext)).toBe(true);
+        });
+
+        it('should evaluate strictly player history if target is player', () => {
+            mockContext.byte.history = { 'battle_wins': 5 };
+            mockContext.player.history = {};
+            const req = [{ type: 'history', target: 'player', key: 'battle_wins', min: 5 }];
+            expect(checkRequirements(req, mockContext)).toBe(false);
+        });
+
+        it('should evaluate strictly byte history if target is byte', () => {
+            mockContext.player.history = { 'battle_wins': 5 };
+            mockContext.byte.history = {};
+            const req = [{ type: 'history', target: 'byte', key: 'battle_wins', min: 5 }];
+            expect(checkRequirements(req, mockContext)).toBe(false);
+        });
+    });
 });
